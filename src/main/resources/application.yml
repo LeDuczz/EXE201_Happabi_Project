@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME}
+  jpa:
+    database-platform: ${DIALECT_POSTGRESQL}
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
+    show-sql: ${SPRING_JPA_SHOW_SQL}
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: ${SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE}
+        format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL}
+
+  # ========================
+  # SECURITY / OAuth2
+  # ========================
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COGNITO_ISSUER_URI}
+
+  # ========================
+  # REDIS
+  # ========================
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      timeout: 6000
+    elasticsearch:
+      repositories:
+              enabled: true
+
+
+  # ========================
+  # KAFKA
+  # ========================
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: ${SPRING_KAFKA_CONSUMER_GROUP_ID}
+      auto-offset-reset: ${SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+    listener:
+      ack-mode: record
+
+  # ========================
+  # ELASTICSEARCH
+  # ========================
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS}
+
+server:
+  port: ${SERVER_PORT}
+
+# ========================
+# ACTUATOR (PROMETHEUS)
+# ========================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+      cors:
+        allowed-origins: ${CORS_URL}
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${SPRING_APPLICATION_NAME}
+
+# ========================
+# AWS
+# ========================
+aws:
+  iam:
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}
+
+  region: ${AWS_REGION}
+
+  s3:
+    bucket: ${AWS_S3_BUCKET_NAME}
+
+  cognito:
+    user-pool-id: ${AWS_USER_POOL_ID}
+    client-id: ${AWS_CLIENT_ID}
+    client-secret: ${AWS_CLIENT_SECRET}
+    domain: ${AWS_COGNITO_DOMAIN}
