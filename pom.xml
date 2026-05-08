@@ -286,6 +286,13 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
+
+		<!-- ⚙️ Configuration Processor: hỗ trợ @ConfigurationProperties + IDE auto-complete -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
 		<!--  2. Spring Boot Starter for Redis  -->
 		<!--  This dependency provides everything needed to connect to Redis,  -->
 		<!--  including the Lettuce Redis client and auto-configuration for the CacheManager.  -->

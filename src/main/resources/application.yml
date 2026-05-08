@@ -104,3 +104,50 @@ aws:
     client-id: ${AWS_CLIENT_ID}
     client-secret: ${AWS_CLIENT_SECRET}
     domain: ${AWS_COGNITO_DOMAIN}
+
+# ========================
+# RATE LIMITING (Token Bucket)
+# ========================
+rate-limit:
+  global:
+    capacity: 100
+    refill-tokens: 100
+    refill-seconds: 60
+
+  endpoints:
+    register:
+      capacity: 3
+      refill-tokens: 1
+      refill-seconds: 300
+    verify-otp:
+      capacity: 5
+      refill-tokens: 1
+      refill-seconds: 60
+    resend-otp:
+      capacity: 3
+      refill-tokens: 1
+      refill-seconds: 120
+    login:
+      capacity: 5
+      refill-tokens: 1
+      refill-seconds: 20
+    social-sync:
+      capacity: 10
+      refill-tokens: 1
+      refill-seconds: 10
+    refresh:
+      capacity: 10
+      refill-tokens: 1
+      refill-seconds: 10
+    logout:
+      capacity: 5
+      refill-tokens: 1
+      refill-seconds: 10
+    forgot-password:
+      capacity: 3
+      refill-tokens: 1
+      refill-seconds: 300
+    reset-password:
+      capacity: 5
+      refill-tokens: 1
+      refill-seconds: 60

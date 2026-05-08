@@ -1,93 +1,246 @@
 package com.minduc.happabi.filter;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.minduc.happabi.common.base.BaseResponse;
+import com.minduc.happabi.filter.CachedBodyHttpServletRequest;
+import com.minduc.happabi.exception.AuthErrorCode;
+import com.minduc.happabi.exception.ErrorResponse;
 import com.minduc.happabi.service.ratelimit.RateLimitService;
+import com.minduc.happabi.service.ratelimit.RateLimitService.TokenBucketResult;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
 
 @Slf4j
 @Component
+@Order(2)
 @RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
 
-    private static final Map<String, int[]> RATE_LIMIT_CONFIG = Map.of(
-            "/api/v1/auth/login",           new int[]{5,  900},  // 5 lần / 15 phút / IP
-            "/api/v1/auth/register",        new int[]{3,  3600}, // 3 lần / 1 giờ / IP
-            "/api/v1/auth/resend-otp",      new int[]{3,  600},  // 3 lần / 10 phút / IP
-            "/api/v1/auth/verify-otp",      new int[]{5,  600},  // 5 lần / 10 phút / IP
-            "/api/v1/auth/refresh",         new int[]{20, 60},   // 20 lần / 1 phút / IP
-            "/api/v1/auth/social/sync",     new int[]{5,  60},   // 5 lần / 1 phút / IP
-            "/api/v1/auth/forgot-password", new int[]{3,  600},  // 3 lần / 10 phút / IP (tránh spam SMS)
-            "/api/v1/auth/reset-password",  new int[]{5,  600}   // 5 lần / 10 phút / IP (tránh dò OTP)
+    private static final Map<String, String> ENDPOINT_KEY_MAP = Map.of(
+            "/api/v1/auth/register", "register",
+            "/api/v1/auth/verify-otp", "verify-otp",
+            "/api/v1/auth/resend-otp", "resend-otp",
+            "/api/v1/auth/login", "login",
+            "/api/v1/auth/social/sync", "social-sync",
+            "/api/v1/auth/refresh", "refresh",
+            "/api/v1/auth/logout", "logout",
+            "/api/v1/auth/forgot-password", "forgot-password",
+            "/api/v1/auth/reset-password", "reset-password"
     );
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest  request,
+                                    HttpServletResponse response,
+                                    FilterChain         filterChain)
+            throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        int[] config = RATE_LIMIT_CONFIG.get(path);
+        String endpointKey = ENDPOINT_KEY_MAP.get(path);
 
-        // Endpoint không nằm trong danh sách → bỏ qua rate limiting
-        if (config == null) {
+        if (endpointKey == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        int maxRequests = config[0];
-        Duration window = Duration.ofSeconds(config[1]);
-        String identifier = resolveIdentifier(request);
-        String endpoint = path.substring(path.lastIndexOf('/') + 1); // vd: "login"
+        CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(request);
 
-        if (rateLimitService.isRateLimited(endpoint, identifier, maxRequests, window)) {
-            long retryAfter = rateLimitService.getRetryAfterSeconds(endpoint, identifier);
-            sendRateLimitResponse(response, retryAfter);
-            return;
-        }
+        boolean blocked = checkRateLimit(cachedRequest, response, path, endpointKey);
+        if (blocked) return;
 
-        filterChain.doFilter(request, response);
+        // Truyền cachedRequest xuống chain — Controller đọc body từ cache, không bị mất stream
+        filterChain.doFilter(cachedRequest, response);
     }
 
-    private String resolveIdentifier(HttpServletRequest request) {
+    private boolean checkRateLimit(CachedBodyHttpServletRequest request,
+                                   HttpServletResponse response,
+                                   String path,
+                                   String endpointKey) throws IOException {
+        return switch (endpointKey) {
+            // Dual: Phone + IP — 1 trong 2 cạn → chặn ngay
+            case "register", "resend-otp", "login", "forgot-password" ->
+                    checkDual(request, response, path, endpointKey);
+
+            // Phone only
+            case "verify-otp", "reset-password" ->
+                    checkPhoneOnly(request, response, path, endpointKey);
+
+            // IP only
+            case "social-sync" ->
+                    checkIpOnly(request, response, path, endpointKey);
+
+            // User ID from JWT sub (authenticated endpoints)
+            case "refresh", "logout" ->
+                    checkUserIdOnly(request, response, path, endpointKey);
+
+            default -> false;
+        };
+    }
+
+    private boolean checkDual(CachedBodyHttpServletRequest request,
+                               HttpServletResponse response,
+                               String path,
+                               String endpointKey) throws IOException {
+        String phone = extractPhone(request);
+        String ip = resolveIp(request);
+
+        if (phone != null) {
+            String phoneKey = buildKey(path, "phone", phone);
+            TokenBucketResult phoneResult = rateLimitService.tryConsume(phoneKey, endpointKey);
+            if (!phoneResult.allowed()) {
+                sendBlockedResponse(response, phoneResult.remaining(), request);
+                return true;
+            }
+            setRemainingHeader(response, phoneResult.remaining());
+        }
+
+        String ipKey = buildKey(path, "ip", ip);
+        TokenBucketResult ipResult = rateLimitService.tryConsume(ipKey, endpointKey);
+        if (!ipResult.allowed()) {
+            sendBlockedResponse(response, ipResult.remaining(), request);
+            return true;
+        }
+        setRemainingHeader(response, ipResult.remaining());
+        return false;
+    }
+
+    private boolean checkPhoneOnly(CachedBodyHttpServletRequest request,
+                                   HttpServletResponse response,
+                                   String path,
+                                   String endpointKey) throws IOException {
+        String phone = extractPhone(request);
+        if (phone == null) return false;
+
+        String key = buildKey(path, "phone", phone);
+        TokenBucketResult result = rateLimitService.tryConsume(key, endpointKey);
+        setRemainingHeader(response, result.remaining());
+        if (!result.allowed()) {
+            sendBlockedResponse(response, result.remaining(), request);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean checkIpOnly(CachedBodyHttpServletRequest request,
+                                HttpServletResponse response,
+                                String path,
+                                String endpointKey) throws IOException {
+        String ip  = resolveIp(request);
+        String key = buildKey(path, "ip", ip);
+        TokenBucketResult result = rateLimitService.tryConsume(key, endpointKey);
+        setRemainingHeader(response, result.remaining());
+        if (!result.allowed()) {
+            sendBlockedResponse(response, result.remaining(), request);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean checkUserIdOnly(CachedBodyHttpServletRequest request,
+                                    HttpServletResponse response,
+                                    String path,
+                                    String endpointKey) throws IOException {
+        String userId = extractUserIdFromJwt(request);
+        if (userId == null) return false;
+
+        String key = buildKey(path, "user", userId);
+        TokenBucketResult result = rateLimitService.tryConsume(key, endpointKey);
+        setRemainingHeader(response, result.remaining());
+        if (!result.allowed()) {
+            sendBlockedResponse(response, result.remaining(), request);
+            return true;
+        }
+        return false;
+    }
+
+    private String extractPhone(CachedBodyHttpServletRequest request) {
+        try {
+            byte[] bodyBytes = request.getCachedBody();
+            if (bodyBytes == null || bodyBytes.length == 0) return null;
+
+            String body = new String(bodyBytes, StandardCharsets.UTF_8);
+            JsonNode node = objectMapper.readTree(body);
+            JsonNode phoneNode = node.get("phone");
+            if (phoneNode == null || phoneNode.isNull()) return null;
+
+            return normalizePhone(phoneNode.asText());
+        } catch (Exception e) {
+            log.debug("[RateLimit] Could not parse phone from body: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) return null;
+        String cleaned = phone.trim();
+        if (cleaned.startsWith("+")) return cleaned;
+        if (cleaned.startsWith("84")) return "+" + cleaned;
+        if (cleaned.startsWith("0")) return "+84" + cleaned.substring(1);
+        return cleaned;
+    }
+
+    private String resolveIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            // X-Forwarded-For có thể là "client, proxy1, proxy2" → lấy đầu tiên
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
     }
 
-    private void sendRateLimitResponse(HttpServletResponse response, long retryAfterSeconds) throws IOException {
+    private String extractUserIdFromJwt(HttpServletRequest request) {
+        try {
+            String auth = request.getHeader("Authorization");
+            if (auth == null || !auth.startsWith("Bearer ")) return null;
+            String token   = auth.substring(7);
+            String payload = token.split("\\.")[1];
+            byte[] decoded = Base64.getUrlDecoder().decode(payload);
+            JsonNode claims = objectMapper.readTree(decoded);
+            JsonNode sub = claims.get("sub");
+            return sub != null && !sub.isNull() ? sub.asText() : null;
+        } catch (Exception e) {
+            log.debug("[RateLimit] Could not extract sub from JWT: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String buildKey(String path, String type, String value) {
+        String shortPath = path.replace("/api/v1", "");
+        return "rate:" + shortPath + ":" + type + ":" + value;
+    }
+
+    private void setRemainingHeader(HttpServletResponse response, long remaining) {
+        if (remaining >= 0) {
+            response.setHeader("X-RateLimit-Remaining", String.valueOf(remaining));
+        }
+    }
+
+    private void sendBlockedResponse(HttpServletResponse response, long remaining,
+                                     HttpServletRequest request) throws IOException {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(remaining));
 
-        if (retryAfterSeconds > 0) {
-            response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
-        }
-
-        BaseResponse<Void> body = BaseResponse.<Void>builder()
-                .success(false)
-                .message("Too many requests. Please slow down and try again later.")
-                .build();
-
-        response.getWriter().write(objectMapper.writeValueAsString(body));
+        ErrorResponse errorResponse = ErrorResponse.of(
+                AuthErrorCode.RATE_LIMITED,
+                request.getRequestURI()
+        );
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }

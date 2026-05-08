@@ -4,6 +4,7 @@ package com.minduc.happabi.config;
 import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.CustomAccessDeniedHandler;
 import com.minduc.happabi.exception.CustomAuthenticationEntryPoint;
+import com.minduc.happabi.filter.GlobalIpRateLimitFilter;
 import com.minduc.happabi.filter.RateLimitFilter;
 import com.minduc.happabi.service.permission.PermissionCacheService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class SecurityConfig {
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final CorsConfigurationSource corsConfigurationSource;
     private final PermissionCacheService permissionCacheService;
+    private final GlobalIpRateLimitFilter globalIpRateLimitFilter;
     private final RateLimitFilter rateLimitFilter;
 
     private static final String[] PUBLIC_POST = {
@@ -80,6 +82,8 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)
             )
+            // Thứ tự filter: GlobalIpRateLimit (Order=1) → RateLimit (Order=2) → Security
+            .addFilterBefore(globalIpRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -23,10 +23,6 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(
-        summary     = "Get the authenticated user's profile",
-        description = "Returns profile data including a pre-signed S3 avatar URL (1 h TTL)."
-    )
     @GetMapping("/me")
     public ResponseEntity<BaseResponse<UserProfileResponse>> getMe(
             @AuthenticationPrincipal Jwt jwt) {
@@ -34,12 +30,6 @@ public class UserController {
         return ResponseEntity.ok(BaseResponse.ok(profile));
     }
 
-    @Operation(
-        summary     = "Upload or replace the avatar image",
-        description = "Accepted formats: JPEG, PNG, WebP. Max size: 5 MB. " +
-                      "The previous avatar (if any) is deleted from S3 automatically. " +
-                      "Returns a pre-signed S3 URL valid for 1 hour."
-    )
     @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BaseResponse<String>> uploadAvatar(
             @AuthenticationPrincipal Jwt jwt,
