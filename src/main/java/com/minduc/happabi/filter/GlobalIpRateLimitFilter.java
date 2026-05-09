@@ -3,6 +3,8 @@ package com.minduc.happabi.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.exception.AuthErrorCode;
 import com.minduc.happabi.exception.ErrorResponse;
+import com.minduc.happabi.service.metrics.AuditLogService;
+import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.ratelimit.RateLimitService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,6 +28,8 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
+    private final AuthMetricsService authMetrics;
+    private final AuditLogService auditLog;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -43,6 +47,8 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
         }
 
         if (!result.allowed()) {
+            authMetrics.recordRateLimitBlocked("global", "global");
+            auditLog.logRateLimitBlocked("global", "global", ip);
             sendBlockedResponse(response, request);
             return;
         }

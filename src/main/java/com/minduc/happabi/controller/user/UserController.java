@@ -3,7 +3,6 @@ package com.minduc.happabi.controller.user;
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.response.UserProfileResponse;
 import com.minduc.happabi.service.user.UserService;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

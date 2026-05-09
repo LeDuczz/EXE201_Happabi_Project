@@ -1,6 +1,7 @@
 spring:
   application:
     name: ${SPRING_APPLICATION_NAME}
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -87,6 +88,20 @@ management:
       application: ${SPRING_APPLICATION_NAME}
 
 # ========================
+# APP ENV (dùng cho logback profile + ELK)
+# ========================
+app:
+  env: ${APP_ENV:local}
+
+# ========================
+# LOGSTASH (ELK Stack)
+# Khi chưa có ELK, để host=localhost, logback sẽ fail-safe (async, neverBlock=true)
+# ========================
+logstash:
+  host: ${LOGSTASH_HOST:localhost}
+  port: ${LOGSTASH_PORT:5044}
+
+# ========================
 # AWS
 # ========================
 aws:
@@ -150,4 +165,4 @@ rate-limit:
     reset-password:
       capacity: 5
       refill-tokens: 1
-      refill-seconds: 60
+      refill-seconds: 60

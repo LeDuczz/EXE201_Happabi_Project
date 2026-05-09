@@ -293,6 +293,13 @@
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
 		</dependency>
+
+		<!-- 📋 Logstash Logback Encoder: structured JSON logging cho ELK -->
+		<dependency>
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+			<version>7.4</version>
+		</dependency>
 		<!--  2. Spring Boot Starter for Redis  -->
 		<!--  This dependency provides everything needed to connect to Redis,  -->
 		<!--  including the Lettuce Redis client and auto-configuration for the CacheManager.  -->

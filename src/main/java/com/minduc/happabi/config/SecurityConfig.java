@@ -56,6 +56,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/api-docs/**",
             "/actuator/health",
+            "/actuator/prometheus",   // Prometheus scraper không có token — bảo vệ ở network level
     };
 
     @Bean
@@ -71,7 +72,6 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
                 .requestMatchers(HttpMethod.GET,  PUBLIC_GET).permitAll()
-                .requestMatchers("/actuator/prometheus").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
