@@ -18,6 +18,7 @@ import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.RoleRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.entity.Role;
+import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.s3.S3Service;
 import com.minduc.happabi.service.s3.S3ServiceImpl;
 import com.nimbusds.jwt.SignedJWT;
@@ -59,6 +60,7 @@ public class AuthServiceImpl implements AuthService {
     private final NurseProfileRepository nurseProfileRepository;
     private final RoleRepository roleRepository;
     private final RestTemplate restTemplate;
+    private final AuthMetricsService authMetrics;
 
     @Value("${aws.cognito.user-pool-id}")
     private String userPoolId;
@@ -135,13 +137,17 @@ public class AuthServiceImpl implements AuthService {
                     );
                 log.info("[Auth] New nurse registered: phone={} sub={}", request.getPhone(), cognitoSub);
             }
+            authMetrics.recordRegisterSuccess(request.getRole().name());
             // NOTE: Cognito Group assignment is handled by the Post-Confirmation Lambda trigger.
 
         } catch (UsernameExistsException e) {
+            authMetrics.recordRegisterFailure("PHONE_ALREADY_EXISTS");
             throw new AppException(AuthErrorCode.PHONE_ALREADY_EXISTS);
         } catch (InvalidPasswordException e) {
+            authMetrics.recordRegisterFailure("PASSWORD_POLICY_VIOLATED");
             throw new AppException(AuthErrorCode.PASSWORD_POLICY_VIOLATED);
         } catch (CognitoIdentityProviderException e) {
+            authMetrics.recordRegisterFailure("COGNITO_ERROR");
             log.error("[Auth] Cognito signUp error: {}", e.awsErrorDetails().errorMessage(), e);
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS, e.awsErrorDetails().errorMessage());
         }
@@ -159,14 +165,19 @@ public class AuthServiceImpl implements AuthService {
                     .confirmationCode(request.getOtpCode())
                     .build());
             log.info("[Auth] OTP verified: phone={}", request.getPhone());
+            authMetrics.recordOtpVerifySuccess();
 
         } catch (CodeMismatchException e) {
+            authMetrics.recordOtpVerifyFailure("CODE_MISMATCH");
             throw new AppException(AuthErrorCode.OTP_INVALID);
         } catch (ExpiredCodeException e) {
+            authMetrics.recordOtpVerifyFailure("EXPIRED");
             throw new AppException(AuthErrorCode.OTP_EXPIRED);
         } catch (NotAuthorizedException e) {
+            authMetrics.recordOtpVerifyFailure("ALREADY_CONFIRMED");
             throw new AppException(AuthErrorCode.USER_ALREADY_CONFIRMED);
         } catch (CognitoIdentityProviderException e) {
+            authMetrics.recordOtpVerifyFailure("COGNITO_ERROR");
             log.error("[Auth] confirmSignUp error: {}", e.awsErrorDetails().errorMessage(), e);
             throw new AppException(AuthErrorCode.OTP_INVALID, e.awsErrorDetails().errorMessage());
         }
@@ -183,6 +194,7 @@ public class AuthServiceImpl implements AuthService {
                     .username(request.getPhone())
                     .build());
             log.info("[Auth] OTP resent: phone={}", request.getPhone());
+            authMetrics.recordOtpResend();
 
         } catch (UserNotFoundException e) {
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
@@ -227,6 +239,7 @@ public class AuthServiceImpl implements AuthService {
             CookieUtils.addRefreshTokenCookie(response, result.refreshToken() + "::" + user.getCognitoSub());
 
             log.info("[Auth] Login ok: phone={} role={}", request.getPhone(), user.getRole().getRoleName());
+            authMetrics.recordLoginSuccess(user.getRole().getRoleName().name(), "LOCAL");
 
             return AuthResponse.builder()
                     .accessToken(result.accessToken())
@@ -236,12 +249,16 @@ public class AuthServiceImpl implements AuthService {
                     .build();
 
         } catch (NotAuthorizedException e) {
+            authMetrics.recordLoginFailure("INVALID_CREDENTIALS");
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS);
         } catch (UserNotConfirmedException e) {
+            authMetrics.recordLoginFailure("NOT_CONFIRMED");
             throw new AppException(AuthErrorCode.USER_NOT_CONFIRMED);
         } catch (UserNotFoundException e) {
+            authMetrics.recordLoginFailure("USER_NOT_FOUND");
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
         } catch (CognitoIdentityProviderException e) {
+            authMetrics.recordLoginFailure("COGNITO_ERROR");
             log.error("[Auth] initiateAuth error: {}", e.awsErrorDetails().errorMessage(), e);
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS, e.awsErrorDetails().errorMessage());
         }
@@ -355,6 +372,9 @@ public class AuthServiceImpl implements AuthService {
 
             String avatarUrl = s3ServiceImpl.presign(user.getAvatarS3Key());
             UserProfileResponse profile = userMapper.toProfileResponse(user, avatarUrl);
+
+            log.info("[Auth] Social sync ok: sub={} provider={}", user.getCognitoSub(), user.getAuthProvider());
+            authMetrics.recordSocialLoginSuccess(user.getAuthProvider().name());
 
             return AuthResponse.builder()
                     .accessToken(accessToken)
@@ -485,6 +505,7 @@ public class AuthServiceImpl implements AuthService {
                     .build());
 
             log.info("[Auth] ForgotPassword OTP sent: phone={}", request.getPhone());
+            authMetrics.recordForgotPasswordRequested();
 
         } catch (UserNotFoundException e) {
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
@@ -514,6 +535,7 @@ public class AuthServiceImpl implements AuthService {
                     .build());
 
             log.info("[Auth] ResetPassword ok: phone={}", request.getPhone());
+            authMetrics.recordResetPasswordSuccess();
 
         } catch (CodeMismatchException e) {
             throw new AppException(AuthErrorCode.OTP_INVALID);

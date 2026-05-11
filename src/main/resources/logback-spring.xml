@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         logback-spring.xml — Happabi Structured Logging
+
+         Profile "local"  → Spring Boot default console (giống hệt như không có file này)
+         Profile "!local" → JSON Logstash-ready (staging, production, Docker)
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <springProperty scope="context" name="APP_NAME"      source="spring.application.name" defaultValue="happabi"/>
+    <springProperty scope="context" name="APP_ENV"       source="app.env"                 defaultValue="local"/>
+    <springProperty scope="context" name="LOGSTASH_HOST" source="logstash.host"           defaultValue="localhost"/>
+    <springProperty scope="context" name="LOGSTASH_PORT" source="logstash.port"           defaultValue="5044"/>
+
+    <!-- ── Profile: local — dùng đúng format Spring Boot mặc định ──── -->
+    <springProfile name="local">
+
+        <!-- Include Spring Boot built-in defaults (colors, PID, format) -->
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <!-- App logs: DEBUG để thấy query, filter -->
+        <logger name="com.minduc.happabi"          level="DEBUG"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.hibernate.SQL"            level="DEBUG"/>
+        <!-- Spring Batch BeanPostProcessorChecker: WARN kinh điển, harmless, tắt để console sạch -->
+        <logger name="org.springframework.context.support.PostProcessorRegistrationDelegate" level="ERROR"/>
+    </springProfile>
+
+    <!-- ── Profile: !local — JSON output cho ELK / Docker ──────────── -->
+    <springProfile name="!local">
+
+        <!-- Console JSON — Filebeat/Fluentd đọc stdout từ container -->
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"service":"${APP_NAME}","env":"${APP_ENV}"}</customFields>
+            </encoder>
+        </appender>
+
+        <!-- TCP Logstash — gửi trực tiếp nếu Logstash có sẵn -->
+        <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+            <destination>${LOGSTASH_HOST}:${LOGSTASH_PORT}</destination>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"service":"${APP_NAME}","env":"${APP_ENV}"}</customFields>
+            </encoder>
+            <!-- Nếu Logstash down, không crash app -->
+            <connectionStrategy>
+                <roundRobin>
+                    <connectionTTL>5 minutes</connectionTTL>
+                </roundRobin>
+            </connectionStrategy>
+        </appender>
+
+        <!-- Async wrapper — không block thread khi gửi log -->
+        <appender name="ASYNC_LOGSTASH" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="LOGSTASH"/>
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+            <appender-ref ref="ASYNC_LOGSTASH"/>
+        </root>
+
+        <logger name="com.minduc.happabi"          level="INFO"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.springframework.web"      level="WARN"/>
+        <logger name="org.hibernate"               level="WARN"/>
+    </springProfile>
+
+</configuration>
