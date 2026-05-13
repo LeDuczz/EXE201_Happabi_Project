@@ -1,6 +1,7 @@
-package com.minduc.happabi.exception;
+package com.minduc.happabi.common.base;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.minduc.happabi.exception.code.ServiceErrorCode;
 import lombok.Builder;
 import lombok.Getter;
 

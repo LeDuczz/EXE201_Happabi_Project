@@ -1,8 +1,8 @@
 package com.minduc.happabi.service.auth;
 
-import com.minduc.happabi.dto.request.*;
-import com.minduc.happabi.dto.request.SocialSyncRequest;
-import com.minduc.happabi.dto.response.AuthResponse;
+import com.minduc.happabi.dto.request.auth.SocialSyncRequest;
+import com.minduc.happabi.dto.request.auth.*;
+import com.minduc.happabi.dto.response.auth.AuthResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -20,7 +20,7 @@ public interface AuthService {
 
     AuthResponse refresh(HttpServletRequest request);
 
-    void logout(String accessToken, HttpServletResponse response);
+    void logout(String accessToken, HttpServletRequest request, HttpServletResponse response);
 
     void forgotPassword(ForgotPasswordRequest request);
 

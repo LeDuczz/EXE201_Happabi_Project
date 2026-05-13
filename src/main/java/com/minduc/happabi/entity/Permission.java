@@ -9,7 +9,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "permissions")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -39,4 +40,27 @@ public class Permission {
     @OneToMany(mappedBy = "permission", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<RolePermission> rolePermissions = new HashSet<>();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Permission other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Permission{" +
+                "id=" + id +
+                ", permissionName='" + permissionName + '\'' +
+                ", resource='" + resource + '\'' +
+                ", action='" + action + '\'' +
+                ", isActive=" + isActive +
+                '}';
+    }
 }

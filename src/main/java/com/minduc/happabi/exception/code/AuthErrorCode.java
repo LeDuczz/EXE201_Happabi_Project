@@ -1,18 +1,17 @@
-package com.minduc.happabi.exception;
+package com.minduc.happabi.exception.code;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
 
-/**
- * Auth & Identity domain error codes.
- */
 @Getter
 @RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum AuthErrorCode implements ServiceErrorCode {
 
     // ── Registration ───────────────────────────────────────────────────────────
-    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT,          "Email is already registered."),
     PHONE_ALREADY_EXISTS(HttpStatus.CONFLICT,          "Phone number is already registered."),
 
     INVALID_ROLE_FOR_REGISTRATION(HttpStatus.BAD_REQUEST,
@@ -56,6 +55,6 @@ public enum AuthErrorCode implements ServiceErrorCode {
 
 
 
-    private final HttpStatus httpStatus;
-    private final String message;
+    HttpStatus httpStatus;
+    String message;
 }

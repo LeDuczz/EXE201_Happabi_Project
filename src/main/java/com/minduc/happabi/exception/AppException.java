@@ -1,5 +1,6 @@
 package com.minduc.happabi.exception;
 
+import com.minduc.happabi.exception.code.ServiceErrorCode;
 import lombok.Getter;
 
 @Getter

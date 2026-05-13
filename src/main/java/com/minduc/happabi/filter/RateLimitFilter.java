@@ -2,9 +2,9 @@ package com.minduc.happabi.filter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.minduc.happabi.filter.CachedBodyHttpServletRequest;
-import com.minduc.happabi.exception.AuthErrorCode;
-import com.minduc.happabi.exception.ErrorResponse;
+import com.minduc.happabi.common.utils.NetworkUtils;
+import com.minduc.happabi.exception.code.AuthErrorCode;
+import com.minduc.happabi.common.base.ErrorResponse;
 import com.minduc.happabi.service.metrics.AuditLogService;
 import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.ratelimit.RateLimitService;
@@ -102,7 +102,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                String path,
                                String endpointKey) throws IOException {
         String phone = extractPhone(request);
-        String ip = resolveIp(request);
+        String ip = NetworkUtils.resolveClientIp(request);
 
         if (phone != null) {
             String phoneKey = buildKey(path, "phone", phone);
@@ -140,7 +140,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         setRemainingHeader(response, result.remaining());
         if (!result.allowed()) {
             authMetrics.recordRateLimitBlocked(endpointKey, "phone");
-            auditLog.logRateLimitBlocked(endpointKey, "phone", resolveIp(request));
+            auditLog.logRateLimitBlocked(endpointKey, "phone",
+                    NetworkUtils.resolveClientIp(request));
             sendBlockedResponse(response, result.remaining(), request);
             return true;
         }
@@ -151,7 +152,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                 HttpServletResponse response,
                                 String path,
                                 String endpointKey) throws IOException {
-        String ip  = resolveIp(request);
+        String ip  = NetworkUtils.resolveClientIp(request);
         String key = buildKey(path, "ip", ip);
         TokenBucketResult result = rateLimitService.tryConsume(key, endpointKey);
         setRemainingHeader(response, result.remaining());
@@ -176,7 +177,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         setRemainingHeader(response, result.remaining());
         if (!result.allowed()) {
             authMetrics.recordRateLimitBlocked(endpointKey, "user");
-            auditLog.logRateLimitBlocked(endpointKey, "user", resolveIp(request));
+            auditLog.logRateLimitBlocked(endpointKey, "user", NetworkUtils.resolveClientIp(request));
             sendBlockedResponse(response, result.remaining(), request);
             return true;
         }
@@ -207,14 +208,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (cleaned.startsWith("84")) return "+" + cleaned;
         if (cleaned.startsWith("0")) return "+84" + cleaned.substring(1);
         return cleaned;
-    }
-
-    private String resolveIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     private String extractUserIdFromJwt(HttpServletRequest request) {

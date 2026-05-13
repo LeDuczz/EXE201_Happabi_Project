@@ -1,4 +1,4 @@
-package com.minduc.happabi.exception;
+package com.minduc.happabi.exception.code;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -6,11 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
 
-/**
- * Common cross-cutting error codes shared across all domains.
- * Domain-specific codes should live in their own ErrorCode enum
- * (e.g. AuthErrorCode, BookingErrorCode) and implement ServiceErrorCode.
- */
 @Getter
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -29,13 +24,10 @@ public enum CommonErrorCode implements ServiceErrorCode {
     CONFLICT(HttpStatus.CONFLICT,                   "Resource already exists or conflict detected."),
     PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "Request payload exceeds the allowed limit."),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type."),
-    TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Too many requests. Please slow down."),
+    RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS,         "Too many requests. Please slow down and try again later."),
 
     // ── 5xx Server Errors ──────────────────────────────────────────────────────
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later."),
-    SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily unavailable. Please try again."),
-    GATEWAY_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT,     "Upstream service timed out."),
-    BAD_GATEWAY(HttpStatus.BAD_GATEWAY,             "Received an invalid response from an upstream service.");
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later.");
 
     HttpStatus httpStatus;
     String message;

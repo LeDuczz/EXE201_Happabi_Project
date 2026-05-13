@@ -1,4 +1,4 @@
-package com.minduc.happabi.dto.request;
+package com.minduc.happabi.dto.request.auth;
 
 import com.minduc.happabi.enums.UserRole;
 import jakarta.validation.constraints.NotBlank;
@@ -25,9 +25,6 @@ public class RegisterRequest {
     @Size(max = 100, message = "Họ tên không được vượt quá 100 ký tự.")
     private String fullName;
 
-    /**
-     * Role to assign. Only {@code MOTHER} and {@code NURSE} are allowed for LOCAL registration.
-     */
     @NotNull(message = "Role không được để trống.")
     private UserRole role;
 }

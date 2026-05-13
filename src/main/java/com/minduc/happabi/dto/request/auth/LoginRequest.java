@@ -1,5 +1,6 @@
-package com.minduc.happabi.dto.request;
+package com.minduc.happabi.dto.request.auth;
 
+import com.minduc.happabi.enums.UserRole;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
@@ -16,4 +17,6 @@ public class LoginRequest {
 
     @NotBlank(message = "Mật khẩu không được để trống.")
     private String password;
+
+    private UserRole portalRole;
 }

@@ -1,5 +1,6 @@
-package com.minduc.happabi.dto.response;
+package com.minduc.happabi.dto.response.auth;
 
+import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import lombok.Builder;
 import lombok.Data;
 

@@ -13,7 +13,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "nurse_kyc")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -80,4 +81,30 @@ public class NurseKyc {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof NurseKyc other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "NurseKyc{" +
+                "id=" + id +
+                ", cccdNumber='" + cccdNumber + '\'' +
+                ", cccdName='" + cccdName + '\'' +
+                ", cccdDob=" + cccdDob +
+                ", ekycStatus=" + ekycStatus +
+                ", reviewedAt=" + reviewedAt +
+                ", processedAt=" + processedAt +
+                ", createdAt=" + createdAt +
+                '}';
+    }
 }

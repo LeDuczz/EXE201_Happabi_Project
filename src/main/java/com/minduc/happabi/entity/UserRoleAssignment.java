@@ -7,11 +7,15 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * Bảng phụ thể hiện quan hệ N-N giữa User và Role.
+ * Chứa thêm thông tin assigned_at để biết user được cấp quyền lúc nào.
+ */
 @Entity
 @Table(
-        name = "role_permissions",
+        name = "user_roles",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"role_id", "permission_id"})
+                @UniqueConstraint(columnNames = {"user_id", "role_id"})
         }
 )
 @Getter
@@ -19,24 +23,19 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RolePermission {
+public class UserRoleAssignment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "role_perm_id")
     private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "permission_id", nullable = false)
-    private Permission permission;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_by")
-    private User assignedBy;
 
     @CreationTimestamp
     @Column(name = "assigned_at", nullable = false, updatable = false)
@@ -45,7 +44,7 @@ public class RolePermission {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof RolePermission other)) return false;
+        if (!(o instanceof UserRoleAssignment other)) return false;
         return id != null && id.equals(other.id);
     }
 
@@ -56,7 +55,7 @@ public class RolePermission {
 
     @Override
     public String toString() {
-        return "RolePermission{" +
+        return "UserRoleAssignment{" +
                 "id=" + id +
                 ", assignedAt=" + assignedAt +
                 '}';

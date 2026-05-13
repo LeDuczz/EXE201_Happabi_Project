@@ -6,6 +6,7 @@ import com.minduc.happabi.exception.CustomAccessDeniedHandler;
 import com.minduc.happabi.exception.CustomAuthenticationEntryPoint;
 import com.minduc.happabi.filter.GlobalIpRateLimitFilter;
 import com.minduc.happabi.filter.RateLimitFilter;
+import com.minduc.happabi.filter.TokenBlacklistFilter;
 import com.minduc.happabi.service.permission.PermissionCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +39,7 @@ public class SecurityConfig {
     private final PermissionCacheService permissionCacheService;
     private final GlobalIpRateLimitFilter globalIpRateLimitFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final TokenBlacklistFilter tokenBlacklistFilter;
 
     private static final String[] PUBLIC_POST = {
             "/api/v1/auth/register",
@@ -82,9 +84,9 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)
             )
-            // Thứ tự filter: GlobalIpRateLimit (Order=1) → RateLimit (Order=2) → Security
             .addFilterBefore(globalIpRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(tokenBlacklistFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -102,22 +104,27 @@ public class SecurityConfig {
                     .map(Enum::name)
                     .collect(Collectors.toSet());
 
-            String roleName = "MOTHER";
-            if (groups != null) {
-                roleName = groups.stream()
+            Set<String> assignedRoles = new HashSet<>();
+            if (groups != null && !groups.isEmpty()) {
+                assignedRoles = groups.stream()
                         .map(String::toUpperCase)
                         .filter(validRoles::contains)
-                        .findFirst()
-                        .orElse("MOTHER");
+                        .collect(Collectors.toSet());
             }
 
-            // ── 2. Thêm ROLE_XXX authority ────────────────────────────────────
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
+            if (assignedRoles.isEmpty()) {
+                assignedRoles.add("MOTHER");
+            }
 
-            // ── 3. Tra cứu Permissions từ Redis/DB ───────────────────────────
-            List<String> permissions = permissionCacheService.getPermissions(roleName);
-            for (String permission : permissions) {
-                authorities.add(new SimpleGrantedAuthority(permission));
+            for (String roleName : assignedRoles) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
+
+                List<String> permissions = permissionCacheService.getPermissions(roleName);
+                if (permissions != null) {
+                    for (String permission : permissions) {
+                        authorities.add(new SimpleGrantedAuthority(permission));
+                    }
+                }
             }
 
             return authorities;

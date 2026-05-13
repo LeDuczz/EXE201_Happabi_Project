@@ -1,8 +1,9 @@
 package com.minduc.happabi.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.minduc.happabi.exception.AuthErrorCode;
-import com.minduc.happabi.exception.ErrorResponse;
+import com.minduc.happabi.common.utils.NetworkUtils;
+import com.minduc.happabi.exception.code.CommonErrorCode;
+import com.minduc.happabi.common.base.ErrorResponse;
 import com.minduc.happabi.service.metrics.AuditLogService;
 import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.ratelimit.RateLimitService;
@@ -37,7 +38,7 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String ip = resolveIp(request);
+        String ip = NetworkUtils.resolveClientIp(request);
         String key = "rate:global:ip:" + ip;
 
         RateLimitService.TokenBucketResult result = rateLimitService.tryConsumeGlobal(key);
@@ -56,14 +57,6 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private String resolveIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
     private void sendBlockedResponse(HttpServletResponse response,
                                      HttpServletRequest request) throws IOException {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
@@ -72,7 +65,7 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
         response.setHeader("X-RateLimit-Remaining", "0");
 
         ErrorResponse errorResponse = ErrorResponse.of(
-                AuthErrorCode.RATE_LIMITED,
+                CommonErrorCode.RATE_LIMITED,
                 request.getRequestURI()
         );
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));

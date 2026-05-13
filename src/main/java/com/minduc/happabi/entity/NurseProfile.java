@@ -9,12 +9,14 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "nurse_profiles")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -31,6 +33,9 @@ public class NurseProfile {
 
     @Column(name = "license_number", length = 100, unique = true)
     private String licenseNumber;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "specialty")
@@ -103,4 +108,35 @@ public class NurseProfile {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof NurseProfile other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "NurseProfile{" +
+                "id=" + id +
+                ", licenseNumber='" + licenseNumber + '\'' +
+                "dateOfBirth=" + dateOfBirth +
+                ", specialty=" + specialty +
+                ", experienceYears=" + experienceYears +
+                ", nurseStatus=" + nurseStatus +
+                ", availabilityStatus=" + availabilityStatus +
+                ", ratingAvg=" + ratingAvg +
+                ", totalReviews=" + totalReviews +
+                ", totalCompletedJobs=" + totalCompletedJobs +
+                ", backgroundChecked=" + backgroundChecked +
+                ", isFeatured=" + isFeatured +
+                ", createdAt=" + createdAt +
+                '}';
+    }
 }

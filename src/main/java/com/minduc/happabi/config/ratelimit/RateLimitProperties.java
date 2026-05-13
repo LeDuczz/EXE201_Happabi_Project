@@ -6,16 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Binds {@code rate-limit.*} from {@code application.yml}.
- *
- * <p>Không dùng {@code @Component} — bean được đăng ký duy nhất qua
- * {@code @EnableConfigurationProperties(RateLimitProperties.class)}
- * trong {@code HappabiApplication}. Dùng cả 2 sẽ tạo duplicate bean.</p>
- *
- * <p>Dùng {@link HashMap} (mutable) thay vì {@code Map.of()} (immutable)
- * để Spring Boot có thể bind các entry từ YAML vào map.</p>
- */
 @Data
 @ConfigurationProperties(prefix = "rate-limit")
 public class RateLimitProperties {

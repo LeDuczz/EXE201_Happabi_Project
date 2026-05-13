@@ -6,8 +6,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.experimental.UtilityClass;
 import org.springframework.http.ResponseCookie;
 
-import java.util.Arrays;
-
 @UtilityClass
 public class CookieUtils {
 
