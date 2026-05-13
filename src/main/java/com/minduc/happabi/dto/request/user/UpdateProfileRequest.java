@@ -1,4 +1,4 @@
-package com.minduc.happabi.dto.user;
+package com.minduc.happabi.dto.request.user;
 
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;

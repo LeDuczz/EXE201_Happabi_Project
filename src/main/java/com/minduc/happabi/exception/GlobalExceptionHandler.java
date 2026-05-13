@@ -1,5 +1,8 @@
 package com.minduc.happabi.exception;
 
+import com.minduc.happabi.exception.code.CommonErrorCode;
+import com.minduc.happabi.exception.code.ServiceErrorCode;
+import com.minduc.happabi.common.base.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;

@@ -50,9 +50,4 @@ public class AwsConfig {
                 .credentialsProvider(credentialsProvider())
                 .build();
     }
-
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
 }

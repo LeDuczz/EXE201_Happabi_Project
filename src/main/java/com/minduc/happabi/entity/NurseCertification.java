@@ -9,7 +9,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "nurse_certifications")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -52,4 +53,29 @@ public class NurseCertification {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "verified_by")
     private User verifiedBy;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof NurseCertification other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "NurseCertification{" +
+                "id=" + id +
+                ", certName='" + certName + '\'' +
+                ", issuedBy='" + issuedBy + '\'' +
+                ", issuedDate=" + issuedDate +
+                ", expiryDate=" + expiryDate +
+                ", isVerified=" + isVerified +
+                ", verifiedAt=" + verifiedAt +
+                '}';
+    }
 }

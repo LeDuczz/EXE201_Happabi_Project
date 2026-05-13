@@ -17,8 +17,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RateLimitService {
 
-    // StringRedisTemplate = RedisTemplate<String, String> với StringRedisSerializer
-    // → tất cả key/value truyền vào Lua đều là plain UTF-8 string
     private final StringRedisTemplate stringRedisTemplate;
     private final RateLimitProperties properties;
 
@@ -49,8 +47,6 @@ public class RateLimitService {
     private TokenBucketResult tryConsumeWithConfig(String key, int capacity, int refillTokens, int refillSeconds) {
         long nowMs = System.currentTimeMillis();
         try {
-            // StringRedisTemplate.execute() truyền KEYS và ARGV là plain string
-            // → Lua nhận đúng kiểu → tonumber(ARGV[1]) hoạt động chính xác
             List<Long> result = (List<Long>) stringRedisTemplate.execute(
                     tokenBucketScript,
                     List.of(key),
@@ -75,7 +71,7 @@ public class RateLimitService {
 
         } catch (Exception e) {
             log.error("[RateLimit] Lua execution error for key={}: {}", key, e.getMessage());
-            return new TokenBucketResult(true, -1); // fail-open
+            return new TokenBucketResult(true, -1);
         }
     }
 }

@@ -1,7 +1,7 @@
 package com.minduc.happabi.service.s3;
 
 import com.minduc.happabi.exception.AppException;
-import com.minduc.happabi.exception.S3ErrorCode;
+import com.minduc.happabi.exception.code.S3ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

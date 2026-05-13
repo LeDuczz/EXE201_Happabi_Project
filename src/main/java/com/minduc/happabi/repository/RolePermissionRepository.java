@@ -13,6 +13,14 @@ import java.util.UUID;
 @Repository
 public interface RolePermissionRepository extends JpaRepository<RolePermission, UUID> {
 
-    @Query("SELECT rp FROM RolePermission rp JOIN FETCH rp.permission WHERE rp.role.roleName = :roleName")
+    @Query("""
+        SELECT rp FROM RolePermission rp
+        JOIN FETCH rp.permission p
+        JOIN rp.role r
+        WHERE r.roleName = :roleName
+          AND r.isActive = true
+          AND p.isActive = true
+    """)
     List<RolePermission> findByRoleName(@Param("roleName") UserRole roleName);
+
 }

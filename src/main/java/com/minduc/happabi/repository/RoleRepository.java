@@ -11,5 +11,7 @@ import com.minduc.happabi.enums.UserRole;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, UUID> {
+
     Optional<Role> findByRoleName(UserRole roleName);
+
 }

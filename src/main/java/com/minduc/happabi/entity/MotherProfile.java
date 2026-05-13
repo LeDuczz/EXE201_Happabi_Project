@@ -8,11 +8,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Table(name = "mother_profiles")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -30,6 +32,9 @@ public class MotherProfile {
     @Column(name = "baby_birth_date")
     private LocalDate babyBirthDate;
 
+    @Column(name = "day_of_birth")
+    private LocalDate dayOfBirth;
+
     @Column(name = "delivery_type", length = 20)
     private String deliveryType;
 
@@ -42,9 +47,6 @@ public class MotherProfile {
     @Column(name = "lng", precision = 9, scale = 6)
     private BigDecimal lng;
 
-    @Column(name = "district", length = 100)
-    private String district;
-
     @Column(name = "city", length = 50)
     private String city;
 
@@ -55,4 +57,29 @@ public class MotherProfile {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof MotherProfile other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public String toString() {
+        return "MotherProfile{" +
+                "id=" + id +
+                ", babyBirthDate=" + babyBirthDate +
+                ", dayOfBirth=" + dayOfBirth +
+                ", deliveryType='" + deliveryType + '\'' +
+                ", address='" + address + '\'' +
+                ", city='" + city + '\'' +
+                ", createdAt=" + createdAt +
+                '}';
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }

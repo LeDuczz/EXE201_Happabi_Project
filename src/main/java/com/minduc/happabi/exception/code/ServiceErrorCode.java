@@ -1,4 +1,4 @@
-package com.minduc.happabi.exception;
+package com.minduc.happabi.exception.code;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
