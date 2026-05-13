@@ -9,37 +9,26 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthMetricsService {
 
-    /** Số lần register thành công, tag theo role (MOTHER/NURSE). */
     private final Counter.Builder registerSuccess;
 
-    /** Số lần register thất bại, tag theo reason. */
     private final Counter.Builder registerFailure;
 
-    /** Số lần login thành công, tag theo role và provider (LOCAL/GOOGLE/FACEBOOK). */
     private final Counter.Builder loginSuccess;
 
-    /** Số lần login thất bại, tag theo error code. */
     private final Counter.Builder loginFailure;
 
-    /** Số lần verify OTP thành công. */
     private final Counter otpVerifySuccess;
 
-    /** Số lần verify OTP thất bại (sai/hết hạn). */
     private final Counter.Builder otpVerifyFailure;
 
-    /** Số lần resend OTP. */
     private final Counter otpResend;
 
-    /** Số lần social login thành công, tag theo provider. */
     private final Counter.Builder socialLoginSuccess;
 
-    /** Số lần forgot-password được gửi. */
     private final Counter forgotPasswordRequested;
 
-    /** Số lần reset-password thành công. */
     private final Counter resetPasswordSuccess;
 
-    /** Số request bị rate limit, tag theo endpoint và loại identifier. */
     private final Counter.Builder rateLimitBlocked;
 
     private final MeterRegistry registry;
