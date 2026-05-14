@@ -1,5 +1,7 @@
 package com.minduc.happabi.service.auth;
 
+import com.minduc.happabi.common.utils.AuthUtils;
+import com.minduc.happabi.dto.request.auth.CreateLocalPasswordRequest;
 import com.minduc.happabi.dto.request.auth.RegisterRequest;
 import com.minduc.happabi.dto.request.auth.ResendOtpRequest;
 import com.minduc.happabi.dto.request.auth.VerifyOtpRequest;
@@ -10,8 +12,10 @@ import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.repository.RoleRepository;
+import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.metrics.AuthMetricsService;
+import com.minduc.happabi.service.user.UserCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,10 +39,12 @@ public class RegisterService {
     private static final Set<UserRole> LOCAL_ALLOWED_ROLES = Set.of(UserRole.MOTHER, UserRole.NURSE);
 
     private final UserRepository userRepository;
+    private final UserIdentityProviderRepository identityProviderRepository;
     private final RoleRepository roleRepository;
     private final CognitoService cognitoService;
     private final UserProviderService userProviderService;
     private final AuthMetricsService authMetrics;
+    private final UserCacheService userCacheService;
 
     @Transactional
     public void register(RegisterRequest request) {
@@ -60,15 +66,22 @@ public class RegisterService {
                 handleExistingLocalUser(request, existing, hasRequestedRole, userRole);
                 return;
             }
-            log.info("[Auth] Existing user with social login found for phone {}. " +
-                    "Will attempt to link LOCAL after OTP verification.", request.getPhone());
+            handleExistingSocialUserAsLocalRegistration();
+            return;
         }
 
         String cognitoSub = signUpToCognito(request);
-        linkOrCreateUser(request, existingByPhone, userRole, cognitoSub);
+        createNewLocalUser(request, userRole, cognitoSub);
 
         authMetrics.recordRegisterSuccess(request.getRole().name());
         log.info("[Auth] User registered: phone={} role={}", request.getPhone(), request.getRole());
+    }
+
+    private void handleExistingSocialUserAsLocalRegistration() {
+        authMetrics.recordRegisterFailure("LOCAL_PASSWORD_NOT_SET");
+        throw new AppException(AuthErrorCode.AUTH_FAILED,
+                "This phone number belongs to a social account. Please sign in first, verify the phone on that " +
+                        "account, then create a local password before registering the NURSE role.");
     }
 
     private void handleExistingLocalUser(RegisterRequest request, User existing,
@@ -78,15 +91,20 @@ public class RegisterService {
                     "Vai trò " + request.getRole().name() + " đã được liên kết với tài khoản này.");
         }
         try {
-            cognitoService.adminInitiateAuth(request.getPhone(), request.getPassword());
+            cognitoService.adminInitiateAuth(requireMasterUsername(existing), request.getPassword());
         } catch (NotAuthorizedException e) {
             authMetrics.recordRegisterFailure("INVALID_CREDENTIALS_FOR_ROLE_ADD");
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS,
                     "Số điện thoại đã tồn tại. Vui lòng nhập đúng mật khẩu để thêm vai trò mới.");
         }
-        assignCognitoGroup(request.getPhone(), request.getRole().name());
+        String groupUsername = existing.getCognitoUsername() != null
+                ? existing.getCognitoUsername()
+                : request.getPhone();
+
+        assignCognitoGroup(groupUsername, request.getRole().name());
         userProviderService.saveRoleAssignment(existing, userRole);
         userProviderService.createProfileForRole(existing, request.getRole());
+        evictUserCache(existing);
         log.info("[Auth] Existing user {} assigned new role {} via phone verification",
                 existing.getId(), request.getRole());
         authMetrics.recordRegisterSuccess(request.getRole().name());
@@ -111,42 +129,30 @@ public class RegisterService {
         }
     }
 
-    private void linkOrCreateUser(RegisterRequest request, Optional<User> existingByPhone,
-                                  Role userRole, String cognitoSub) {
-        if (existingByPhone.isPresent()) {
-            User existing = existingByPhone.get();
-            userProviderService.saveIdentityProvider(existing, AuthProvider.LOCAL, cognitoSub);
-            boolean hasRequestedRole = existing.getRoles().stream()
-                    .anyMatch(r -> r.getRoleName() == request.getRole());
-            if (!hasRequestedRole) {
-                userProviderService.saveRoleAssignment(existing, userRole);
-                userProviderService.createProfileForRole(existing, request.getRole());
-                assignCognitoGroup(request.getPhone(), request.getRole().name());
-            }
-            for (Role role : existing.getRoles()) {
-                if (role.getRoleName() != request.getRole()) {
-                    assignCognitoGroup(request.getPhone(), role.getRoleName().name());
-                }
-            }
-            log.info("[Auth] Account linked via phone: userId={} phone={} -> LOCAL added",
-                    existing.getId(), request.getPhone());
-        } else {
-            User newUser = User.builder()
-                    .fullName(request.getFullName())
-                    .phone(request.getPhone())
-                    .isActive(true)
-                    .build();
-            userRepository.save(newUser);
-            userProviderService.saveIdentityProvider(newUser, AuthProvider.LOCAL, cognitoSub);
-            userProviderService.saveRoleAssignment(newUser, userRole);
-            assignCognitoGroup(request.getPhone(), request.getRole().name());
-            userProviderService.createProfileForRole(newUser, request.getRole());
-        }
+    private void createNewLocalUser(RegisterRequest request, Role userRole, String cognitoSub) {
+        User newUser = User.builder()
+                .fullName(request.getFullName())
+                .cognitoUsername(request.getPhone())
+                .cognitoSub(cognitoSub)
+                .phone(request.getPhone())
+                .isActive(true)
+                .build();
+
+        userRepository.save(newUser);
+        userProviderService.saveIdentityProvider(newUser, AuthProvider.LOCAL, request.getPhone());
+        userProviderService.saveRoleAssignment(newUser, userRole);
+        assignCognitoGroup(request.getPhone(), request.getRole().name());
+        userProviderService.createProfileForRole(newUser, request.getRole());
     }
 
     public void verifyOtp(VerifyOtpRequest request) {
         try {
             cognitoService.confirmSignUp(request.getPhone(), request.getOtpCode());
+            userRepository.findByPhone(request.getPhone()).ifPresent(user -> {
+                user.setPhoneVerified(true);
+                userRepository.save(user);
+                evictUserCache(user);
+            });
 
             log.info("[Auth] OTP verified ok: phone={}", request.getPhone());
             authMetrics.recordOtpVerifySuccess();
@@ -184,6 +190,42 @@ public class RegisterService {
         }
     }
 
+    @Transactional
+    public void createLocalPassword(CreateLocalPasswordRequest request) {
+        String cognitoSub = AuthUtils.getCurrentSub()
+                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED));
+
+        User user = userRepository.findByCognitoSubWithRolesAndProviders(cognitoSub)
+                .or(() -> identityProviderRepository.findUserByProviderUidWithRolesAndProviders(cognitoSub))
+                .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (user.hasProvider(AuthProvider.LOCAL)) {
+            throw new AppException(AuthErrorCode.AUTH_FAILED, "Local password is already enabled.");
+        }
+        if (user.getPhone() == null || !Boolean.TRUE.equals(user.getPhoneVerified())) {
+            throw new AppException(AuthErrorCode.AUTH_FAILED,
+                    "Phone number must be verified before creating a local password.");
+        }
+
+        String masterUsername = requireMasterUsername(user);
+        try {
+            cognitoService.adminSetPermanentPassword(masterUsername, request.getPassword());
+        } catch (InvalidPasswordException e) {
+            authMetrics.recordRegisterFailure("PASSWORD_POLICY_VIOLATED");
+            throw new AppException(AuthErrorCode.PASSWORD_POLICY_VIOLATED);
+        } catch (CognitoIdentityProviderException e) {
+            authMetrics.recordRegisterFailure("CREATE_LOCAL_PASSWORD_COGNITO_ERROR");
+            log.error("[Auth] Failed to create local password for user {}: {}",
+                    user.getId(), e.awsErrorDetails().errorMessage(), e);
+            throw new AppException(AuthErrorCode.AUTH_FAILED, e.awsErrorDetails().errorMessage());
+        }
+
+        userProviderService.saveIdentityProvider(user, AuthProvider.LOCAL, masterUsername);
+        userRepository.save(user);
+        evictUserCache(user);
+        log.info("[Auth] Local password enabled for user {}", user.getId());
+    }
+
     private void assignCognitoGroup(String username, String roleName) {
         try {
             cognitoService.adminAddUserToGroup(username, roleName);
@@ -192,6 +234,22 @@ public class RegisterService {
             log.error("[Cognito] Failed to add user {} to group {}: {}", username, roleName, e.getMessage());
             throw new AppException(AuthErrorCode.AUTH_FAILED,
                     "Failed to assign Cognito group: " + roleName);
+        }
+    }
+
+    private String requireMasterUsername(User user) {
+        if (user.getCognitoUsername() != null && !user.getCognitoUsername().isBlank()) {
+            return user.getCognitoUsername();
+        }
+        if (user.getPhone() != null && !user.getPhone().isBlank()) {
+            return user.getPhone();
+        }
+        throw new AppException(AuthErrorCode.AUTH_FAILED, "Missing Cognito master username for user " + user.getId());
+    }
+
+    private void evictUserCache(User user) {
+        if (user.getCognitoSub() != null && !user.getCognitoSub().isBlank()) {
+            userCacheService.evictProfiles(user.getCognitoSub());
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.auth;
 
 import com.minduc.happabi.dto.request.auth.ForgotPasswordRequest;
+import com.minduc.happabi.dto.request.auth.CreateLocalPasswordRequest;
 import com.minduc.happabi.dto.request.auth.LoginRequest;
 import com.minduc.happabi.dto.request.auth.RegisterRequest;
 import com.minduc.happabi.dto.request.auth.ResendOtpRequest;
@@ -47,6 +48,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse socialSync(SocialSyncRequest request, HttpServletResponse response) {
         return socialAuthService.socialSync(request, response);
+    }
+
+    @Override
+    public void createLocalPassword(CreateLocalPasswordRequest request) {
+        registerService.createLocalPassword(request);
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.minduc.happabi.entity;
 
 import com.minduc.happabi.enums.AuthProvider;
+import com.minduc.happabi.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -30,11 +31,25 @@ public class User {
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
+    @Column(name = "cognito_username", length = 128, unique = true)
+    private String cognitoUsername;
+
+    @Column(name = "cognito_sub", length = 64, unique = true)
+    private String cognitoSub;
+
     @Column(name = "phone", length = 20, unique = true)
     private String phone;
 
+    @Column(name = "phone_verified", nullable = false)
+    @Builder.Default
+    private Boolean phoneVerified = false;
+
     @Column(name = "email", length = 150, unique = true)
     private String email;
+
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = false;
 
     @Column(name = "avatar_s3_key", length = 500)
     private String avatarS3Key;
@@ -62,38 +77,58 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    /**
-     * Returns the identity provider link for a given AuthProvider, if linked.
-     */
     public Optional<UserIdentityProvider> getIdentityProvider(AuthProvider provider) {
         return identityProviders.stream()
                 .filter(p -> p.getProvider() == provider)
                 .findFirst();
     }
 
-    /**
-     * Returns true if this user has linked the given provider.
-     */
     public boolean hasProvider(AuthProvider provider) {
         return identityProviders.stream()
                 .anyMatch(p -> p.getProvider() == provider);
     }
 
-    /**
-     * Returns the cognitoSub for a given provider, or empty if not linked.
-     */
     public Optional<String> getProviderUid(AuthProvider provider) {
         return getIdentityProvider(provider)
                 .map(UserIdentityProvider::getProviderUid);
     }
 
-    /**
-     * Returns all roles assigned to this user.
-     */
     public List<Role> getRoles() {
         return roleAssignments.stream()
                 .map(UserRoleAssignment::getRole)
                 .toList();
+    }
+
+    public boolean hasRole(UserRole roleName) {
+        return roleAssignments.stream()
+                .map(UserRoleAssignment::getRole)
+                .anyMatch(role -> role.getRoleName() == roleName);
+    }
+
+    public void addRoleAssignment(Role role) {
+        if (hasRole(role.getRoleName())) {
+            return;
+        }
+        UserRoleAssignment assignment = UserRoleAssignment.builder()
+                .user(this)
+                .role(role)
+                .build();
+        roleAssignments.add(assignment);
+    }
+
+    public void addOrUpdateIdentityProvider(AuthProvider provider, String providerUid) {
+        Optional<UserIdentityProvider> existing = getIdentityProvider(provider);
+        if (existing.isPresent()) {
+            existing.get().setProviderUid(providerUid);
+            return;
+        }
+
+        UserIdentityProvider link = UserIdentityProvider.builder()
+                .user(this)
+                .provider(provider)
+                .providerUid(providerUid)
+                .build();
+        identityProviders.add(link);
     }
 
     @Override

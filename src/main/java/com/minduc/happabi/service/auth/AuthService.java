@@ -18,6 +18,8 @@ public interface AuthService {
 
     AuthResponse socialSync(SocialSyncRequest request, HttpServletResponse response);
 
+    void createLocalPassword(CreateLocalPasswordRequest request);
+
     AuthResponse refresh(HttpServletRequest request);
 
     void logout(String accessToken, HttpServletRequest request, HttpServletResponse response);

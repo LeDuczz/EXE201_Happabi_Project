@@ -15,6 +15,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByPhone(String phone);
 
+    Optional<User> findByEmail(String email);
+
+    Optional<User> findByCognitoSub(String cognitoSub);
+
+    Optional<User> findByCognitoUsername(String cognitoUsername);
+
+    @Query("""
+        SELECT u FROM User u
+        LEFT JOIN FETCH u.roleAssignments ra
+        LEFT JOIN FETCH ra.role
+        LEFT JOIN FETCH u.identityProviders
+        WHERE u.cognitoSub = :cognitoSub
+    """)
+    Optional<User> findByCognitoSubWithRolesAndProviders(@Param("cognitoSub") String cognitoSub);
+
     @Query("""
         SELECT u FROM User u
         LEFT JOIN FETCH u.roleAssignments ra

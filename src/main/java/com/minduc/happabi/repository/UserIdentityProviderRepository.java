@@ -30,6 +30,8 @@ public interface UserIdentityProviderRepository extends JpaRepository<UserIdenti
 
     boolean existsByUserAndProvider(User user, AuthProvider provider);
 
+    Optional<UserIdentityProvider> findByUserAndProvider(User user, AuthProvider provider);
+
     Optional<UserIdentityProvider> findByProviderUid(String providerUid);
 
 }

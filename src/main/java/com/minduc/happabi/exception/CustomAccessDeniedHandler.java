@@ -1,7 +1,6 @@
 package com.minduc.happabi.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.minduc.happabi.exception.code.CommonErrorCode;
 import com.minduc.happabi.common.base.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;

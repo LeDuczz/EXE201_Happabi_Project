@@ -15,20 +15,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminAddUserToGroupRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthFlowType;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ConfirmForgotPasswordRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ConfirmSignUpRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.GlobalSignOutRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.InitiateAuthResponse;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.ResendConfirmationCodeRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.RevokeTokenRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.SignUpRequest;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.SignUpResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 
 import java.util.Map;
 
@@ -96,20 +83,19 @@ public class CognitoService {
                 .build());
     }
 
-    public InitiateAuthResponse initiateRefreshAuth(String refreshToken, String cognitoSub) {
+    public InitiateAuthResponse initiateRefreshAuth(String refreshToken, String username) {
         return cognitoClient.initiateAuth(InitiateAuthRequest.builder()
                 .authFlow(AuthFlowType.REFRESH_TOKEN_AUTH)
                 .clientId(clientId)
                 .authParameters(Map.of(
                         "REFRESH_TOKEN", refreshToken,
-                        "SECRET_HASH", secretHash(cognitoSub)
+                        "SECRET_HASH", secretHash(username)
                 ))
                 .build());
     }
 
     public void forgotPassword(String phone) {
-        cognitoClient.forgotPassword(
-                software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordRequest.builder()
+        cognitoClient.forgotPassword(ForgotPasswordRequest.builder()
                         .clientId(clientId)
                         .secretHash(secretHash(phone))
                         .username(phone)
@@ -131,6 +117,82 @@ public class CognitoService {
                 .userPoolId(userPoolId)
                 .username(username)
                 .groupName(roleName)
+                .build());
+    }
+
+    public void adminSetPermanentPassword(String username, String password) {
+        cognitoClient.adminSetUserPassword(AdminSetUserPasswordRequest.builder()
+                .userPoolId(userPoolId)
+                .username(username)
+                .password(password)
+                .permanent(true)
+                .build());
+    }
+
+    public void adminUpdatePhoneNumber(String username, String phoneNumber, boolean verified) {
+        cognitoClient.adminUpdateUserAttributes(AdminUpdateUserAttributesRequest.builder()
+                .userPoolId(userPoolId)
+                .username(username)
+                .userAttributes(
+                        AttributeType.builder().name("phone_number").value(phoneNumber).build(),
+                        AttributeType.builder().name("phone_number_verified").value(Boolean.toString(verified)).build()
+                )
+                .build());
+    }
+
+    public void updateEmailWithVerification(String accessToken, String email) {
+        cognitoClient.updateUserAttributes(UpdateUserAttributesRequest.builder()
+                .accessToken(accessToken)
+                .userAttributes(AttributeType.builder().name("email").value(email).build())
+                .build());
+    }
+
+    public void updatePhoneWithVerification(String accessToken, String phoneNumber) {
+        cognitoClient.updateUserAttributes(UpdateUserAttributesRequest.builder()
+                .accessToken(accessToken)
+                .userAttributes(AttributeType.builder().name("phone_number").value(phoneNumber).build())
+                .build());
+    }
+
+    public void resendAttributeVerificationCode(String accessToken, String attributeName) {
+        cognitoClient.getUserAttributeVerificationCode(GetUserAttributeVerificationCodeRequest.builder()
+                .accessToken(accessToken)
+                .attributeName(attributeName)
+                .build());
+    }
+
+    public void verifyUserAttribute(String accessToken, String attributeName, String code) {
+        cognitoClient.verifyUserAttribute(VerifyUserAttributeRequest.builder()
+                .accessToken(accessToken)
+                .attributeName(attributeName)
+                .code(code)
+                .build());
+    }
+
+    public String getCurrentUserAttribute(String accessToken, String attributeName) {
+        return cognitoClient.getUser(GetUserRequest.builder()
+                        .accessToken(accessToken)
+                        .build())
+                .userAttributes()
+                .stream()
+                .filter(attribute -> attributeName.equals(attribute.name()))
+                .map(AttributeType::value)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public void linkSocialIdentityToMasterUser(String masterUsername, String providerName, String providerSubject) {
+        cognitoClient.adminLinkProviderForUser(AdminLinkProviderForUserRequest.builder()
+                .userPoolId(userPoolId)
+                .destinationUser(ProviderUserIdentifierType.builder()
+                        .providerName("Cognito")
+                        .providerAttributeValue(masterUsername)
+                        .build())
+                .sourceUser(ProviderUserIdentifierType.builder()
+                        .providerName(providerName)
+                        .providerAttributeName("Cognito_Subject")
+                        .providerAttributeValue(providerSubject)
+                        .build())
                 .build());
     }
 

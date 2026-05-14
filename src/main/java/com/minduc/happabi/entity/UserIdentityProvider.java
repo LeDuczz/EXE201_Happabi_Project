@@ -12,8 +12,11 @@ import java.util.UUID;
  * Stores the link between a User account and an external Identity Provider.
  * One User can have multiple providers: LOCAL, GOOGLE, FACEBOOK.
  *
- * - provider_uid: the cognitoSub returned by that specific provider
- * - UNIQUE(provider, provider_uid): one cognitoSub belongs to exactly one user
+ * - provider_uid: stable provider subject.
+ *   LOCAL    -> Cognito username.
+ *   GOOGLE   -> Google subject from the identities claim.
+ *   FACEBOOK -> Facebook id from the identities claim.
+ * - UNIQUE(provider, provider_uid): one provider account belongs to exactly one user
  * - UNIQUE(user_id, provider): one user can link each provider only once
  */
 @Entity
@@ -44,12 +47,6 @@ public class UserIdentityProvider {
     @Column(name = "provider", nullable = false, length = 20)
     private AuthProvider provider;
 
-    /**
-     * The cognitoSub returned by this provider.
-     * LOCAL    → sub from Cognito User Pool (phone-based user)
-     * GOOGLE   → sub from Cognito Federated Identity (Google)
-     * FACEBOOK → sub from Cognito Federated Identity (Facebook)
-     */
     @Column(name = "provider_uid", nullable = false, length = 255)
     private String providerUid;
 

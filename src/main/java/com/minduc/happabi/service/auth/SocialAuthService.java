@@ -7,6 +7,7 @@ import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.entity.Role;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.AuthProvider;
+import com.minduc.happabi.enums.SocialAuthIntent;
 import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
@@ -16,6 +17,7 @@ import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.s3.S3Service;
+import com.minduc.happabi.service.user.UserCacheService;
 import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ import org.springframework.web.client.ResourceAccessException;
 
 import java.text.ParseException;
 import java.time.OffsetDateTime;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,6 +48,7 @@ public class SocialAuthService {
     private final AuthMetricsService authMetrics;
     private final CognitoService cognitoService;
     private final UserProviderService userProviderService;
+    private final UserCacheService userCacheService;
 
     @Transactional
     public AuthResponse socialSync(SocialSyncRequest request, HttpServletResponse response) {
@@ -65,34 +69,48 @@ public class SocialAuthService {
             String email = signedJWT.getJWTClaimsSet().getStringClaim("email");
             String name = signedJWT.getJWTClaimsSet().getStringClaim("name");
             String username = signedJWT.getJWTClaimsSet().getStringClaim("cognito:username");
-            AuthProvider provider = resolveProvider(signedJWT);
+            boolean emailVerified = readBooleanClaim(signedJWT, "email_verified");
+            AuthProvider provider = request.getProvider() != null
+                    ? request.getProvider()
+                    : resolveProvider(signedJWT);
+            Map<AuthProvider, String> linkedIdentities = resolveLinkedIdentitySubjects(signedJWT);
+            String providerSubject = resolveProviderSubject(signedJWT, provider)
+                    .orElse(cognitoSub);
 
             Role motherRole = roleRepository.findByRoleName(UserRole.MOTHER)
                     .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED, "Role MOTHER not found"));
 
-            User user = identityProviderRepository
-                    .findUserByProviderAndProviderUid(provider, cognitoSub)
+            User user = userRepository.findByCognitoSubWithRolesAndProviders(cognitoSub)
+                    .or(() -> identityProviderRepository
+                            .findUserByProviderAndProviderUid(provider, providerSubject))
                     .orElseGet(() -> resolveOrCreateSocialUser(
-                            cognitoSub, email, name, provider));
+                            cognitoSub, username, providerSubject, email, name, provider));
 
-            user.getRoles().forEach(role -> assignCognitoGroup(cognitoSub, role.getRoleName().name()));
+            syncMasterCognitoFields(user, cognitoSub, username);
+            syncVerifiedEmail(user, emailVerified);
+            syncIdentityProviders(user, linkedIdentities, provider, providerSubject);
 
+            String groupUsername = username != null ? username : cognitoSub;
+            user.getRoles().forEach(role -> assignCognitoGroup(groupUsername, role.getRoleName().name()));
+
+            boolean shouldEnsureMotherRole = request.getIntent() == SocialAuthIntent.MOTHER_LOGIN_OR_REGISTER;
             boolean isMother = user.getRoles().stream().anyMatch(r -> r.getRoleName() == UserRole.MOTHER);
-            if (!isMother) {
+            if (shouldEnsureMotherRole && !isMother) {
                 userProviderService.saveRoleAssignment(user, motherRole);
                 userProviderService.createProfileForRole(user, UserRole.MOTHER);
-                assignCognitoGroup(cognitoSub, UserRole.MOTHER.name());
+                assignCognitoGroup(groupUsername, UserRole.MOTHER.name());
             }
 
             user.setLastLoginAt(OffsetDateTime.now());
             userRepository.save(user);
+            userCacheService.evictProfiles(cognitoSub);
 
-            CookieUtils.addRefreshTokenCookie(response, refreshToken + "::" + username);
+            CookieUtils.addRefreshTokenCookie(response, refreshToken + "::" + groupUsername);
 
             String avatarUrl = s3ServiceImpl.presign(user.getAvatarS3Key());
             UserProfileResponse profile = userMapper.toProfileResponse(user, avatarUrl);
 
-            log.info("[Auth] Social sync ok: sub={} provider={}", cognitoSub, provider);
+            log.info("[Auth] Social sync ok: sub={} provider={} emailVerified={}", cognitoSub, provider, emailVerified);
             authMetrics.recordSocialLoginSuccess(provider.name());
 
             return AuthResponse.builder()
@@ -114,8 +132,8 @@ public class SocialAuthService {
         }
     }
 
-    private User resolveOrCreateSocialUser(String cognitoSub, String email, String name,
-                                           AuthProvider provider) {
+    private User resolveOrCreateSocialUser(String cognitoSub, String username, String providerSubject,
+                                           String email, String name, AuthProvider provider) {
 
         Optional<User> byEmail = (email != null)
                 ? userRepository.findByEmailWithRolesAndProviders(email)
@@ -125,7 +143,7 @@ public class SocialAuthService {
             User existing = byEmail.get();
 
             if (!identityProviderRepository.existsByUserAndProvider(existing, provider)) {
-                userProviderService.saveIdentityProvider(existing, provider, cognitoSub);
+                userProviderService.saveIdentityProvider(existing, provider, providerSubject);
                 log.info("[Auth] Account linked via email: userId={} email={} -> {} added",
                         existing.getId(), email, provider);
             }
@@ -134,15 +152,58 @@ public class SocialAuthService {
 
         User newUser = User.builder()
                 .fullName(name != null ? name : "")
+                .cognitoUsername(username)
+                .cognitoSub(cognitoSub)
                 .email(email)
                 .isActive(true)
                 .build();
         userRepository.save(newUser);
 
-        userProviderService.saveIdentityProvider(newUser, provider, cognitoSub);
+        userProviderService.saveIdentityProvider(newUser, provider, providerSubject);
 
         log.info("[Auth] Social new user: sub={} provider={} email={}", cognitoSub, provider, email);
         return newUser;
+    }
+
+    private void syncMasterCognitoFields(User user, String cognitoSub, String username) {
+        if (user.getCognitoSub() == null) {
+            user.setCognitoSub(cognitoSub);
+        }
+        if (user.getCognitoUsername() == null && username != null) {
+            user.setCognitoUsername(username);
+        }
+    }
+
+    private void syncVerifiedEmail(User user, boolean emailVerified) {
+        if (emailVerified && !Boolean.TRUE.equals(user.getEmailVerified())) {
+            user.setEmailVerified(true);
+        }
+    }
+
+    private void syncIdentityProviders(User user, Map<AuthProvider, String> linkedIdentities,
+                                       AuthProvider currentProvider, String currentProviderSubject) {
+        if (linkedIdentities.isEmpty()) {
+            userProviderService.saveIdentityProvider(user, currentProvider, currentProviderSubject);
+            return;
+        }
+
+        linkedIdentities.forEach((provider, providerSubject) ->
+                userProviderService.saveIdentityProvider(user, provider, providerSubject));
+
+        if (!linkedIdentities.containsKey(currentProvider)) {
+            userProviderService.saveIdentityProvider(user, currentProvider, currentProviderSubject);
+        }
+    }
+
+    private boolean readBooleanClaim(SignedJWT jwt, String claimName) throws ParseException {
+        Object value = jwt.getJWTClaimsSet().getClaim(claimName);
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof String stringValue) {
+            return Boolean.parseBoolean(stringValue);
+        }
+        return false;
     }
 
     private AuthProvider resolveProvider(SignedJWT jwt) throws ParseException {
@@ -175,6 +236,50 @@ public class SocialAuthService {
         }
 
         return AuthProvider.LOCAL;
+    }
+
+    private Optional<String> resolveProviderSubject(SignedJWT jwt, AuthProvider provider) throws ParseException {
+        List<?> identities = (List<?>) jwt.getJWTClaimsSet().getClaim("identities");
+        if (identities == null) {
+            return Optional.empty();
+        }
+
+        for (Object identity : identities) {
+            if (identity instanceof Map<?, ?> map) {
+                Object providerName = map.get("providerName");
+                Object userId = map.get("userId");
+                if (providerName != null
+                        && userId != null
+                        && mapProvider(providerName.toString()) == provider) {
+                    return Optional.of(userId.toString());
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Map<AuthProvider, String> resolveLinkedIdentitySubjects(SignedJWT jwt) throws ParseException {
+        Map<AuthProvider, String> result = new EnumMap<>(AuthProvider.class);
+        List<?> identities = (List<?>) jwt.getJWTClaimsSet().getClaim("identities");
+        if (identities == null) {
+            return result;
+        }
+
+        for (Object identity : identities) {
+            if (identity instanceof Map<?, ?> map) {
+                Object providerName = map.get("providerName");
+                Object userId = map.get("userId");
+                if (providerName == null || userId == null) {
+                    continue;
+                }
+
+                AuthProvider provider = mapProvider(providerName.toString());
+                if (provider != AuthProvider.LOCAL) {
+                    result.put(provider, userId.toString());
+                }
+            }
+        }
+        return result;
     }
 
     private AuthProvider mapProvider(String providerName) {

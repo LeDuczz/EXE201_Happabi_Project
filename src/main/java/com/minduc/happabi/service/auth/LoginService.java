@@ -46,8 +46,12 @@ public class LoginService {
             User user = userRepository.findByPhoneWithRolesAndProviders(request.getPhone())
                     .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
 
+            String cognitoUsername = user.getCognitoUsername() != null
+                    ? user.getCognitoUsername()
+                    : request.getPhone();
+
             AdminInitiateAuthResponse authResponse = cognitoService.adminInitiateAuth(
-                    request.getPhone(), request.getPassword());
+                    cognitoUsername, request.getPassword());
 
             AuthenticationResultType result = authResponse.authenticationResult();
 
@@ -58,15 +62,14 @@ public class LoginService {
                     throw new AppException(AuthErrorCode.AUTH_FAILED,
                             "Tài khoản của bạn không có quyền đăng nhập vào portal " + request.getPortalRole());
                 }
+            } else {
+                throw new AppException(AuthErrorCode.AUTH_FAILED, "Portal role là bắt buộc để đăng nhập.");
             }
 
             user.setLastLoginAt(OffsetDateTime.now());
             userRepository.save(user);
 
-            String localSub = user.getProviderUid(AuthProvider.LOCAL)
-                    .orElse("unknown");
-
-            CookieUtils.addRefreshTokenCookie(response, result.refreshToken() + "::" + localSub);
+            CookieUtils.addRefreshTokenCookie(response, result.refreshToken() + "::" + cognitoUsername);
 
             String avatarUrl = s3ServiceImpl.presign(user.getAvatarS3Key());
             UserProfileResponse profile = userMapper.toProfileResponse(user, avatarUrl);
@@ -106,12 +109,12 @@ public class LoginService {
 
         String[] parts = cookieValue.split("::");
         String refreshToken = parts[0];
-        String cognitoSub = parts[1];
+        String username = parts[1];
 
-        log.info("[Auth] Attempting refresh for sub: {}", cognitoSub);
+        log.info("[Auth] Attempting refresh for username: {}", username);
 
         try {
-            InitiateAuthResponse authResponse = cognitoService.initiateRefreshAuth(refreshToken, cognitoSub);
+            InitiateAuthResponse authResponse = cognitoService.initiateRefreshAuth(refreshToken, username);
 
             AuthenticationResultType result = authResponse.authenticationResult();
             log.info("[Auth] Token refreshed ok");

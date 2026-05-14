@@ -87,6 +87,13 @@ public class AuthController {
         return ResponseEntity.ok(BaseResponse.ok("Đăng nhập bằng tài khoản xã hội thành công.", authResponse));
     }
 
+    @PostMapping("/local-password")
+    public ResponseEntity<BaseResponse<Void>> createLocalPassword(
+            @Valid @RequestBody CreateLocalPasswordRequest request) {
+        authService.createLocalPassword(request);
+        return ResponseEntity.ok(BaseResponse.ok("Local password has been created."));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<BaseResponse<AuthResponse>> refresh(
             HttpServletRequest request) {

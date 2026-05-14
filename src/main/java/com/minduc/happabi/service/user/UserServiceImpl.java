@@ -1,6 +1,9 @@
 package com.minduc.happabi.service.user;
 
 import com.minduc.happabi.common.utils.AuthUtils;
+import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
+import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
+import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
 import com.minduc.happabi.dto.request.user.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.response.user.MotherProfileResponse;
 import com.minduc.happabi.dto.response.user.NurseProfileResponse;
@@ -15,6 +18,7 @@ import com.minduc.happabi.repository.MotherProfileRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
+import com.minduc.happabi.service.auth.CognitoService;
 import com.minduc.happabi.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +41,7 @@ public class UserServiceImpl implements UserService {
     private final S3Service s3ServiceImpl;
     private final UserMapper userMapper;
     private final UserCacheService userCacheService;
+    private final CognitoService cognitoService;
 
     @Override
     @Transactional(readOnly = true)
@@ -89,8 +94,7 @@ public class UserServiceImpl implements UserService {
             user.setFullName(request.getFullName());
             user.setUpdatedAt(now);
         }
-        updatePhoneIfAllowed(user, request.getPhone(), now);
-        updateEmailIfAllowed(user, request.getEmail(), now);
+        rejectVerifiedAttributeUpdate(request.getPhone(), request.getEmail());
 
         if (request.getBabyBirthDate() != null) {
             profile.setBabyBirthDate(request.getBabyBirthDate());
@@ -114,6 +118,79 @@ public class UserServiceImpl implements UserService {
         MotherProfileResponse response = userMapper.toMotherProfileResponse(savedProfile, avatarUrl);
         userCacheService.putMotherProfile(cognitoSub, response);
         return response;
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("isAuthenticated()")
+    public void requestEmailChange(RequestEmailChangeRequest request) {
+        String cognitoSub = getCurrentSubOrThrow();
+        User user = findBySub(cognitoSub);
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new AppException(UserErrorCode.EMAIL_ALREADY_SET,
+                    "Email is already verified and cannot be changed.");
+        }
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        if (user.getEmail() != null && !user.getEmail().equalsIgnoreCase(normalizedEmail)) {
+            throw new AppException(UserErrorCode.EMAIL_ALREADY_SET);
+        }
+        ensureEmailAvailableForUser(normalizedEmail, user);
+        cognitoService.updateEmailWithVerification(requireAccessToken(), normalizedEmail);
+        cognitoService.resendAttributeVerificationCode(requireAccessToken(), "email");
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("isAuthenticated()")
+    public UserProfileResponse confirmEmailChange(ConfirmUserAttributeRequest request) {
+        String cognitoSub = getCurrentSubOrThrow();
+        cognitoService.verifyUserAttribute(requireAccessToken(), "email", request.getCode());
+
+        User user = findBySub(cognitoSub);
+        String verifiedEmail = cognitoService.getCurrentUserAttribute(requireAccessToken(), "email");
+        ensureEmailAvailableForUser(verifiedEmail, user);
+        user.setEmail(verifiedEmail);
+        user.setEmailVerified(true);
+        user.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(user);
+        userCacheService.evictProfiles(cognitoSub);
+        return userMapper.toProfileResponse(user, s3ServiceImpl.presign(user.getAvatarS3Key()));
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("isAuthenticated()")
+    public void requestPhoneChange(RequestPhoneChangeRequest request) {
+        String cognitoSub = getCurrentSubOrThrow();
+        User user = findBySub(cognitoSub);
+        if (Boolean.TRUE.equals(user.getPhoneVerified())) {
+            throw new AppException(UserErrorCode.PHONE_ALREADY_SET,
+                    "Phone number is already verified and cannot be changed.");
+        }
+        if (user.getPhone() != null && !user.getPhone().equals(request.getPhone())) {
+            throw new AppException(UserErrorCode.PHONE_ALREADY_SET);
+        }
+        ensurePhoneAvailableForUser(request.getPhone(), user);
+        cognitoService.updatePhoneWithVerification(requireAccessToken(), request.getPhone());
+        cognitoService.resendAttributeVerificationCode(requireAccessToken(), "phone_number");
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("isAuthenticated()")
+    public UserProfileResponse confirmPhoneChange(ConfirmUserAttributeRequest request) {
+        String cognitoSub = getCurrentSubOrThrow();
+        cognitoService.verifyUserAttribute(requireAccessToken(), "phone_number", request.getCode());
+
+        User user = findBySub(cognitoSub);
+        String verifiedPhone = cognitoService.getCurrentUserAttribute(requireAccessToken(), "phone_number");
+        ensurePhoneAvailableForUser(verifiedPhone, user);
+        user.setPhone(verifiedPhone);
+        user.setPhoneVerified(true);
+        user.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(user);
+        userCacheService.evictProfiles(cognitoSub);
+        return userMapper.toProfileResponse(user, s3ServiceImpl.presign(user.getAvatarS3Key()));
     }
 
     @Override
@@ -155,29 +232,14 @@ public class UserServiceImpl implements UserService {
         return s3ServiceImpl.presign(newKey);
     }
 
-    private void updatePhoneIfAllowed(User user, String phone, OffsetDateTime now) {
-        if (phone == null) {
-            return;
+    private void rejectVerifiedAttributeUpdate(String phone, String email) {
+        if (phone != null) {
+            throw new AppException(UserErrorCode.PHONE_ALREADY_SET,
+                    "Use /api/v1/users/me/phone/change and /confirm to update a verified phone.");
         }
-        if (user.getPhone() != null && !user.getPhone().equals(phone)) {
-            throw new AppException(UserErrorCode.PHONE_ALREADY_SET);
-        }
-        if (user.getPhone() == null) {
-            user.setPhone(phone);
-            user.setUpdatedAt(now);
-        }
-    }
-
-    private void updateEmailIfAllowed(User user, String email, OffsetDateTime now) {
-        if (email == null) {
-            return;
-        }
-        if (user.getEmail() != null && !user.getEmail().equals(email)) {
-            throw new AppException(UserErrorCode.EMAIL_ALREADY_SET);
-        }
-        if (user.getEmail() == null) {
-            user.setEmail(email);
-            user.setUpdatedAt(now);
+        if (email != null) {
+            throw new AppException(UserErrorCode.EMAIL_ALREADY_SET,
+                    "Use /api/v1/users/me/email/change and /confirm to update a verified email.");
         }
     }
 
@@ -199,8 +261,39 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
     }
 
+    private void ensureEmailAvailableForUser(String email, User currentUser) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        userRepository.findByEmail(email.trim().toLowerCase())
+                .filter(existing -> !existing.getId().equals(currentUser.getId()))
+                .ifPresent(existing -> {
+                    throw new AppException(UserErrorCode.EMAIL_ALREADY_SET,
+                            "Email is already verified by another account.");
+                });
+    }
+
+    private void ensurePhoneAvailableForUser(String phone, User currentUser) {
+        if (phone == null || phone.isBlank()) {
+            return;
+        }
+        userRepository.findByPhone(phone)
+                .filter(existing -> !existing.getId().equals(currentUser.getId()))
+                .ifPresent(existing -> {
+                    throw new AppException(UserErrorCode.PHONE_ALREADY_SET,
+                            "Phone is already verified by another account.");
+                });
+    }
+
+    private String requireAccessToken() {
+        return AuthUtils.getJwt()
+                .map(jwt -> jwt.getTokenValue())
+                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED));
+    }
+
     private User findBySub(String cognitoSub) {
-        return identityProviderRepository.findUserByProviderUidWithRolesAndProviders(cognitoSub)
+        return userRepository.findByCognitoSubWithRolesAndProviders(cognitoSub)
+                .or(() -> identityProviderRepository.findUserByProviderUidWithRolesAndProviders(cognitoSub))
                 .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
     }
 }

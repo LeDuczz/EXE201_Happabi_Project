@@ -1,6 +1,9 @@
 package com.minduc.happabi.service.user;
 
 import com.minduc.happabi.dto.request.user.UpdateMotherProfileRequest;
+import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
+import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
+import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
 import com.minduc.happabi.dto.response.user.MotherProfileResponse;
 import com.minduc.happabi.dto.response.user.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
@@ -13,6 +16,14 @@ public interface UserService {
     MotherProfileResponse getMotherProfile();
 
     MotherProfileResponse updateMotherProfile(UpdateMotherProfileRequest request);
+
+    void requestEmailChange(RequestEmailChangeRequest request);
+
+    UserProfileResponse confirmEmailChange(ConfirmUserAttributeRequest request);
+
+    void requestPhoneChange(RequestPhoneChangeRequest request);
+
+    UserProfileResponse confirmPhoneChange(ConfirmUserAttributeRequest request);
 
     NurseProfileResponse getNurseProfile();
 

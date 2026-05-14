@@ -115,10 +115,22 @@ public class S3ServiceImpl implements S3Service {
 
     @Override
     public String presign(String key) {
+        return presignWithTtl(key, PRESIGN_TTL);
+    }
+
+    @Override
+    public String presign(String key, Duration ttl) {
+        if (ttl == null || ttl.isNegative() || ttl.isZero()) {
+            ttl = PRESIGN_TTL;
+        }
+        return presignWithTtl(key, ttl);
+    }
+
+    private String presignWithTtl(String key, Duration ttl) {
         if (key == null || key.isBlank()) return null;
         try {
             GetObjectPresignRequest req = GetObjectPresignRequest.builder()
-                    .signatureDuration(PRESIGN_TTL)
+                    .signatureDuration(ttl)
                     .getObjectRequest(r -> r.bucket(bucket).key(key))
                     .build();
 

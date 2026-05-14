@@ -1,6 +1,9 @@
 package com.minduc.happabi.controller.user;
 
 import com.minduc.happabi.common.base.BaseResponse;
+import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
+import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
+import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
 import com.minduc.happabi.dto.request.user.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.response.user.MotherProfileResponse;
 import com.minduc.happabi.dto.response.user.NurseProfileResponse;
@@ -45,6 +48,36 @@ public class UserController {
             @Valid @RequestBody UpdateMotherProfileRequest request) {
         MotherProfileResponse profile = userService.updateMotherProfile(request);
         return ResponseEntity.ok(BaseResponse.ok(profile));
+    }
+
+    @PostMapping("/me/email/change")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<Void>> requestEmailChange(
+            @Valid @RequestBody RequestEmailChangeRequest request) {
+        userService.requestEmailChange(request);
+        return ResponseEntity.ok(BaseResponse.ok("Verification code sent to email."));
+    }
+
+    @PostMapping("/me/email/confirm")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<UserProfileResponse>> confirmEmailChange(
+            @Valid @RequestBody ConfirmUserAttributeRequest request) {
+        return ResponseEntity.ok(BaseResponse.ok(userService.confirmEmailChange(request)));
+    }
+
+    @PostMapping("/me/phone/change")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<Void>> requestPhoneChange(
+            @Valid @RequestBody RequestPhoneChangeRequest request) {
+        userService.requestPhoneChange(request);
+        return ResponseEntity.ok(BaseResponse.ok("Verification code sent to phone."));
+    }
+
+    @PostMapping("/me/phone/confirm")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BaseResponse<UserProfileResponse>> confirmPhoneChange(
+            @Valid @RequestBody ConfirmUserAttributeRequest request) {
+        return ResponseEntity.ok(BaseResponse.ok(userService.confirmPhoneChange(request)));
     }
 
     @GetMapping("/me/nurse-profile")

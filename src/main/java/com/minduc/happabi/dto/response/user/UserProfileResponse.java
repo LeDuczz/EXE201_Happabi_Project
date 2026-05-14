@@ -21,7 +21,11 @@ public class UserProfileResponse {
 
     private String phone;
 
+    private Boolean phoneVerified;
+
     private String email;
+
+    private Boolean emailVerified;
 
     private List<UserRole> roles;
 
