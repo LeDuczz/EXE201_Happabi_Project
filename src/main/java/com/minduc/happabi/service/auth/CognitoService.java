@@ -210,7 +210,7 @@ public class CognitoService {
                 .build());
     }
 
-    public ResponseEntity<Map> exchangeCodeForTokens(SocialSyncRequest request) {
+    public ResponseEntity<Map>  exchangeCodeForTokens(SocialSyncRequest request) {
         String tokenUrl = cognitoDomain + "/oauth2/token";
 
         HttpHeaders headers = new HttpHeaders();

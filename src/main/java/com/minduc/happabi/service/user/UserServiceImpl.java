@@ -10,6 +10,7 @@ import com.minduc.happabi.dto.response.user.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.entity.MotherProfile;
 import com.minduc.happabi.entity.User;
+import com.minduc.happabi.dto.event.S3ObjectDeleteRequestedEvent;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
@@ -22,6 +23,7 @@ import com.minduc.happabi.service.auth.CognitoService;
 import com.minduc.happabi.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final UserCacheService userCacheService;
     private final CognitoService cognitoService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -227,7 +230,9 @@ public class UserServiceImpl implements UserService {
         userCacheService.evictProfiles(cognitoSub);
         log.info("[Avatar] Uploaded new avatar: userId={} key={}", user.getId(), newKey);
 
-        deleteOldAvatarIfPresent(user, oldKey);
+        if (oldKey != null && !oldKey.isBlank() && !oldKey.equals(newKey)) {
+            eventPublisher.publishEvent(new S3ObjectDeleteRequestedEvent(oldKey, "AVATAR_REPLACED"));
+        }
 
         return s3ServiceImpl.presign(newKey);
     }
@@ -240,19 +245,6 @@ public class UserServiceImpl implements UserService {
         if (email != null) {
             throw new AppException(UserErrorCode.EMAIL_ALREADY_SET,
                     "Use /api/v1/users/me/email/change and /confirm to update a verified email.");
-        }
-    }
-
-    private void deleteOldAvatarIfPresent(User user, String oldKey) {
-        if (oldKey == null || oldKey.isBlank()) {
-            return;
-        }
-
-        try {
-            s3ServiceImpl.delete(oldKey);
-            log.info("[Avatar] Deleted old avatar: userId={} key={}", user.getId(), oldKey);
-        } catch (RuntimeException e) {
-            log.warn("[Avatar] Failed to delete old avatar after update: userId={} key={}", user.getId(), oldKey, e);
         }
     }
 
