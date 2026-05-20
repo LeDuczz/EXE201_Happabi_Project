@@ -3,17 +3,25 @@ package com.minduc.happabi.observability.logging;
 import lombok.experimental.UtilityClass;
 
 import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 @UtilityClass
 public class SensitiveDataSanitizer {
 
     private static final String MASK = "****";
     private static final int MAX_DEPTH = 2;
+    private static final Set<String> SENSITIVE_KEYWORDS = Set.of(
+            "password",
+            "token",
+            "authorization",
+            "otp",
+            "cccd",
+            "secret",
+            "address",
+            "birth",
+            "email",
+            "phone"
+    );
 
     public Object sanitize(Object value) {
         return sanitize(value, 0, new IdentityHashMap<>());
@@ -96,16 +104,8 @@ public class SensitiveDataSanitizer {
 
     private boolean isSensitiveName(String name) {
         String normalized = name == null ? "" : name.toLowerCase(Locale.ROOT);
-        return normalized.contains("password")
-                || normalized.contains("token")
-                || normalized.contains("authorization")
-                || normalized.contains("otp")
-                || normalized.contains("cccd")
-                || normalized.contains("secret")
-                || normalized.contains("address")
-                || normalized.contains("birth")
-                || normalized.contains("phone")
-                || normalized.contains("email");
+        return SENSITIVE_KEYWORDS.stream()
+                .anyMatch(normalized::contains);
     }
 
     private boolean isSimple(Object value) {

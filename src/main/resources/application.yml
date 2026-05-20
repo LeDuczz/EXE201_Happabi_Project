@@ -48,6 +48,14 @@ spring:
   elasticsearch:
     uris: ${SPRING_ELASTICSEARCH_URIS}
 
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${AI_CHAT_DEFAULT_MODEL:gpt-4o-mini}
+
 server:
   port: ${SERVER_PORT}
 
@@ -183,3 +191,9 @@ openai:
   api-key: ${OPENAI_API_KEY:}
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
   model: ${OPENAI_VISION_MODEL:gpt-4o-mini}
+
+ai-chat:
+  models:
+    default: ${AI_CHAT_DEFAULT_MODEL:gpt-4o-mini}
+    reasoning: ${AI_CHAT_REASONING_MODEL:gpt-4o-mini}
+    fast: ${AI_CHAT_FAST_MODEL:gpt-4o-mini}
