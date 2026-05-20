@@ -3,11 +3,11 @@ package com.minduc.happabi.service.ai.impl;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AiChatErrorCode;
 import com.minduc.happabi.service.ai.AiChatModelClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnMissingBean(AiChatModelClient.class)
+@ConditionalOnProperty(name = "spring.ai.model.chat", havingValue = "none", matchIfMissing = true)
 public class DisabledAiChatModelClient implements AiChatModelClient {
 
     @Override
