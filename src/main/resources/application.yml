@@ -50,7 +50,13 @@ spring:
 
   ai:
     model:
-      chat: ${AI_CHAT_MODEL_PROVIDER:none}
+      chat: ${AI_CHAT_MODEL_PROVIDER:openai}
+      audio:
+        speech: ${AI_AUDIO_SPEECH_PROVIDER:openai}
+        transcription: ${AI_AUDIO_TRANSCRIPTION_PROVIDER:openai}
+      embedding: ${AI_EMBEDDING_PROVIDER:openai}
+      image: ${AI_IMAGE_PROVIDER:openai}
+      moderation: ${AI_MODERATION_PROVIDER:openai}
     openai:
       api-key: ${OPENAI_API_KEY:}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com}
