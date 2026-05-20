@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.doctor;
+package com.minduc.happabi.service.doctor.impl;
 
 import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.request.nurse.ReviewNurseProfileRequest;
@@ -12,6 +12,7 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.*;
+import com.minduc.happabi.service.doctor.DoctorNurseReviewService;
 import com.minduc.happabi.service.notification.NurseNotificationService;
 import com.minduc.happabi.service.nurse.KycSensitiveDocumentCleanupService;
 import com.minduc.happabi.service.s3.S3Service;

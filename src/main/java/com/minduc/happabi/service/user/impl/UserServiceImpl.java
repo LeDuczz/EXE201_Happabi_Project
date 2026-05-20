@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.user;
+package com.minduc.happabi.service.user.impl;
 
 import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
@@ -24,6 +24,8 @@ import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.auth.CognitoService;
 import com.minduc.happabi.service.s3.S3Service;
+import com.minduc.happabi.service.user.UserCacheService;
+import com.minduc.happabi.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;

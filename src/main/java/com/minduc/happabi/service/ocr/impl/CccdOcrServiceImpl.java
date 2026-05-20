@@ -1,9 +1,11 @@
-package com.minduc.happabi.service.ocr;
+package com.minduc.happabi.service.ocr.impl;
 
 import com.minduc.happabi.dto.openai.OpenAiCccdOcrResult;
 import com.minduc.happabi.dto.response.nurse.CccdOcrExtractionResponse;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
+import com.minduc.happabi.service.ocr.CccdOcrFileValidator;
+import com.minduc.happabi.service.ocr.CccdOcrService;
 import com.minduc.happabi.service.openai.OpenAiVisionOcrClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.auth;
+package com.minduc.happabi.service.auth.impl;
 
 import com.minduc.happabi.dto.request.auth.ForgotPasswordRequest;
 import com.minduc.happabi.dto.request.auth.CreateLocalPasswordRequest;
@@ -9,6 +9,7 @@ import com.minduc.happabi.dto.request.auth.ResetPasswordRequest;
 import com.minduc.happabi.dto.request.auth.SocialSyncRequest;
 import com.minduc.happabi.dto.request.auth.VerifyOtpRequest;
 import com.minduc.happabi.dto.response.auth.AuthResponse;
+import com.minduc.happabi.service.auth.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

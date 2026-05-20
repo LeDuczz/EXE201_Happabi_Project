@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.nurse;
+package com.minduc.happabi.service.nurse.impl;
 
 import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.common.utils.NetworkUtils;
@@ -11,10 +11,10 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.mapper.NurseOnboardingMapper;
 import com.minduc.happabi.observability.annotation.AuditAction;
-import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.*;
 import com.minduc.happabi.service.notification.NurseNotificationService;
+import com.minduc.happabi.service.nurse.NurseOnboardingService;
 import com.minduc.happabi.service.s3.S3Service;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;

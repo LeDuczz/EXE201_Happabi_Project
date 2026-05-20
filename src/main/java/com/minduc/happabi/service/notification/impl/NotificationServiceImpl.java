@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.notification;
+package com.minduc.happabi.service.notification.impl;
 
 import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.response.notification.NotificationListResponse;
@@ -13,6 +13,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NotificationRepository;
 import com.minduc.happabi.repository.UserRepository;
+import com.minduc.happabi.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
