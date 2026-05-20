@@ -98,11 +98,14 @@ public class SensitiveDataSanitizer {
         String normalized = name == null ? "" : name.toLowerCase(Locale.ROOT);
         return normalized.contains("password")
                 || normalized.contains("token")
-                || normalized.contains("refreshtoken")
                 || normalized.contains("authorization")
                 || normalized.contains("otp")
                 || normalized.contains("cccd")
-                || normalized.contains("secret");
+                || normalized.contains("secret")
+                || normalized.contains("address")
+                || normalized.contains("birth")
+                || normalized.contains("phone")
+                || normalized.contains("email");
     }
 
     private boolean isSimple(Object value) {
