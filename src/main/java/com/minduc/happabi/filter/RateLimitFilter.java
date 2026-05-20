@@ -225,7 +225,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private String buildKey(String path, String type, String value) {
         String shortPath = path.replace("/api/v1", "");
-        return "rate:" + shortPath + ":" + type + ":" + value;
+        return "rate:" + shortPath + ":" + type + ":" + NetworkUtils.redisKeyPart(value);
     }
 
     private void setRemainingHeader(HttpServletResponse response, long remaining) {
