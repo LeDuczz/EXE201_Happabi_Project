@@ -49,6 +49,8 @@ spring:
     uris: ${SPRING_ELASTICSEARCH_URIS}
 
   ai:
+    model:
+      chat: ${AI_CHAT_MODEL_PROVIDER:none}
     openai:
       api-key: ${OPENAI_API_KEY:}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com}
