@@ -1,5 +1,6 @@
-package com.minduc.happabi.service.permission;
+package com.minduc.happabi.service.role.impl;
 
+import com.minduc.happabi.service.role.RoleService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -10,5 +11,5 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class PermissionServiceImpl implements PermissionService {
+public class RoleServiceImpl implements RoleService {
 }
