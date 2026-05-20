@@ -1,11 +1,11 @@
 package com.minduc.happabi.service.user;
 
-import com.minduc.happabi.dto.request.user.UpdateMotherProfileRequest;
+import com.minduc.happabi.dto.request.mother.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
 import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
 import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
-import com.minduc.happabi.dto.response.user.MotherProfileResponse;
-import com.minduc.happabi.dto.response.user.NurseProfileResponse;
+import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
+import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import org.springframework.web.multipart.MultipartFile;
 

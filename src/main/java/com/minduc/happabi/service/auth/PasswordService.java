@@ -4,8 +4,10 @@ import com.minduc.happabi.dto.request.auth.ForgotPasswordRequest;
 import com.minduc.happabi.dto.request.auth.ResetPasswordRequest;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.metrics.AuthMetricsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,8 +26,10 @@ public class PasswordService {
 
     private final UserRepository userRepository;
     private final CognitoService cognitoService;
-    private final AuthMetricsService authMetrics;
 
+    @TimedAction("auth_forgot_password")
+    @LogExecution
+    @AuditAction(action = "FORGOT_PASSWORD", resourceType = "USER")
     public void forgotPassword(ForgotPasswordRequest request) {
         userRepository.findByPhone(request.getPhone())
                 .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
@@ -34,7 +38,6 @@ public class PasswordService {
             cognitoService.forgotPassword(request.getPhone());
 
             log.info("[Auth] ForgotPassword OTP sent: phone={}", request.getPhone());
-            authMetrics.recordForgotPasswordRequested();
 
         } catch (UserNotFoundException e) {
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
@@ -49,13 +52,15 @@ public class PasswordService {
         }
     }
 
+    @TimedAction("auth_reset_password")
+    @AuditAction(action = "RESET_PASSWORD", resourceType = "USER")
+    @LogExecution
     public void resetPassword(ResetPasswordRequest request) {
         try {
             cognitoService.confirmForgotPassword(
                     request.getPhone(), request.getOtpCode(), request.getNewPassword());
 
             log.info("[Auth] ResetPassword ok: phone={}", request.getPhone());
-            authMetrics.recordResetPasswordSuccess();
 
         } catch (CodeMismatchException e) {
             throw new AppException(AuthErrorCode.OTP_INVALID);

@@ -35,9 +35,6 @@ public class MotherProfile {
     @Column(name = "day_of_birth")
     private LocalDate dayOfBirth;
 
-    @Column(name = "delivery_type", length = 20)
-    private String deliveryType;
-
     @Column(name = "address", length = 200)
     private String address;
 
@@ -71,7 +68,6 @@ public class MotherProfile {
                 "id=" + id +
                 ", babyBirthDate=" + babyBirthDate +
                 ", dayOfBirth=" + dayOfBirth +
-                ", deliveryType='" + deliveryType + '\'' +
                 ", address='" + address + '\'' +
                 ", city='" + city + '\'' +
                 ", createdAt=" + createdAt +

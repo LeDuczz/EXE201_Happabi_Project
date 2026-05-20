@@ -87,6 +87,12 @@ public class NurseProfile {
     @Column(name = "service_area", length = 200)
     private String serviceArea;
 
+    @Column(name = "address", length = 200)
+    private String address;
+
+    @Column(name = "city", length = 50)
+    private String city;
+
     @Column(name = "lat", precision = 9, scale = 6)
     private BigDecimal lat;
 

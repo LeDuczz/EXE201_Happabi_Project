@@ -13,10 +13,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -129,6 +133,46 @@ public class CognitoService {
                 .build());
     }
 
+    public String adminCreateUser(String username, String password, String fullName,
+                                  String email, String phoneNumber) {
+        List<AttributeType> attributes = new ArrayList<>();
+        attributes.add(AttributeType.builder().name("name").value(fullName).build());
+        attributes.add(AttributeType.builder().name("phone_number").value(phoneNumber).build());
+        attributes.add(AttributeType.builder().name("phone_number_verified").value("true").build());
+        if (email != null && !email.isBlank()) {
+            attributes.add(AttributeType.builder().name("email").value(email).build());
+            attributes.add(AttributeType.builder().name("email_verified").value("true").build());
+        }
+
+        AdminCreateUserResponse response = cognitoClient.adminCreateUser(AdminCreateUserRequest.builder()
+                .userPoolId(userPoolId)
+                .username(username)
+                .messageAction(MessageActionType.SUPPRESS)
+                .temporaryPassword(password)
+                .userAttributes(attributes)
+                .build());
+
+        adminSetPermanentPassword(username, password);
+        return response.user().attributes().stream()
+                .filter(attribute -> "sub".equals(attribute.name()))
+                .map(AttributeType::value)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public String adminGetUserSub(String username) {
+        return cognitoClient.adminGetUser(AdminGetUserRequest.builder()
+                        .userPoolId(userPoolId)
+                        .username(username)
+                        .build())
+                .userAttributes()
+                .stream()
+                .filter(attribute -> "sub".equals(attribute.name()))
+                .map(AttributeType::value)
+                .findFirst()
+                .orElse(null);
+    }
+
     public void adminUpdatePhoneNumber(String username, String phoneNumber, boolean verified) {
         cognitoClient.adminUpdateUserAttributes(AdminUpdateUserAttributesRequest.builder()
                 .userPoolId(userPoolId)
@@ -210,7 +254,7 @@ public class CognitoService {
                 .build());
     }
 
-    public ResponseEntity<Map>  exchangeCodeForTokens(SocialSyncRequest request) {
+    public ResponseEntity<Map> exchangeCodeForTokens(SocialSyncRequest request) {
         String tokenUrl = cognitoDomain + "/oauth2/token";
 
         HttpHeaders headers = new HttpHeaders();
@@ -224,7 +268,15 @@ public class CognitoService {
         body.add("redirect_uri", request.getRedirectUri());
 
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
-        return restTemplate.postForEntity(tokenUrl, entity, Map.class);
+        try {
+            return restTemplate.postForEntity(tokenUrl, entity, Map.class);
+        } catch (HttpClientErrorException e) {
+            log.warn("[Cognito] Token exchange rejected: status={}", e.getStatusCode());
+            throw e;
+        } catch (ResourceAccessException e) {
+            log.warn("[Cognito] Token exchange unavailable: {}", e.getMessage());
+            throw e;
+        }
     }
 
     private String secretHash(String username) {

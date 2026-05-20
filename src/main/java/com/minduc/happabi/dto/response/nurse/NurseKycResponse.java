@@ -1,0 +1,24 @@
+package com.minduc.happabi.dto.response.nurse;
+
+import com.minduc.happabi.enums.EkycStatus;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Getter
+@Builder
+public class NurseKycResponse {
+    private UUID id;
+    private String cccdNumberMasked;
+    private String cccdName;
+    private LocalDate cccdDob;
+    private String cccdAddress;
+    private Boolean hasFrontImage;
+    private Boolean hasBackImage;
+    private EkycStatus ekycStatus;
+    private String reviewNote;
+    private OffsetDateTime reviewedAt;
+}

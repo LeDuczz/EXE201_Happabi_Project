@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.ratelimit;
 
 import com.minduc.happabi.config.ratelimit.RateLimitProperties;
+import com.minduc.happabi.observability.metrics.MetricsRecorder;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -19,6 +21,7 @@ public class RateLimitService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final RateLimitProperties properties;
+    private final MetricsRecorder metricsRecorder;
 
     @SuppressWarnings("rawtypes")
     private DefaultRedisScript<List> tokenBucketScript;
@@ -57,6 +60,7 @@ public class RateLimitService {
             );
 
             if (result == null || result.size() < 2) {
+                record("fail_open", "bad_result");
                 log.warn("[RateLimit] Redis unavailable or bad result, fail-open for key={}", key);
                 return new TokenBucketResult(true, -1);
             }
@@ -65,13 +69,24 @@ public class RateLimitService {
             long remaining = result.get(1);
 
             if (!allowed) {
+                record("blocked", "limit_exceeded");
                 log.warn("[RateLimit] BLOCKED key={} remaining={}", key, remaining);
+            } else {
+                record("allowed", "none");
             }
             return new TokenBucketResult(allowed, remaining);
 
         } catch (Exception e) {
+            record("fail_open", "redis_error");
             log.error("[RateLimit] Lua execution error for key={}: {}", key, e.getMessage());
             return new TokenBucketResult(true, -1);
         }
+    }
+
+    private void record(String result, String reason) {
+        metricsRecorder.increment("happabi.rate_limit.operations", Map.of(
+                "result", result,
+                "reason", reason
+        ));
     }
 }

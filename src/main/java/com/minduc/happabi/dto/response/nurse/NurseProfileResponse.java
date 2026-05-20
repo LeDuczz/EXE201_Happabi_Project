@@ -1,18 +1,17 @@
-package com.minduc.happabi.dto.response.user;
+package com.minduc.happabi.dto.response.nurse;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MotherProfileResponse {
+public class NurseProfileResponse {
 
     private UUID id;
 
@@ -22,9 +21,7 @@ public class MotherProfileResponse {
 
     private String email;
 
-    private LocalDate babyBirthDate;
-
-    private LocalDate dayOfBirth;
+    private String dayOfBirth;
 
     private String address;
 

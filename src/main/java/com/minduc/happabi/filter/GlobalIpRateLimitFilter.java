@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.common.utils.NetworkUtils;
 import com.minduc.happabi.exception.code.CommonErrorCode;
 import com.minduc.happabi.common.base.ErrorResponse;
-import com.minduc.happabi.service.metrics.AuditLogService;
-import com.minduc.happabi.service.metrics.AuthMetricsService;
+import com.minduc.happabi.observability.audit.AuditEvent;
+import com.minduc.happabi.observability.audit.AuditRecorder;
+import com.minduc.happabi.observability.metrics.MetricsRecorder;
+import com.minduc.happabi.observability.support.ObservationUtils;
 import com.minduc.happabi.service.ratelimit.RateLimitService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,6 +22,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -29,8 +33,8 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimitService rateLimitService;
     private final ObjectMapper objectMapper;
-    private final AuthMetricsService authMetrics;
-    private final AuditLogService auditLog;
+    private final MetricsRecorder metricsRecorder;
+    private final AuditRecorder auditRecorder;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -48,8 +52,7 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
         }
 
         if (!result.allowed()) {
-            authMetrics.recordRateLimitBlocked("global", "global");
-            auditLog.logRateLimitBlocked("global", "global", ip);
+            recordRateLimitBlocked(request, ip);
             sendBlockedResponse(response, request);
             return;
         }
@@ -69,5 +72,29 @@ public class GlobalIpRateLimitFilter extends OncePerRequestFilter {
                 request.getRequestURI()
         );
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+    }
+
+    private void recordRateLimitBlocked(HttpServletRequest request, String ip) {
+        Map<String, String> tags = new LinkedHashMap<>();
+        tags.put("endpoint", "global");
+        tags.put("type", "global");
+        tags.put("outcome", "blocked");
+        metricsRecorder.increment("happabi.auth.rate_limit.blocked", tags);
+
+        Map<String, String> attributes = new LinkedHashMap<>();
+        attributes.put("endpoint", "global");
+        attributes.put("identifierType", "global");
+        auditRecorder.record(new AuditEvent(
+                "AUTH_RATE_LIMITED",
+                null,
+                null,
+                "REQUEST",
+                "global",
+                "FAILURE",
+                "RATE_LIMITED",
+                ip,
+                request.getHeader("User-Agent"),
+                ObservationUtils.correlationId(request),
+                attributes));
     }
 }

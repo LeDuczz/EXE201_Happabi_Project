@@ -1,4 +1,4 @@
-package com.minduc.happabi.dto.request.user;
+package com.minduc.happabi.dto.request.mother;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;

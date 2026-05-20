@@ -1,78 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- ══════════════════════════════════════════════════════════════════
-         logback-spring.xml — Happabi Structured Logging
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="happabi"/>
+    <springProperty scope="context" name="APP_ENV" source="app.env" defaultValue="local"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="logs"/>
 
-         Profile "local"  → Spring Boot default console (giống hệt như không có file này)
-         Profile "!local" → JSON Logstash-ready (staging, production, Docker)
-         ══════════════════════════════════════════════════════════════════ -->
-
-    <springProperty scope="context" name="APP_NAME"      source="spring.application.name" defaultValue="happabi"/>
-    <springProperty scope="context" name="APP_ENV"       source="app.env"                 defaultValue="local"/>
-    <springProperty scope="context" name="LOGSTASH_HOST" source="logstash.host"           defaultValue="localhost"/>
-    <springProperty scope="context" name="LOGSTASH_PORT" source="logstash.port"           defaultValue="5044"/>
-
-    <!-- ── Profile: local — dùng đúng format Spring Boot mặc định ──── -->
     <springProfile name="local">
-
-        <!-- Include Spring Boot built-in defaults (colors, PID, format) -->
         <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
         <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
+        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/${APP_NAME}.json.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/${APP_NAME}.%d{yyyy-MM-dd}.%i.json.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>1GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>false</includeContext>
+                <customFields>{"service":"${APP_NAME}","environment":"${APP_ENV}"}</customFields>
+            </encoder>
+        </appender>
+
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="JSON_FILE"/>
         </root>
 
-        <!-- App logs: DEBUG để thấy query, filter -->
-        <logger name="com.minduc.happabi"          level="DEBUG"/>
+        <logger name="com.minduc.happabi" level="DEBUG"/>
         <logger name="org.springframework.security" level="WARN"/>
-        <logger name="org.hibernate.SQL"            level="DEBUG"/>
-        <!-- Spring Batch BeanPostProcessorChecker: WARN kinh điển, harmless, tắt để console sạch -->
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
         <logger name="org.springframework.context.support.PostProcessorRegistrationDelegate" level="ERROR"/>
     </springProfile>
 
-    <!-- ── Profile: !local — JSON output cho ELK / Docker ──────────── -->
     <springProfile name="!local">
-
-        <!-- Console JSON — Filebeat/Fluentd đọc stdout từ container -->
         <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <customFields>{"service":"${APP_NAME}","env":"${APP_ENV}"}</customFields>
+                <includeContext>false</includeContext>
+                <customFields>{"service":"${APP_NAME}","environment":"${APP_ENV}"}</customFields>
             </encoder>
         </appender>
 
-        <!-- TCP Logstash — gửi trực tiếp nếu Logstash có sẵn -->
-        <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-            <destination>${LOGSTASH_HOST}:${LOGSTASH_PORT}</destination>
+        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/${APP_NAME}.json.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/${APP_NAME}.%d{yyyy-MM-dd}.%i.json.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>14</maxHistory>
+                <totalSizeCap>2GB</totalSizeCap>
+            </rollingPolicy>
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <customFields>{"service":"${APP_NAME}","env":"${APP_ENV}"}</customFields>
+                <includeContext>false</includeContext>
+                <customFields>{"service":"${APP_NAME}","environment":"${APP_ENV}"}</customFields>
             </encoder>
-            <!-- Nếu Logstash down, không crash app -->
-            <connectionStrategy>
-                <roundRobin>
-                    <connectionTTL>5 minutes</connectionTTL>
-                </roundRobin>
-            </connectionStrategy>
-        </appender>
-
-        <!-- Async wrapper — không block thread khi gửi log -->
-        <appender name="ASYNC_LOGSTASH" class="ch.qos.logback.classic.AsyncAppender">
-            <appender-ref ref="LOGSTASH"/>
-            <queueSize>512</queueSize>
-            <discardingThreshold>0</discardingThreshold>
-            <neverBlock>true</neverBlock>
         </appender>
 
         <root level="INFO">
             <appender-ref ref="JSON_CONSOLE"/>
-            <appender-ref ref="ASYNC_LOGSTASH"/>
+            <appender-ref ref="JSON_FILE"/>
         </root>
 
-        <logger name="com.minduc.happabi"          level="INFO"/>
+        <logger name="com.minduc.happabi" level="INFO"/>
         <logger name="org.springframework.security" level="WARN"/>
-        <logger name="org.springframework.web"      level="WARN"/>
-        <logger name="org.hibernate"               level="WARN"/>
+        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
     </springProfile>
 
 </configuration>

@@ -2,6 +2,8 @@ package com.minduc.happabi.service.s3;
 
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.S3ErrorCode;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,6 +53,8 @@ public class S3ServiceImpl implements S3Service {
     private static final Duration PRESIGN_TTL = Duration.ofHours(1);
 
     @Override
+    @LogExecution
+    @TimedAction("upload_file_to_s3")
     public String upload(String folder, String ownerId, MultipartFile file) {
         validate(folder, file);
 
@@ -90,6 +94,8 @@ public class S3ServiceImpl implements S3Service {
     }
 
     @Override
+    @LogExecution
+    @TimedAction("delete_file_from_s3")
     public void delete(String key) {
         if (key == null || key.isBlank()) return;
         try {

@@ -1,6 +1,8 @@
 spring:
   application:
     name: ${SPRING_APPLICATION_NAME}
+  main:
+    banner-mode: console
 
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -41,27 +43,6 @@ spring:
 
 
   # ========================
-  # KAFKA
-  # ========================
-  kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-    consumer:
-      group-id: ${SPRING_KAFKA_CONSUMER_GROUP_ID}
-      auto-offset-reset: ${SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET}
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      enable-auto-commit: false
-      properties:
-        spring.json.trusted.packages: "*"
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.add.type.headers: true
-    listener:
-      ack-mode: record
-
-  # ========================
   # ELASTICSEARCH
   # ========================
   elasticsearch:
@@ -69,6 +50,10 @@ spring:
 
 server:
   port: ${SERVER_PORT}
+
+logging:
+  file:
+    path: ${LOG_PATH:logs}
 
 # ========================
 # ACTUATOR (PROMETHEUS)
@@ -92,16 +77,16 @@ management:
 # ========================
 app:
   env: ${APP_ENV:local}
+  seed:
+    admin:
+      phone: ${APP_SEED_ADMIN_PHONE:}
+      password: ${APP_SEED_ADMIN_PASSWORD:}
+      full-name: ${APP_SEED_ADMIN_FULL_NAME:}
+      email: ${APP_SEED_ADMIN_EMAIL:}
+      enabled: ${APP_SEED_ADMIN_ENABLED:true}
 
 # ========================
-# LOGSTASH (ELK Stack)
 # Khi chưa có ELK, để host=localhost, logback sẽ fail-safe (async, neverBlock=true)
-# ========================
-logstash:
-  host: ${LOGSTASH_HOST:localhost}
-  port: ${LOGSTASH_PORT:5044}
-
-# ========================
 # AWS
 # ========================
 aws:
@@ -171,3 +156,30 @@ rate-limit:
       capacity: 5
       refill-tokens: 1
       refill-seconds: 60
+
+realtime:
+  socket:
+    enabled: ${REALTIME_SOCKET_ENABLED:false}
+    host: ${REALTIME_SOCKET_HOST:0.0.0.0}
+    port: ${REALTIME_SOCKET_PORT:9093}
+
+observability:
+  audit:
+    database:
+      enabled: ${OBSERVABILITY_AUDIT_DATABASE_ENABLED:true}
+    outbox:
+      enabled: ${OBSERVABILITY_AUDIT_OUTBOX_ENABLED:true}
+      topic: ${OBSERVABILITY_AUDIT_OUTBOX_TOPIC:audit.events}
+  outbox:
+    projector:
+      enabled: ${OBSERVABILITY_OUTBOX_PROJECTOR_ENABLED:true}
+      batch-size: ${OBSERVABILITY_OUTBOX_PROJECTOR_BATCH_SIZE:50}
+      fixed-delay-ms: ${OBSERVABILITY_OUTBOX_PROJECTOR_FIXED_DELAY_MS:5000}
+      retry-delay-seconds: ${OBSERVABILITY_OUTBOX_PROJECTOR_RETRY_DELAY_SECONDS:30}
+      max-retry: ${OBSERVABILITY_OUTBOX_PROJECTOR_MAX_RETRY:5}
+      audit-index-prefix: ${OBSERVABILITY_OUTBOX_PROJECTOR_AUDIT_INDEX_PREFIX:happabi-audit}
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+  model: ${OPENAI_VISION_MODEL:gpt-4o-mini}

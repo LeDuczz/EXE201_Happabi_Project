@@ -40,9 +40,6 @@ public class NurseCertification {
     @Column(name = "document_s3_key", length = 500)
     private String documentS3Key;
 
-    @Column(name = "rekognition_result", columnDefinition = "JSONB")
-    private String rekognitionResult;
-
     @Column(name = "is_verified", nullable = false)
     @Builder.Default
     private Boolean isVerified = false;

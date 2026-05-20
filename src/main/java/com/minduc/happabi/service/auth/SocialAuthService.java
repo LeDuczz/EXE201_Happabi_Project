@@ -12,10 +12,12 @@ import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.mapper.UserMapper;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.RoleRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.s3.S3Service;
 import com.minduc.happabi.service.user.UserCacheService;
 import com.nimbusds.jwt.SignedJWT;
@@ -45,11 +47,13 @@ public class SocialAuthService {
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final S3Service s3ServiceImpl;
-    private final AuthMetricsService authMetrics;
     private final CognitoService cognitoService;
     private final UserProviderService userProviderService;
     private final UserCacheService userCacheService;
 
+    @TimedAction("auth_social_login")
+    @LogExecution
+    @AuditAction(action = "SOCIAL_SYNC", resourceType = "USER_SESSION")
     @Transactional
     public AuthResponse socialSync(SocialSyncRequest request, HttpServletResponse response) {
         try {
@@ -111,7 +115,6 @@ public class SocialAuthService {
             UserProfileResponse profile = userMapper.toProfileResponse(user, avatarUrl);
 
             log.info("[Auth] Social sync ok: sub={} provider={} emailVerified={}", cognitoSub, provider, emailVerified);
-            authMetrics.recordSocialLoginSuccess(provider.name());
 
             return AuthResponse.builder()
                     .accessToken(accessToken)
@@ -120,14 +123,11 @@ public class SocialAuthService {
                     .build();
 
         } catch (HttpClientErrorException e) {
-            log.error("[Auth] Cognito token exchange failed: {}", e.getResponseBodyAsString());
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS, "Invalid code or redirect_uri");
         } catch (ResourceAccessException e) {
-            log.error("[Auth] Cognito token exchange timeout/network error: {}", e.getMessage(), e);
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS,
                     "Cannot connect to Cognito token endpoint. Please try again.");
         } catch (ParseException e) {
-            log.error("Failed to parse idToken", e);
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS, "Invalid idToken from Cognito");
         }
     }

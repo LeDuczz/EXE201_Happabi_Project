@@ -19,6 +19,7 @@ public class SystemStartupRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         log.info("System startup initialization");
         dataSeeder.seedRolesAndPermissions();
+        dataSeeder.seedAdminAccount();
 
         log.info("System startup completed");
     }

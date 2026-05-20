@@ -4,9 +4,9 @@ import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
 import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
 import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
-import com.minduc.happabi.dto.request.user.UpdateMotherProfileRequest;
-import com.minduc.happabi.dto.response.user.MotherProfileResponse;
-import com.minduc.happabi.dto.response.user.NurseProfileResponse;
+import com.minduc.happabi.dto.request.mother.UpdateMotherProfileRequest;
+import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
+import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.entity.MotherProfile;
 import com.minduc.happabi.entity.User;
@@ -15,6 +15,9 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.mapper.UserMapper;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.MotherProfileRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
@@ -49,6 +52,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("isAuthenticated()")
+    @LogExecution
+    @TimedAction("get_current_user_profile")
     public UserProfileResponse getMe() {
         String cognitoSub = getCurrentSubOrThrow();
         UserProfileResponse cached = userCacheService.getUserProfile(cognitoSub).orElse(null);
@@ -66,6 +71,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority('USER:READ')")
+    @LogExecution
+    @TimedAction("get_mother_profile")
     public MotherProfileResponse getMotherProfile() {
         String cognitoSub = getCurrentSubOrThrow();
         MotherProfileResponse cached = userCacheService.getMotherProfile(cognitoSub).orElse(null);
@@ -85,6 +92,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("hasAuthority('USER:UPDATE')")
+    @LogExecution
+    @TimedAction("update_mother_profile")
     public MotherProfileResponse updateMotherProfile(UpdateMotherProfileRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
         User user = findBySub(cognitoSub);
@@ -126,6 +135,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("isAuthenticated()")
+    @LogExecution
+    @TimedAction("request_email_change")
+    @AuditAction(action = "REQUEST_EMAIL_CHANGE", resourceType = "USER_PROFILE")
     public void requestEmailChange(RequestEmailChangeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
         User user = findBySub(cognitoSub);
@@ -145,6 +157,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("isAuthenticated()")
+    @LogExecution
+    @TimedAction("confirm_email_change")
     public UserProfileResponse confirmEmailChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
         cognitoService.verifyUserAttribute(requireAccessToken(), "email", request.getCode());
@@ -163,6 +177,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("isAuthenticated()")
+    @LogExecution
+    @TimedAction("request_phone_change")
+    @AuditAction(action = "REQUEST_PHONE_CHANGE", resourceType = "USER_PROFILE")
     public void requestPhoneChange(RequestPhoneChangeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
         User user = findBySub(cognitoSub);
@@ -181,6 +198,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("isAuthenticated()")
+    @LogExecution
+    @TimedAction("confirm_phone_change")
     public UserProfileResponse confirmPhoneChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
         cognitoService.verifyUserAttribute(requireAccessToken(), "phone_number", request.getCode());
@@ -199,6 +218,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority('NURSE:READ')")
+    @LogExecution
+    @TimedAction("get_nurse_profile")
     public NurseProfileResponse getNurseProfile() {
         String cognitoSub = getCurrentSubOrThrow();
         NurseProfileResponse cached = userCacheService.getNurseProfile(cognitoSub).orElse(null);
@@ -218,6 +239,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @PreAuthorize("isAuthenticated()")
+    @LogExecution
+    @TimedAction("upload_avatar")
+    @AuditAction(action = "UPLOAD_AVATAR", resourceType = "USER_PROFILE")
     public String uploadAvatar(MultipartFile file) {
         String cognitoSub = getCurrentSubOrThrow();
         User user = findBySub(cognitoSub);

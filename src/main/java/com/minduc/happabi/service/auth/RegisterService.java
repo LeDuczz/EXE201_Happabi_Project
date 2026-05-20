@@ -11,10 +11,12 @@ import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.RoleRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.user.UserCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,9 +45,11 @@ public class RegisterService {
     private final RoleRepository roleRepository;
     private final CognitoService cognitoService;
     private final UserProviderService userProviderService;
-    private final AuthMetricsService authMetrics;
     private final UserCacheService userCacheService;
 
+    @TimedAction("auth_register")
+    @AuditAction(action = "REGISTER", resourceType = "USER")
+    @LogExecution
     @Transactional
     public void register(RegisterRequest request) {
         if (!LOCAL_ALLOWED_ROLES.contains(request.getRole())) {
@@ -73,12 +77,10 @@ public class RegisterService {
         String cognitoSub = signUpToCognito(request);
         createNewLocalUser(request, userRole, cognitoSub);
 
-        authMetrics.recordRegisterSuccess(request.getRole().name());
         log.info("[Auth] User registered: phone={} role={}", request.getPhone(), request.getRole());
     }
 
     private void handleExistingSocialUserAsLocalRegistration() {
-        authMetrics.recordRegisterFailure("LOCAL_PASSWORD_NOT_SET");
         throw new AppException(AuthErrorCode.AUTH_FAILED,
                 "This phone number belongs to a social account. Please sign in first, verify the phone on that " +
                         "account, then create a local password before registering the NURSE role.");
@@ -93,7 +95,6 @@ public class RegisterService {
         try {
             cognitoService.adminInitiateAuth(requireMasterUsername(existing), request.getPassword());
         } catch (NotAuthorizedException e) {
-            authMetrics.recordRegisterFailure("INVALID_CREDENTIALS_FOR_ROLE_ADD");
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS,
                     "Số điện thoại đã tồn tại. Vui lòng nhập đúng mật khẩu để thêm vai trò mới.");
         }
@@ -107,7 +108,6 @@ public class RegisterService {
         evictUserCache(existing);
         log.info("[Auth] Existing user {} assigned new role {} via phone verification",
                 existing.getId(), request.getRole());
-        authMetrics.recordRegisterSuccess(request.getRole().name());
     }
 
     private String signUpToCognito(RegisterRequest request) {
@@ -117,13 +117,10 @@ public class RegisterService {
                     request.getPhone(), cognitoSub, request.getRole());
             return cognitoSub;
         } catch (UsernameExistsException e) {
-            authMetrics.recordRegisterFailure("PHONE_ALREADY_EXISTS");
             throw new AppException(AuthErrorCode.PHONE_ALREADY_EXISTS);
         } catch (InvalidPasswordException e) {
-            authMetrics.recordRegisterFailure("PASSWORD_POLICY_VIOLATED");
             throw new AppException(AuthErrorCode.PASSWORD_POLICY_VIOLATED);
         } catch (CognitoIdentityProviderException e) {
-            authMetrics.recordRegisterFailure("COGNITO_ERROR");
             log.error("[Auth] Cognito signUp error: {}", e.awsErrorDetails().errorMessage(), e);
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS, e.awsErrorDetails().errorMessage());
         }
@@ -145,6 +142,9 @@ public class RegisterService {
         userProviderService.createProfileForRole(newUser, request.getRole());
     }
 
+    @TimedAction("auth_otp_verify")
+    @AuditAction(action = "VERIFY_OTP", resourceType = "USER")
+    @LogExecution
     public void verifyOtp(VerifyOtpRequest request) {
         try {
             cognitoService.confirmSignUp(request.getPhone(), request.getOtpCode());
@@ -155,30 +155,27 @@ public class RegisterService {
             });
 
             log.info("[Auth] OTP verified ok: phone={}", request.getPhone());
-            authMetrics.recordOtpVerifySuccess();
 
         } catch (CodeMismatchException e) {
-            authMetrics.recordOtpVerifyFailure("CODE_MISMATCH");
             throw new AppException(AuthErrorCode.OTP_INVALID);
         } catch (ExpiredCodeException e) {
-            authMetrics.recordOtpVerifyFailure("CODE_EXPIRED");
             throw new AppException(AuthErrorCode.OTP_EXPIRED);
         } catch (NotAuthorizedException e) {
-            authMetrics.recordOtpVerifyFailure("ALREADY_CONFIRMED");
             throw new AppException(AuthErrorCode.USER_ALREADY_CONFIRMED);
         } catch (CognitoIdentityProviderException e) {
-            authMetrics.recordOtpVerifyFailure("COGNITO_ERROR");
             log.error("[Auth] confirmSignUp error: {}", e.awsErrorDetails().errorMessage(), e);
             throw new AppException(AuthErrorCode.OTP_INVALID, e.awsErrorDetails().errorMessage());
         }
     }
 
+    @TimedAction("auth_otp_resend")
+    @LogExecution
+    @AuditAction(action = "RESEND_OTP", resourceType = "USER")
     public void resendOtp(ResendOtpRequest request) {
         try {
             cognitoService.resendConfirmationCode(request.getPhone());
 
             log.info("[Auth] OTP resent: phone={}", request.getPhone());
-            authMetrics.recordOtpResend();
 
         } catch (UserNotFoundException e) {
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
@@ -190,7 +187,10 @@ public class RegisterService {
         }
     }
 
+    @TimedAction("auth_local_password_create")
     @Transactional
+    @LogExecution
+    @AuditAction(action = "CREATE_LOCAL_PASSWORD", resourceType = "USER")
     public void createLocalPassword(CreateLocalPasswordRequest request) {
         String cognitoSub = AuthUtils.getCurrentSub()
                 .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED));
@@ -211,10 +211,8 @@ public class RegisterService {
         try {
             cognitoService.adminSetPermanentPassword(masterUsername, request.getPassword());
         } catch (InvalidPasswordException e) {
-            authMetrics.recordRegisterFailure("PASSWORD_POLICY_VIOLATED");
             throw new AppException(AuthErrorCode.PASSWORD_POLICY_VIOLATED);
         } catch (CognitoIdentityProviderException e) {
-            authMetrics.recordRegisterFailure("CREATE_LOCAL_PASSWORD_COGNITO_ERROR");
             log.error("[Auth] Failed to create local password for user {}: {}",
                     user.getId(), e.awsErrorDetails().errorMessage(), e);
             throw new AppException(AuthErrorCode.AUTH_FAILED, e.awsErrorDetails().errorMessage());

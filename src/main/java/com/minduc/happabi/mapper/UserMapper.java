@@ -1,7 +1,7 @@
 package com.minduc.happabi.mapper;
 
-import com.minduc.happabi.dto.response.user.MotherProfileResponse;
-import com.minduc.happabi.dto.response.user.NurseProfileResponse;
+import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
+import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.entity.MotherProfile;
 import com.minduc.happabi.entity.NurseProfile;
@@ -60,6 +60,8 @@ public class UserMapper {
                 .phone(n.getUser().getPhone())
                 .email(n.getUser().getEmail())
                 .dayOfBirth(n.getDateOfBirth() != null ? n.getDateOfBirth().toString() : null)
+                .address(n.getAddress())
+                .city(n.getCity())
                 .avatarUrl(avatarUrl)
                 .build();
     }

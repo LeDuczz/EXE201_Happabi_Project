@@ -6,7 +6,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -41,20 +40,17 @@ public class NurseKyc {
     @Column(name = "cccd_address", columnDefinition = "TEXT")
     private String cccdAddress;
 
-    @Column(name = "ocr_confidence", precision = 5, scale = 2)
-    private BigDecimal ocrConfidence;
-
-    @Column(name = "face_match_score", precision = 5, scale = 2)
-    private BigDecimal faceMatchScore;
-
     @Column(name = "cccd_front_s3_key", length = 500)
     private String cccdFrontS3Key;
 
     @Column(name = "cccd_back_s3_key", length = 500)
     private String cccdBackS3Key;
 
-    @Column(name = "selfie_s3_key", length = 500)
-    private String selfieS3Key;
+    @Column(name = "cccd_images_delete_after")
+    private OffsetDateTime cccdImagesDeleteAfter;
+
+    @Column(name = "cccd_images_deleted_at")
+    private OffsetDateTime cccdImagesDeletedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "ekyc_status", nullable = false)
@@ -70,9 +66,6 @@ public class NurseKyc {
 
     @Column(name = "review_note", columnDefinition = "TEXT")
     private String reviewNote;
-
-    @Column(name = "processed_at")
-    private OffsetDateTime processedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -103,7 +96,6 @@ public class NurseKyc {
                 ", cccdDob=" + cccdDob +
                 ", ekycStatus=" + ekycStatus +
                 ", reviewedAt=" + reviewedAt +
-                ", processedAt=" + processedAt +
                 ", createdAt=" + createdAt +
                 '}';
     }

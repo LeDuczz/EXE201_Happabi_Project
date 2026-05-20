@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.enums.UserRole;
+import com.minduc.happabi.observability.metrics.MetricsRecorder;
 import com.minduc.happabi.repository.RolePermissionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -27,22 +29,27 @@ public class PermissionCacheService {
     private final RolePermissionRepository rolePermissionRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
+    private final MetricsRecorder metricsRecorder;
 
     public List<String> getPermissions(String roleName) {
         String redisKey = CACHE_KEY_PREFIX + roleName;
 
-        String cached = readFromRedis(redisKey);
+        RedisRead redisRead = readFromRedis(redisKey);
+        String cached = redisRead.value();
         if (cached != null && !cached.isBlank()) {
             try {
                 List<String> permissions = objectMapper.readValue(cached, new TypeReference<List<String>>() {});
+                record("read", "hit", "none");
                 log.debug("[PermissionCache] Redis HIT for role: {}", roleName);
                 return permissions;
             } catch (JsonProcessingException e) {
+                record("read", "fallback_db", "corrupt_value");
                 log.warn("[PermissionCache] Failed to parse cached permissions for role: {}", roleName, e);
                 safeDelete(redisKey);
             }
         }
 
+        record("read", "fallback_db", redisRead.reason());
         log.debug("[PermissionCache] Redis MISS for role: {}. Querying DB...", roleName);
 
         UserRole role;
@@ -79,6 +86,7 @@ public class PermissionCacheService {
         try (Cursor<String> cursor = stringRedisTemplate.scan(scanOptions)) {
             cursor.forEachRemaining(keysToDelete::add);
         } catch (RuntimeException e) {
+            record("scan", "failure", "redis_error");
             log.warn("[PermissionCache] Redis scan failed while evicting all role permission caches", e);
             return;
         }
@@ -89,18 +97,21 @@ public class PermissionCacheService {
 
         try {
             stringRedisTemplate.delete(keysToDelete);
+            record("delete", "success", "none");
             log.info("[PermissionCache] Evicted all role permission caches ({} keys)", keysToDelete.size());
         } catch (RuntimeException e) {
+            record("delete", "failure", "redis_error");
             log.warn("[PermissionCache] Redis bulk delete failed while evicting all role permission caches", e);
         }
     }
 
-    private String readFromRedis(String redisKey) {
+    private RedisRead readFromRedis(String redisKey) {
         try {
-            return stringRedisTemplate.opsForValue().get(redisKey);
+            String value = stringRedisTemplate.opsForValue().get(redisKey);
+            return new RedisRead(value, value == null ? "miss" : "none");
         } catch (RuntimeException e) {
             log.warn("[PermissionCache] Redis read failed for key={}", redisKey, e);
-            return null;
+            return new RedisRead(null, "redis_error");
         }
     }
 
@@ -115,8 +126,10 @@ public class PermissionCacheService {
 
         try {
             stringRedisTemplate.opsForValue().set(redisKey, json, CACHE_TTL);
+            record("write", "success", "none");
             log.info("[PermissionCache] Cached {} permissions for role: {}", permissions.size(), roleName);
         } catch (RuntimeException e) {
+            record("write", "failure", "redis_error");
             log.warn("[PermissionCache] Redis write failed for key={}", redisKey, e);
         }
     }
@@ -124,10 +137,24 @@ public class PermissionCacheService {
     private boolean safeDelete(String redisKey) {
         try {
             stringRedisTemplate.delete(redisKey);
+            record("delete", "success", "none");
             return true;
         } catch (RuntimeException e) {
+            record("delete", "failure", "redis_error");
             log.warn("[PermissionCache] Redis delete failed for key={}", redisKey, e);
             return false;
         }
     }
+
+    private void record(String operation, String result, String reason) {
+        metricsRecorder.increment("happabi.cache.operations", Map.of(
+                "cache", "role_permissions",
+                "profile", "none",
+                "operation", operation,
+                "result", result,
+                "reason", reason
+        ));
+    }
+
+    private record RedisRead(String value, String reason) {}
 }

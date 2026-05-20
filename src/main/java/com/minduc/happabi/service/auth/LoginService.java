@@ -9,8 +9,10 @@ import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.mapper.UserMapper;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.metrics.AuthMetricsService;
 import com.minduc.happabi.service.s3.S3Service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,10 +38,12 @@ public class LoginService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final S3Service s3ServiceImpl;
-    private final AuthMetricsService authMetrics;
     private final TokenBlacklistService tokenBlacklistService;
     private final CognitoService cognitoService;
 
+    @LogExecution
+    @TimedAction("auth_login")
+    @AuditAction(action = "LOGIN", resourceType = "USER_SESSION")
     @Transactional
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
         try {
@@ -75,8 +79,6 @@ public class LoginService {
             UserProfileResponse profile = userMapper.toProfileResponse(user, avatarUrl);
 
             log.info("[Auth] Login ok: phone={} portal={}", request.getPhone(), request.getPortalRole());
-            authMetrics.recordLoginSuccess(request.getPortalRole() != null ?
-                    request.getPortalRole().name() : "UNKNOWN", "LOCAL");
 
             return AuthResponse.builder()
                     .accessToken(result.accessToken())
@@ -85,25 +87,25 @@ public class LoginService {
                     .build();
 
         } catch (NotAuthorizedException e) {
-            authMetrics.recordLoginFailure("INVALID_CREDENTIALS");
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS);
         } catch (UserNotConfirmedException e) {
-            authMetrics.recordLoginFailure("NOT_CONFIRMED");
             throw new AppException(AuthErrorCode.USER_NOT_CONFIRMED);
         } catch (UserNotFoundException e) {
-            authMetrics.recordLoginFailure("USER_NOT_FOUND");
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
         } catch (CognitoIdentityProviderException e) {
-            authMetrics.recordLoginFailure("COGNITO_ERROR");
-            log.error("[Auth] initiateAuth error: {}", e.awsErrorDetails().errorMessage(), e);
+            log.warn("[Auth] Cognito login rejected: status={} code={}",
+                    e.statusCode(), e.awsErrorDetails().errorCode());
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS, e.awsErrorDetails().errorMessage());
         }
     }
 
+    @TimedAction("auth_refresh")
+    @AuditAction(action = "REFRESH_TOKEN", resourceType = "USER_SESSION")
+    @LogExecution
     public AuthResponse refresh(HttpServletRequest request) {
         String cookieValue = CookieUtils.readRefreshTokenFromCookie(request);
         if (cookieValue == null || !cookieValue.contains("::")) {
-            log.error("[Auth] Refresh token cookie is missing or invalid. Cookie value: {}", cookieValue);
+            log.warn("[Auth] Refresh token cookie is missing or invalid.");
             throw new AppException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
 
@@ -125,14 +127,18 @@ public class LoginService {
                     .build();
 
         } catch (NotAuthorizedException e) {
-            log.error("[Auth] refresh NotAuthorizedException: {}", e.awsErrorDetails().errorMessage());
+            log.warn("[Auth] Refresh token rejected by Cognito: code={}", e.awsErrorDetails().errorCode());
             throw new AppException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         } catch (CognitoIdentityProviderException e) {
-            log.error("[Auth] refresh Cognito error: {}", e.awsErrorDetails().errorMessage(), e);
+            log.warn("[Auth] Cognito refresh rejected: status={} code={}",
+                    e.statusCode(), e.awsErrorDetails().errorCode());
             throw new AppException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
     }
 
+    @LogExecution
+    @TimedAction("auth_logout")
+    @AuditAction(action = "LOGOUT", resourceType = "USER_SESSION")
     public void logout(String accessToken, HttpServletRequest request, HttpServletResponse response) {
         String cookieValue = CookieUtils.readRefreshTokenFromCookie(request);
 

@@ -2,6 +2,9 @@ package com.minduc.happabi.service.sqs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.dto.message.S3ObjectDeleteMessage;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

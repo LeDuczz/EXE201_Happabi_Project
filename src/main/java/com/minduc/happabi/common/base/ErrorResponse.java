@@ -21,10 +21,7 @@ public class ErrorResponse {
     @Builder.Default
     Instant timestamp = Instant.now();
 
-    /** Present only for VALIDATION_FAILED — list of field-level errors */
     List<FieldError> errors;
-
-    // ─── Factory methods ───────────────────────────────────────────────────────
 
     public static ErrorResponse of(ServiceErrorCode errorCode, String path) {
         return ErrorResponse.builder()
@@ -56,17 +53,12 @@ public class ErrorResponse {
                 .build();
     }
 
-    // ─── Nested: field-level validation error ─────────────────────────────────
-
     @Getter
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class FieldError {
-        /** Dot-notation field path, e.g. "address.city" */
         String field;
-        /** Rejected value (optional — omit sensitive data) */
         Object rejectedValue;
-        /** Validation constraint message */
         String message;
 
         public static FieldError of(String field, String message) {
