@@ -10,8 +10,8 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum NurseWalletErrorCode implements ServiceErrorCode {
-    NURSE_WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Nurse wallet not found")
-
+    NURSE_WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Nurse wallet not found"),
+    CASH_BOOKING_ACCEPTANCE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Nurse booking acceptance error");
     ;
     HttpStatus httpStatus;
     String message;

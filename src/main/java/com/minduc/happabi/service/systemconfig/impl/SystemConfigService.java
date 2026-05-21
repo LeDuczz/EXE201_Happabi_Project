@@ -5,7 +5,6 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.repository.SystemConfigRepository;
 import com.minduc.happabi.service.systemconfig.ISystemConfigService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -29,22 +28,11 @@ public class SystemConfigService implements ISystemConfigService {
     @LogExecution
     @CacheEvict(value = "app_config", key = "#key")
     public void updateConfig(String key, String newValue, String adminId) {
-        SystemConfig config = systemConfigRepository.findById(UUID.fromString(key)).orElse(new SystemConfig());
+        SystemConfig config = systemConfigRepository.findById(key).orElse(new SystemConfig());
         config.setConfigKey(key);
         config.setConfigValue(newValue);
         config.setUpdatedBy(UUID.fromString(adminId));
         systemConfigRepository.save(config);
     }
 
-
-
-    @LogExecution
-    public BigDecimal getPlatformFeeRate() {
-        String rateStr = getConfigValue("PLATFORM_FEE_RATE", "0.10");
-        try {
-            return new BigDecimal(rateStr);
-        } catch (NumberFormatException e) {
-            return new BigDecimal("0.10");
-        }
-    }
 }

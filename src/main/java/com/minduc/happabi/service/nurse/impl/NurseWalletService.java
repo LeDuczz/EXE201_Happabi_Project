@@ -11,6 +11,7 @@ import com.minduc.happabi.service.nurse.INurseWalletService;
 import com.minduc.happabi.service.systemconfig.ISystemConfigService;
 import com.minduc.happabi.service.systemconfig.impl.SystemConfigService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -30,11 +31,15 @@ public class NurseWalletService implements INurseWalletService {
     public boolean canAcceptCashBooking(String nurseId, BigDecimal bookingAmount) {
         NurseWallet wallet = nurseWalletRepository.findById(UUID.fromString(nurseId))
                 .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
+        BigDecimal feeRate, requiredFee, totalAvailable;
 
-        BigDecimal feeRate = systemConfigService.getPlatformFeeRate();
-        BigDecimal requiredFee = bookingAmount.multiply(feeRate);
-
-        BigDecimal totalAvailable = wallet.getBalance().add(wallet.getDepositBalance());
+        try {
+             feeRate = new BigDecimal(systemConfigService.getConfigValue("PLATFORM_FEE_RATE", "0.10"));
+             requiredFee = bookingAmount.multiply(feeRate);
+             totalAvailable = wallet.getBalance().add(wallet.getDepositBalance());
+        } catch (Exception e) {
+            throw new AppException(NurseWalletErrorCode.CASH_BOOKING_ACCEPTANCE_ERROR, e.getMessage());
+        }
         return totalAvailable.compareTo(requiredFee) >= 0;
     }
 }

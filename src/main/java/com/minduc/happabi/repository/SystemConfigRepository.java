@@ -9,6 +9,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface SystemConfigRepository extends JpaRepository<SystemConfig, UUID> {
+public interface SystemConfigRepository extends JpaRepository<SystemConfig, String> {
     Optional<SystemConfig> findByConfigKey(String id);
 }
