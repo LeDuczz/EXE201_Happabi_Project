@@ -34,7 +34,6 @@
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 		<spotless.version>2.43.0</spotless.version>
 		<spring-cloud.version>2023.0.1</spring-cloud.version>
-		<spring-ai.version>1.0.3</spring-ai.version>
 	</properties>
 
 	<!--  📦 Các dependency chính  -->
@@ -53,10 +52,6 @@
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-test</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-starter-model-openai</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
@@ -354,13 +349,6 @@
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
 				<version>${spring-cloud.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework.ai</groupId>
-				<artifactId>spring-ai-bom</artifactId>
-				<version>${spring-ai.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>

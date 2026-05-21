@@ -17,8 +17,17 @@ public class RuleBasedModelRouter implements ModelRouter {
     @Value("${ai-chat.models.fast:gpt-4o-mini}")
     private String fastModel;
 
+    @Value("${openrouter.enabled:true}")
+    private boolean openRouterEnabled;
+
+    @Value("${openrouter.model:openrouter/auto}")
+    private String openRouterModel;
+
     @Override
     public String route(ChatIntent intent, String userMessage) {
+        if (openRouterEnabled) {
+            return openRouterModel;
+        }
         if (intent == ChatIntent.MEDICAL_GUIDANCE) {
             return reasoningModel;
         }

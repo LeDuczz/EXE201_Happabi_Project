@@ -48,22 +48,6 @@ spring:
   elasticsearch:
     uris: ${SPRING_ELASTICSEARCH_URIS}
 
-  ai:
-    model:
-      chat: ${AI_CHAT_MODEL_PROVIDER:openai}
-      audio:
-        speech: ${AI_AUDIO_SPEECH_PROVIDER:openai}
-        transcription: ${AI_AUDIO_TRANSCRIPTION_PROVIDER:openai}
-      embedding: ${AI_EMBEDDING_PROVIDER:openai}
-      image: ${AI_IMAGE_PROVIDER:openai}
-      moderation: ${AI_MODERATION_PROVIDER:openai}
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
-      chat:
-        options:
-          model: ${AI_CHAT_DEFAULT_MODEL:gpt-4o-mini}
-
 server:
   port: ${SERVER_PORT}
 
@@ -200,8 +184,23 @@ openai:
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
   model: ${OPENAI_VISION_MODEL:gpt-4o-mini}
 
+openrouter:
+  enabled: ${OPENROUTER_ENABLED:true}
+  api-key: ${OPENROUTER_API_KEY:}
+  base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+  model: ${OPENROUTER_MODEL:openrouter/auto}
+  temperature: ${OPENROUTER_TEMPERATURE:0.2}
+  site-url: ${OPENROUTER_SITE_URL:https://happabi.vn}
+  app-name: ${OPENROUTER_APP_NAME:Happabi}
+
 ai-chat:
   models:
     default: ${AI_CHAT_DEFAULT_MODEL:gpt-4o-mini}
     reasoning: ${AI_CHAT_REASONING_MODEL:gpt-4o-mini}
     fast: ${AI_CHAT_FAST_MODEL:gpt-4o-mini}
+  rag:
+    embedding-model: ${AI_CHAT_RAG_EMBEDDING_MODEL:text-embedding-3-small}
+    embedding-dimension: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:1536}
+    pgvector:
+      enabled: ${AI_CHAT_RAG_PGVECTOR_ENABLED:true}
+      initialize-schema: ${AI_CHAT_RAG_PGVECTOR_INITIALIZE_SCHEMA:true}
