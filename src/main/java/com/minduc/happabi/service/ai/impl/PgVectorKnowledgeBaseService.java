@@ -2,22 +2,23 @@ package com.minduc.happabi.service.ai.impl;
 
 import com.minduc.happabi.dto.request.ai.UpsertKnowledgeChunkRequest;
 import com.minduc.happabi.dto.response.ai.KnowledgeChunkResponse;
-import com.minduc.happabi.service.ai.EmbeddingClient;
 import com.minduc.happabi.service.ai.KnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
 
-    private final JdbcTemplate jdbcTemplate;
-    private final EmbeddingClient embeddingClient;
+    private final VectorStore vectorStore;
 
     @Override
     @Transactional
@@ -31,23 +32,15 @@ public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
                 ? "vi"
                 : request.getLanguage().trim();
         boolean verified = request.getVerified() == null || request.getVerified();
-        String embedding = PgVectorRagRetrievalService.toVectorLiteral(embeddingClient.embed(title + "\n\n" + content));
 
-        jdbcTemplate.update("""
-                        INSERT INTO ai_knowledge_chunks (
-                            knowledge_chunk_id, title, content, source_type, source_id,
-                            language, verified, embedding, created_at, updated_at
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?::vector, now(), now())
-                        """,
-                id,
-                title,
-                content,
-                sourceType,
-                sourceId,
-                language,
-                verified,
-                embedding);
+        vectorStore.add(List.of(new Document(content, Map.of(
+                "knowledgeChunkId", id.toString(),
+                "title", title,
+                "sourceType", sourceType == null ? "" : sourceType,
+                "sourceId", sourceId == null ? "" : sourceId,
+                "language", language,
+                "verified", verified
+        ))));
 
         OffsetDateTime now = OffsetDateTime.now();
         return KnowledgeChunkResponse.builder()

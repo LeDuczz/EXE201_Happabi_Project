@@ -1,61 +1,71 @@
 package com.minduc.happabi.service.ai.impl;
 
 import com.minduc.happabi.service.ai.ChatIntent;
-import com.minduc.happabi.service.ai.EmbeddingClient;
 import com.minduc.happabi.service.ai.RagDocument;
 import com.minduc.happabi.service.ai.RagRetrievalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PgVectorRagRetrievalService implements RagRetrievalService {
 
-    private final JdbcTemplate jdbcTemplate;
-    private final EmbeddingClient embeddingClient;
+    private final VectorStore vectorStore;
 
     @Override
     public List<RagDocument> retrieve(String query, ChatIntent intent, int topK) {
         try {
-            String vectorLiteral = toVectorLiteral(embeddingClient.embed(query));
-            return jdbcTemplate.query("""
-                            SELECT title,
-                                   content,
-                                   COALESCE(source_type, '') || COALESCE(':' || source_id, '') AS source,
-                                   1 - (embedding <=> ?::vector) AS score
-                            FROM ai_knowledge_chunks
-                            WHERE verified = TRUE
-                            ORDER BY embedding <=> ?::vector
-                            LIMIT ?
-                            """,
-                    (rs, rowNum) -> RagDocument.builder()
-                            .title(rs.getString("title"))
-                            .content(rs.getString("content"))
-                            .source(rs.getString("source"))
-                            .score(rs.getDouble("score"))
-                            .build(),
-                    vectorLiteral,
-                    vectorLiteral,
-                    topK);
+            return vectorStore.similaritySearch(SearchRequest.builder()
+                            .query(query)
+                            .topK(topK)
+                            .build())
+                    .stream()
+                    .filter(this::isVerified)
+                    .map(this::toRagDocument)
+                    .toList();
         } catch (RuntimeException e) {
             log.warn("[AI_RAG] Vector retrieval failed, continuing without RAG context: {}", e.getMessage());
             return List.of();
         }
     }
 
-    static String toVectorLiteral(List<Double> values) {
-        StringBuilder builder = new StringBuilder("[");
-        for (int i = 0; i < values.size(); i++) {
-            if (i > 0) {
-                builder.append(',');
-            }
-            builder.append(values.get(i));
+    private RagDocument toRagDocument(Document document) {
+        Map<String, Object> metadata = document.getMetadata();
+        return RagDocument.builder()
+                .title(stringMetadata(metadata, "title"))
+                .content(document.getText())
+                .source(buildSource(metadata))
+                .score(null)
+                .build();
+    }
+
+    private boolean isVerified(Document document) {
+        Object verified = document.getMetadata().get("verified");
+        return verified == null || Boolean.parseBoolean(String.valueOf(verified));
+    }
+
+    private String buildSource(Map<String, Object> metadata) {
+        String sourceType = stringMetadata(metadata, "sourceType");
+        String sourceId = stringMetadata(metadata, "sourceId");
+        if (sourceType == null || sourceType.isBlank()) {
+            return sourceId;
         }
-        return builder.append(']').toString();
+        if (sourceId == null || sourceId.isBlank()) {
+            return sourceType;
+        }
+        return sourceType + ":" + sourceId;
+    }
+
+    private String stringMetadata(Map<String, Object> metadata, String key) {
+        Object value = metadata.get(key);
+        return value == null ? null : String.valueOf(value);
     }
 }

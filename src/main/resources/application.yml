@@ -48,6 +48,29 @@ spring:
   elasticsearch:
     uris: ${SPRING_ELASTICSEARCH_URIS}
 
+  ai:
+    model:
+      chat: none
+      audio:
+        speech: none
+        transcription: none
+      embedding: openai
+      image: none
+      moderation: none
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      embedding:
+        options:
+          model: ${AI_CHAT_RAG_EMBEDDING_MODEL:text-embedding-3-small}
+    vectorstore:
+      pgvector:
+        initialize-schema: ${AI_CHAT_RAG_PGVECTOR_INITIALIZE_SCHEMA:true}
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:1536}
+        max-document-batch-size: ${AI_CHAT_RAG_PGVECTOR_BATCH_SIZE:10000}
+
 server:
   port: ${SERVER_PORT}
 
@@ -201,6 +224,3 @@ ai-chat:
   rag:
     embedding-model: ${AI_CHAT_RAG_EMBEDDING_MODEL:text-embedding-3-small}
     embedding-dimension: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:1536}
-    pgvector:
-      enabled: ${AI_CHAT_RAG_PGVECTOR_ENABLED:true}
-      initialize-schema: ${AI_CHAT_RAG_PGVECTOR_INITIALIZE_SCHEMA:true}
