@@ -1,13 +1,26 @@
 package com.minduc.happabi.dto.response.ai;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public record ConversationResponse(
-        UUID id,
-        UUID userId,
-        String title,
-        OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
-) {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ConversationResponse {
+
+    private UUID id;
+
+    private UUID userId;
+
+    private String title;
+
+    private OffsetDateTime createdAt;
+
+    private OffsetDateTime updatedAt;
 }

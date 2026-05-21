@@ -52,7 +52,7 @@ public class AiChatServiceImpl implements AiChatService {
     @PreAuthorize("isAuthenticated()")
     public ConversationResponse createConversation(CreateConversationRequest request) {
         User user = getCurrentUser();
-        String title = request == null ? null : request.title();
+        String title = request == null ? null : request.getTitle();
         return chatHistoryService.createConversation(user.getId(), title);
     }
 
@@ -73,7 +73,7 @@ public class AiChatServiceImpl implements AiChatService {
     @Override
     @PreAuthorize("isAuthenticated()")
     public AiChatResponse sendMessage(UUID conversationId, SendAiMessageRequest request) {
-        String userText = normalizeMessage(request == null ? null : request.message());
+        String userText = normalizeMessage(request == null ? null : request.getMessage());
         User user = getCurrentUser();
         Conversation conversation = chatHistoryService.requireConversation(conversationId, user.getId());
 

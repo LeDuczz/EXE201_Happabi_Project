@@ -1,11 +1,23 @@
 package com.minduc.happabi.dto.response.ai;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
-public record AiChatResponse(
-        UUID conversationId,
-        AiMessageResponse userMessage,
-        AiMessageResponse assistantMessage,
-        String modelUsed
-) {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AiChatResponse {
+
+    private UUID conversationId;
+
+    private AiMessageResponse userMessage;
+
+    private AiMessageResponse assistantMessage;
+
+    private String modelUsed;
 }

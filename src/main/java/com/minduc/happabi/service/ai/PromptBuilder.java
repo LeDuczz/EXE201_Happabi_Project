@@ -14,8 +14,8 @@ public class PromptBuilder {
         String context = contextDocuments.isEmpty()
                 ? "No verified RAG context was found for this question."
                 : contextDocuments.stream()
-                        .map(doc -> "- " + safe(doc.title()) + ": " + safe(doc.content())
-                                + (doc.source() == null ? "" : " Source: " + doc.source()))
+                        .map(doc -> "- " + safe(doc.getTitle()) + ": " + safe(doc.getContent())
+                                + (doc.getSource() == null ? "" : " Source: " + doc.getSource()))
                         .collect(Collectors.joining("\n"));
 
         return """
