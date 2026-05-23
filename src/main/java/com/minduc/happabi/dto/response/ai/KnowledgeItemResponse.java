@@ -1,7 +1,7 @@
 package com.minduc.happabi.dto.response.ai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.minduc.happabi.enums.ChatRole;
+import com.minduc.happabi.enums.KnowledgeStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,19 +15,29 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class AiMessageResponse {
+public class KnowledgeItemResponse {
 
     private UUID id;
 
-    private ChatRole role;
+    private String question;
 
-    private String content;
+    private String answer;
 
-    private String modelUsed;
+    private String context;
 
-    private Integer inputTokens;
+    private String title;
 
-    private Integer outputTokens;
+    private String sourceType;
+
+    private String sourceId;
+
+    private String language;
+
+    private KnowledgeStatus status;
+
+    private Boolean vectorIndexed;
 
     private OffsetDateTime createdAt;
+
+    private OffsetDateTime updatedAt;
 }

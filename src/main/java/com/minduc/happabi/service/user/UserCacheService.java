@@ -37,7 +37,8 @@ public class UserCacheService {
     }
 
     public Optional<MotherProfileResponse> getMotherProfile(String cognitoSub) {
-        return get("mother", cacheKey("mother", cognitoSub), MotherProfileResponse.class);
+        return get("mother", cacheKey("mother", cognitoSub),
+                MotherProfileResponse.class);
     }
 
     public void putMotherProfile(String cognitoSub, MotherProfileResponse response) {

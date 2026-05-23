@@ -11,6 +11,14 @@ public class UpsertKnowledgeChunkRequest {
     @Size(max = 240, message = "Title must be at most 240 characters.")
     private String title;
 
+    @NotBlank(message = "Question is required.")
+    @Size(max = 4000, message = "Question must be at most 4000 characters.")
+    private String question;
+
+    @NotBlank(message = "Answer is required.")
+    @Size(max = 12000, message = "Answer must be at most 12000 characters.")
+    private String answer;
+
     @NotBlank(message = "Content is required.")
     @Size(max = 12000, message = "Content must be at most 12000 characters.")
     private String content;
