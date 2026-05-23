@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
+import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.time.OffsetDateTime;
 
@@ -50,7 +52,21 @@ public class SqsFileCleanupPublisher {
                     .build());
             log.info("[SQS] Published S3 delete message: key={} reason={}", key, reason);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Failed to serialize S3 delete message", e);
+            log.error("[SQS] Failed to serialize cleanup message for key={}", key, e);
+
+        } catch (SqsException e) {
+            log.warn("[SQS] AWS SQS rejected cleanup message. key={} statusCode={} message={}",
+                    key,
+                    e.statusCode(),
+                    e.awsErrorDetails().errorMessage());
+
+        } catch (SdkClientException e) {
+            log.warn("[SQS] Cannot connect to AWS SQS while publishing cleanup message. key={} error={}",
+                    key,
+                    e.getMessage());
+
+        } catch (Exception e) {
+            log.error("[SQS] Unexpected cleanup publish failure for key={}", key, e);
         }
     }
 }

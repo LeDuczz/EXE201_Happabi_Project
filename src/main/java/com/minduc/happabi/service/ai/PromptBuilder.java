@@ -1,5 +1,6 @@
 package com.minduc.happabi.service.ai;
 
+import com.minduc.happabi.dto.document.RagDocument;
 import com.minduc.happabi.entity.ChatMessage;
 import com.minduc.happabi.enums.ChatRole;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,8 @@ public class PromptBuilder {
 
         return """
                 You are Happabi's AI assistant for mothers, nurses, and care coordination.
-                Answer in the user's language, with a calm and practical tone.
+                Always answer in Vietnamese, with a calm, warm, and practical tone for Vietnamese users.
+                Keep medicine names, product names, technical labels, or official terms unchanged when translating them would be unsafe or unnatural.
                 Use only verified context when giving Happabi platform facts.
                 For medical or baby-care questions, provide general guidance only and advise contacting a qualified doctor for urgent, risky, or diagnosis-specific cases.
                 Do not invent policies, prices, nurse availability, diagnoses, or treatment plans.

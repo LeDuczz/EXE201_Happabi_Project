@@ -10,21 +10,21 @@ import lombok.Data;
 @Data
 public class RegisterRequest {
 
-    @NotBlank(message = "Số điện thoại không được để trống.")
+    @NotBlank(message = "Phone number is required.")
     @Pattern(
             regexp = "^\\+84[3-9]\\d{8}$",
-            message = "Số điện thoại phải theo định dạng E.164 của Việt Nam (ví dụ: +84901234567)."
+            message = "Phone number must follow Vietnam E.164 format, for example +84901234567."
     )
     private String phone;
 
-    @NotBlank(message = "Mật khẩu không được để trống.")
-    @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự.")
+    @NotBlank(message = "Password is required.")
+    @Size(min = 8, message = "Password must be at least 8 characters.")
     private String password;
 
-    @NotBlank(message = "Họ tên không được để trống.")
-    @Size(max = 100, message = "Họ tên không được vượt quá 100 ký tự.")
+    @NotBlank(message = "Full name is required.")
+    @Size(max = 100, message = "Full name must not exceed 100 characters.")
     private String fullName;
 
-    @NotNull(message = "Role không được để trống.")
+    @NotNull(message = "Role is required.")
     private UserRole role;
 }

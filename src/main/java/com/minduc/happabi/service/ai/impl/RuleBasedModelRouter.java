@@ -8,24 +8,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class RuleBasedModelRouter implements ModelRouter {
 
-    @Value("${ai-chat.models.default:gpt-4o-mini}")
+    @Value("${ai-chat.models.default}")
     private String defaultModel;
 
-    @Value("${ai-chat.models.reasoning:gpt-4o-mini}")
+    @Value("${ai-chat.models.reasoning}")
     private String reasoningModel;
 
-    @Value("${ai-chat.models.fast:gpt-4o-mini}")
+    @Value("${ai-chat.models.fast}")
     private String fastModel;
 
-    @Value("${openrouter.enabled:true}")
-    private boolean openRouterEnabled;
+    @Value("${ai-chat.provider:openrouter}")
+    private String aiChatProvider;
 
     @Value("${openrouter.model:openrouter/auto}")
     private String openRouterModel;
 
     @Override
     public String route(ChatIntent intent, String userMessage) {
-        if (openRouterEnabled) {
+        if ("openrouter".equalsIgnoreCase(aiChatProvider)) {
             return openRouterModel;
         }
         if (intent == ChatIntent.MEDICAL_GUIDANCE) {
