@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "wallet_transaction")
@@ -24,7 +25,7 @@ public class WalletTransaction {
     private String id;
 
     @Column(name = "nurse_id", nullable = false, length = 50)
-    private String nurseId;
+    private UUID nurseId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false, length = 20)
@@ -46,7 +47,7 @@ public class WalletTransaction {
     private TransactionStatus status;
 
     @Column(name = "reference_id", length = 100)
-    private String referenceId;
+    private long referenceId;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface NurseWalletRepository extends JpaRepository<NurseWallet, UUID> {
     Optional<NurseWallet> findById(UUID id);
+    Optional<NurseWallet> findByNurseId(UUID nurseId);
 }

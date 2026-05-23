@@ -185,9 +185,12 @@ openai:
   model: ${OPENAI_VISION_MODEL:gpt-4o-mini}
 
 
-
-# PAYOS
+# ========================
+# PayOs
+# ========================
 payos:
   client-id: ${PAYOS_CLIENT_ID}
   api-key: ${PAYOS_API_KEY}
   checksum-key: ${PAYOS_CHECKSUM_KEY}
+  return-url-success: ${RETURN_URL_SUCCESS}
+  return-url-fail: ${RETURN_URL_FAIL}

@@ -24,7 +24,7 @@ public class NurseWallet {
     private UUID id;
 
     @Column(name = "nurse_id", nullable = false, unique = true, length = 50)
-    private String nurseId;
+    private UUID nurseId;
 
     @Column(name = "balance", precision = 15, scale = 2, nullable = false)
     @Builder.Default
