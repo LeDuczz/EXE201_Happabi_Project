@@ -238,3 +238,14 @@ ai-chat:
     embedding-dimension: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:768}
     medium-threshold: ${AI_CHAT_RAG_MEDIUM_THRESHOLD:0.60}
     high-threshold: ${AI_CHAT_RAG_HIGH_THRESHOLD:0.85}
+    
+# ========================
+# PayOs
+# ========================
+payos:
+  client-id: ${PAYOS_CLIENT_ID}
+  api-key: ${PAYOS_API_KEY}
+  checksum-key: ${PAYOS_CHECKSUM_KEY}
+  return-url-success: ${RETURN_URL_SUCCESS}
+  return-url-fail: ${RETURN_URL_FAIL}
+
