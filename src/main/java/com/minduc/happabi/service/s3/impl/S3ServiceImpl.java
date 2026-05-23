@@ -1,14 +1,17 @@
-package com.minduc.happabi.service.s3;
+package com.minduc.happabi.service.s3.impl;
 
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.S3ErrorCode;
+import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
+import com.minduc.happabi.service.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -54,7 +57,8 @@ public class S3ServiceImpl implements S3Service {
 
     @Override
     @LogExecution
-    @TimedAction("upload_file_to_s3")
+    @AuditAction(action = "UPLOAD_FILE_TO_S3", resourceType = "S3_OBJECT")
+    @TimedAction("UPLOAD_FILE_TO_S3")
     public String upload(String folder, String ownerId, MultipartFile file) {
         validate(folder, file);
 
@@ -87,15 +91,25 @@ public class S3ServiceImpl implements S3Service {
                         "IAM user is missing s3:PutObject permission for bucket " + bucket);
             }
             throw new AppException(S3ErrorCode.UPLOAD_FAILED, e.awsErrorDetails().errorMessage());
+        } catch (SdkClientException e) {
+            log.warn("[S3] Storage connectivity issue: bucket={} key={} error={}",
+                    bucket, key, e.getMessage());
+
+            throw new AppException(
+                    S3ErrorCode.UPLOAD_FAILED,
+                    "Storage service temporarily unavailable"
+            );
+
         } catch (Exception e) {
-            log.error("[S3] Upload error: key={}", key, e);
+            log.error("[S3] Unexpected upload error: key={}", key, e);
             throw new AppException(S3ErrorCode.UPLOAD_FAILED, e);
         }
     }
 
     @Override
     @LogExecution
-    @TimedAction("delete_file_from_s3")
+    @AuditAction(action = "DELETE_FILE_FROM_S3", resourceType = "S3_OBJECT")
+    @TimedAction("DELETE_FILE_FROM_S3")
     public void delete(String key) {
         if (key == null || key.isBlank()) return;
         try {
@@ -113,18 +127,31 @@ public class S3ServiceImpl implements S3Service {
                         "IAM user is missing s3:DeleteObject permission for bucket " + bucket);
             }
             throw new AppException(S3ErrorCode.DELETE_FAILED, e.awsErrorDetails().errorMessage());
+        } catch (SdkClientException e) {
+            log.warn("[S3] Storage connectivity issue while deleting: key={} error={}",
+                    key, e.getMessage());
+
+            throw new AppException(
+                    S3ErrorCode.DELETE_FAILED,
+                    "Storage service temporarily unavailable"
+            );
+
         } catch (Exception e) {
-            log.error("[S3] Delete failed: key={}", key, e);
+            log.error("[S3] Unexpected delete error: key={}", key, e);
             throw new AppException(S3ErrorCode.DELETE_FAILED, e);
         }
     }
 
     @Override
+    @LogExecution
+    @TimedAction("GENERATE_PRESIGNED_URL_FOR_S3_OBJECT")
     public String presign(String key) {
         return presignWithTtl(key, PRESIGN_TTL);
     }
 
     @Override
+    @LogExecution
+    @TimedAction("GENERATE_PRESIGNED_URL_FOR_S3_OBJECT_WITH_TTL")
     public String presign(String key, Duration ttl) {
         if (ttl == null || ttl.isNegative() || ttl.isZero()) {
             ttl = PRESIGN_TTL;
@@ -141,11 +168,23 @@ public class S3ServiceImpl implements S3Service {
                     .build();
 
             String url = s3Presigner.presignGetObject(req).url().toString();
-            log.debug("[S3] Pre-signed URL generated: key={} ttl={}s", key, PRESIGN_TTL.getSeconds());
+            log.debug("[S3] Pre-signed URL generated: key={} ttl={}s", key, ttl.getSeconds());
             return url;
-        } catch (Exception e) {
-            log.error("[S3] Presign failed: key={}", key, e);
+        } catch (S3Exception e) {
             throw new AppException(S3ErrorCode.FILE_NOT_FOUND, key);
+
+        } catch (SdkClientException e) {
+            log.warn("[S3] Presign connectivity issue: key={} error={}",
+                    key, e.getMessage());
+
+            throw new AppException(
+                    S3ErrorCode.UPLOAD_FAILED,
+                    "Storage service temporarily unavailable"
+            );
+
+        } catch (Exception e) {
+            log.error("[S3] Unexpected presign error: key={}", key, e);
+            throw new AppException(S3ErrorCode.UPLOAD_FAILED, e);
         }
     }
 

@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.notification;
+package com.minduc.happabi.service.notification.impl;
 
 import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.response.notification.NotificationListResponse;
@@ -13,6 +13,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NotificationRepository;
 import com.minduc.happabi.repository.UserRepository;
+import com.minduc.happabi.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     @LogExecution
-    @TimedAction("create_notification")
+    @TimedAction("CREATE_NOTIFICATION")
     public Notification create(User targetUser, NotificationType type, String title, String message,
                                String resourceType, String resourceId) {
         Notification notification = Notification.builder()
@@ -52,7 +53,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     @LogExecution
-    @TimedAction("get_my_notifications")
+    @TimedAction("GET_MY_NOTIFICATIONS")
     public NotificationListResponse getMyNotifications() {
         User user = currentUser();
         return NotificationListResponse.builder()
@@ -66,7 +67,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     @LogExecution
-    @TimedAction("mark_notification_as_read")
+    @TimedAction("MARK_NOTIFICATION_AS_READ")
     public NotificationResponse markAsRead(UUID notificationId) {
         User user = currentUser();
         Notification notification = notificationRepository.findByIdWithUser(notificationId)

@@ -12,10 +12,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.util.List;
 
@@ -39,21 +41,35 @@ public class SqsFileCleanupWorker {
             return;
         }
 
-        List<Message> messages = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
-                        .queueUrl(fileCleanupQueueUrl)
-                        .maxNumberOfMessages(5)
-                        .waitTimeSeconds(5)
-                        .build())
-                .messages();
+        try {
+            List<Message> messages = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
+                            .queueUrl(fileCleanupQueueUrl)
+                            .maxNumberOfMessages(5)
+                            .waitTimeSeconds(5)
+                            .build())
+                    .messages();
 
-        for (Message message : messages) {
-            processMessage(message);
+            for (Message message : messages) {
+                processMessage(message);
+            }
+
+        } catch (SqsException e) {
+            log.warn("[SQS] AWS SQS rejected request. statusCode={} message={}",
+                    e.statusCode(), e.awsErrorDetails().errorMessage());
+
+        } catch (SdkClientException e) {
+            log.warn("[SQS] Cannot connect to AWS SQS. Network/DNS may be unavailable: {}",
+                    e.getMessage());
+
+        } catch (Exception e) {
+            log.error("[SQS] Unexpected error while polling file cleanup queue", e);
         }
     }
 
     private void processMessage(Message sqsMessage) {
         try {
-            S3ObjectDeleteMessage message = objectMapper.readValue(sqsMessage.body(), S3ObjectDeleteMessage.class);
+            S3ObjectDeleteMessage message = objectMapper.readValue(sqsMessage.body(),
+                    S3ObjectDeleteMessage.class);
             if (!S3ObjectDeleteMessage.TYPE.equals(message.type())) {
                 log.warn("[SQS] Unknown file cleanup message type={}", message.type());
                 deleteMessage(sqsMessage);
@@ -64,16 +80,30 @@ public class SqsFileCleanupWorker {
             deleteMessage(sqsMessage);
             log.info("[SQS] Processed S3 delete message: key={} reason={}",
                     message.key(), message.reason());
+        } catch (SdkClientException e) {
+            log.warn("[SQS] AWS unavailable while processing message: messageId={} error={}",
+                    sqsMessage.messageId(), e.getMessage());
+
         } catch (Exception e) {
-            log.warn("[SQS] Failed to process file cleanup message. It will be retried: messageId={}",
+            log.error("[SQS] Unexpected message processing error: messageId={}",
                     sqsMessage.messageId(), e);
         }
     }
 
     private void deleteMessage(Message message) {
-        sqsClient.deleteMessage(DeleteMessageRequest.builder()
-                .queueUrl(fileCleanupQueueUrl)
-                .receiptHandle(message.receiptHandle())
-                .build());
+        try {
+            sqsClient.deleteMessage(DeleteMessageRequest.builder()
+                    .queueUrl(fileCleanupQueueUrl)
+                    .receiptHandle(message.receiptHandle())
+                    .build());
+
+        } catch (SqsException e) {
+            log.warn("[SQS] Failed to delete message: messageId={} statusCode={} message={}",
+                    message.messageId(), e.statusCode(), e.awsErrorDetails().errorMessage());
+
+        } catch (SdkClientException e) {
+            log.warn("[SQS] Cannot delete message due to AWS connectivity issue: messageId={} error={}",
+                    message.messageId(), e.getMessage());
+        }
     }
 }

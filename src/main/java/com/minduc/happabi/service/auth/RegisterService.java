@@ -90,13 +90,13 @@ public class RegisterService {
                                          boolean hasRequestedRole, Role userRole) {
         if (hasRequestedRole) {
             throw new AppException(AuthErrorCode.PHONE_ALREADY_EXISTS,
-                    "Vai trò " + request.getRole().name() + " đã được liên kết với tài khoản này.");
+                    "Role " + request.getRole().name() + " is already linked to this account.");
         }
         try {
             cognitoService.adminInitiateAuth(requireMasterUsername(existing), request.getPassword());
         } catch (NotAuthorizedException e) {
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS,
-                    "Số điện thoại đã tồn tại. Vui lòng nhập đúng mật khẩu để thêm vai trò mới.");
+                    "Phone number already exists. Please enter the correct password to add a new role.");
         }
         String groupUsername = existing.getCognitoUsername() != null
                 ? existing.getCognitoUsername()

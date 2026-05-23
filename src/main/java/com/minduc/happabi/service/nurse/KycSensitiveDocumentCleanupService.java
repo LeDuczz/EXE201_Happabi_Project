@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.nurse;
 
 import com.minduc.happabi.entity.NurseKyc;
+import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseKycRepository;
@@ -41,7 +42,8 @@ public class KycSensitiveDocumentCleanupService {
     @Scheduled(fixedDelayString = "${app.kyc.cleanup.fixed-delay-ms:3600000}")
     @Transactional
     @LogExecution
-    @TimedAction("kyc_cleanup_due_approved_cccd_images")
+    @TimedAction("KYC_CLEANUP_DUE_APPROVED_CCCD_IMAGES")
+    @AuditAction(action = "KYC_CLEANUP_APPROVED_CCCD_IMAGES", resourceType = "NURSE_KYC")
     public void cleanupDueApprovedCccdImages() {
         if (!cleanupEnabled) {
             return;
