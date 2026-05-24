@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.ai.impl;
 
 import com.minduc.happabi.common.utils.AuthUtils;
+import com.minduc.happabi.dto.document.RagDocument;
 import com.minduc.happabi.dto.request.ai.CreateConversationRequest;
 import com.minduc.happabi.dto.request.ai.SendAiMessageRequest;
 import com.minduc.happabi.dto.response.ai.AiChatResponse;
@@ -15,22 +16,10 @@ import com.minduc.happabi.enums.KnowledgeStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AiChatErrorCode;
 import com.minduc.happabi.exception.code.AuthErrorCode;
-import com.minduc.happabi.observability.annotation.AuditAction;
-import com.minduc.happabi.observability.annotation.LogExecution;
-import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.KnowledgeItemRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.ai.AiChatModelClient;
-import com.minduc.happabi.service.ai.AiChatService;
-import com.minduc.happabi.service.ai.ChatHistoryService;
-import com.minduc.happabi.service.ai.ChatIntent;
-import com.minduc.happabi.service.ai.IntentDetector;
-import com.minduc.happabi.service.ai.KnowledgeBaseService;
-import com.minduc.happabi.service.ai.ModelRouter;
-import com.minduc.happabi.service.ai.PromptBuilder;
-import com.minduc.happabi.dto.document.RagDocument;
-import com.minduc.happabi.service.ai.RagRetrievalService;
+import com.minduc.happabi.service.ai.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +33,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AiChatServiceImpl implements AiChatService {
+public class AiChatServiceImpl implements IAiChatService {
 
     private static final int RAG_TOP_K = 5;
 
@@ -52,11 +41,11 @@ public class AiChatServiceImpl implements AiChatService {
     private final UserIdentityProviderRepository identityProviderRepository;
     private final ChatHistoryService chatHistoryService;
     private final IntentDetector intentDetector;
-    private final ModelRouter modelRouter;
-    private final RagRetrievalService ragRetrievalService;
+    private final IModelRouter modelRouter;
+    private final IRagRetrievalService ragRetrievalService;
     private final PromptBuilder promptBuilder;
-    private final AiChatModelClient aiChatModelClient;
-    private final KnowledgeBaseService knowledgeBaseService;
+    private final IAiChatModelClient aiChatModelClient;
+    private final IKnowledgeBaseService knowledgeBaseService;
     private final KnowledgeItemRepository knowledgeItemRepository;
 
     @Value("${ai-chat.rag.high-threshold:0.85}")
@@ -66,6 +55,7 @@ public class AiChatServiceImpl implements AiChatService {
     private String aiChatProvider;
 
     @Override
+    @PreAuthorize("isAuthenticated()")
     public ConversationResponse createConversation(CreateConversationRequest request) {
         User user = getCurrentUser();
         String title = request == null ? null : request.getTitle();
@@ -73,21 +63,21 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     @Override
+    @PreAuthorize("isAuthenticated()")
     public List<ConversationResponse> getCurrentUserConversations() {
         User user = getCurrentUser();
         return chatHistoryService.getConversations(user.getId());
     }
 
     @Override
+    @PreAuthorize("isAuthenticated()")
     public List<AiMessageResponse> getMessages(UUID conversationId) {
         User user = getCurrentUser();
         return chatHistoryService.getMessages(conversationId, user.getId());
     }
 
     @Override
-    @LogExecution
-    @AuditAction(action = "SEND_AI_MESSAGE", resourceType = "CONVERSATION")
-    @TimedAction("SEND_AI_MESSAGE")
+    @PreAuthorize("isAuthenticated()")
     public AiChatResponse sendMessage(UUID conversationId, SendAiMessageRequest request) {
         String userText = normalizeMessage(request == null ? null : request.getMessage());
         User user = getCurrentUser();
@@ -154,15 +144,15 @@ public class AiChatServiceImpl implements AiChatService {
         log.info("[AI_CHAT] conversationId={} userId={} intent={} model={}",
                 conversationId, user.getId(), intent, model);
 
-        return new AiChatResponse(
-                conversationId,
-                chatHistoryService.toMessageResponse(userMessage),
-                chatHistoryService.toMessageResponse(assistantMessage),
-                model,
-                resolutionSource,
-                bestMatch == null ? null : bestMatch.getScore(),
-                pendingReviewCreated
-        );
+        return AiChatResponse.builder()
+                .conversationId(conversationId)
+                .userMessage(chatHistoryService.toMessageResponse(userMessage))
+                .assistantMessage(chatHistoryService.toMessageResponse(assistantMessage))
+                .modelUsed(model)
+                .resolutionSource(resolutionSource)
+                .ragScore(bestMatch == null ? null : bestMatch.getScore())
+                .pendingReviewCreated(pendingReviewCreated)
+                .build();
     }
 
     private RagDocument bestMatch(List<RagDocument> ragDocuments) {
@@ -171,14 +161,14 @@ public class AiChatServiceImpl implements AiChatService {
                 .orElse(null);
     }
 
+    private double scoreOrZero(RagDocument document) {
+        return document.getScore() == null ? 0 : document.getScore();
+    }
+
     private KnowledgeItem findExactVerifiedKnowledge(String userText) {
         return knowledgeItemRepository
                 .findFirstByQuestionIgnoreCaseAndStatusOrderByUpdatedAtDesc(userText, KnowledgeStatus.VERIFIED)
                 .orElse(null);
-    }
-
-    private double scoreOrZero(RagDocument document) {
-        return document.getScore() == null ? 0 : document.getScore();
     }
 
     private String providerResolutionSource(String suffix) {

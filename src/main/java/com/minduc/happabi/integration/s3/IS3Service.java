@@ -1,10 +1,10 @@
-package com.minduc.happabi.service.s3;
+package com.minduc.happabi.integration.s3;
 
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 
-public interface S3Service {
+public interface IS3Service {
 
     String upload(String folder, String ownerId, MultipartFile file);
 

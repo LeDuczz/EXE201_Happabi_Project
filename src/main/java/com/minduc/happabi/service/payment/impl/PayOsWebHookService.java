@@ -34,10 +34,8 @@ public class PayOsWebHookService implements IPayOsWebhookService {
         try {
             WebhookData data = payOS.webhooks().verify(webhookBody);
 
-            String orderCode = String.valueOf(data.getOrderCode());
-
             WalletTransaction transaction = walletTransactionRepository
-                    .findByIdAndStatus(orderCode, TransactionStatus.PENDING)
+                    .findByReferenceIdAndStatus(data.getOrderCode(), TransactionStatus.PENDING)
                     .orElse(null);
             if (transaction != null) {
                 transaction.setStatus(TransactionStatus.SUCCESS);

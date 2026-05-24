@@ -29,7 +29,7 @@ public class NurseWalletService implements INurseWalletService {
 
     @Override
     public boolean canAcceptCashBooking(String nurseId, BigDecimal bookingAmount) {
-        NurseWallet wallet = nurseWalletRepository.findById(UUID.fromString(nurseId))
+        NurseWallet wallet = nurseWalletRepository.findByNurseId(UUID.fromString(nurseId))
                 .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
         BigDecimal feeRate, requiredFee, totalAvailable;
 

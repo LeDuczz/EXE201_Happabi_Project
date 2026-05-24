@@ -11,6 +11,7 @@ import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
+import com.minduc.happabi.integration.cognito.CognitoService;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
@@ -47,7 +48,7 @@ public class RegisterService {
     private final UserProviderService userProviderService;
     private final UserCacheService userCacheService;
 
-    @TimedAction("auth_register")
+    @TimedAction("REGISTER")
     @AuditAction(action = "REGISTER", resourceType = "USER")
     @LogExecution
     @Transactional
@@ -142,7 +143,7 @@ public class RegisterService {
         userProviderService.createProfileForRole(newUser, request.getRole());
     }
 
-    @TimedAction("auth_otp_verify")
+    @TimedAction("VERIFY_OTP")
     @AuditAction(action = "VERIFY_OTP", resourceType = "USER")
     @LogExecution
     public void verifyOtp(VerifyOtpRequest request) {
@@ -168,7 +169,7 @@ public class RegisterService {
         }
     }
 
-    @TimedAction("auth_otp_resend")
+    @TimedAction("RESEND_OTP")
     @LogExecution
     @AuditAction(action = "RESEND_OTP", resourceType = "USER")
     public void resendOtp(ResendOtpRequest request) {
@@ -187,7 +188,7 @@ public class RegisterService {
         }
     }
 
-    @TimedAction("auth_local_password_create")
+    @TimedAction("CREATE_LOCAL_PASSWORD")
     @Transactional
     @LogExecution
     @AuditAction(action = "CREATE_LOCAL_PASSWORD", resourceType = "USER")

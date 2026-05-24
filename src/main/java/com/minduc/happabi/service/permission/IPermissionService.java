@@ -1,4 +1,4 @@
 package com.minduc.happabi.service.permission;
 
-public interface PermissionService {
+public interface IPermissionService {
 }

@@ -6,7 +6,7 @@ import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.multipart.MultipartFile;
 
-public interface NurseOnboardingService {
+public interface INurseOnboardingService {
 
     NurseOnboardingResponse getMyOnboarding();
 

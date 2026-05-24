@@ -9,7 +9,7 @@ import com.minduc.happabi.dto.response.ai.ConversationResponse;
 import java.util.List;
 import java.util.UUID;
 
-public interface AiChatService {
+public interface IAiChatService {
 
     ConversationResponse createConversation(CreateConversationRequest request);
 
@@ -18,4 +18,5 @@ public interface AiChatService {
     List<AiMessageResponse> getMessages(UUID conversationId);
 
     AiChatResponse sendMessage(UUID conversationId, SendAiMessageRequest request);
+
 }

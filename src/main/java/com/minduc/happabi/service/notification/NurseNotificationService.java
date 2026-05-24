@@ -11,7 +11,7 @@ public class NurseNotificationService {
 
     private static final String RESOURCE_TYPE = "NURSE_PROFILE";
 
-    private final NotificationService notificationService;
+    private final INotificationService notificationService;
 
     public void notifyRejected(NurseProfile profile, String reason) {
         notificationService.create(

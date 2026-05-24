@@ -4,7 +4,8 @@ import com.minduc.happabi.dto.document.RagDocument;
 
 import java.util.List;
 
-public interface RagRetrievalService {
+public interface IRagRetrievalService {
 
     List<RagDocument> retrieve(String query, ChatIntent intent, int topK);
+
 }

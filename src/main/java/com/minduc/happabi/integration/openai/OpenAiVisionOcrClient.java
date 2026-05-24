@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.ai;
+package com.minduc.happabi.integration.openai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -29,6 +29,7 @@ import java.util.Set;
 public class OpenAiVisionOcrClient {
 
     private static final int MAX_TRANSIENT_ATTEMPTS = 3;
+
     private static final Set<Integer> TRANSIENT_STATUS_CODES = Set.of(429, 502, 503, 504);
 
     private static final String OCR_PROMPT = """

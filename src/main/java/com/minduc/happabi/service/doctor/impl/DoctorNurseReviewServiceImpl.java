@@ -12,10 +12,10 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.*;
-import com.minduc.happabi.service.doctor.DoctorNurseReviewService;
+import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
 import com.minduc.happabi.service.notification.NurseNotificationService;
 import com.minduc.happabi.service.nurse.KycSensitiveDocumentCleanupService;
-import com.minduc.happabi.service.s3.S3Service;
+import com.minduc.happabi.integration.s3.IS3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
+public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
 
     private static final Duration SENSITIVE_DOCUMENT_TTL = Duration.ofMinutes(15);
     private static final String CURRENT_CONTRACT_VERSION = "NURSE_MVP_2026_05";
@@ -39,7 +39,7 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     private final NurseCertificationRepository certificationRepository;
     private final NurseContractRepository contractRepository;
     private final NurseReviewEventRepository reviewEventRepository;
-    private final S3Service s3Service;
+    private final IS3Service s3Service;
     private final NurseNotificationService nurseNotificationService;
     private final KycSensitiveDocumentCleanupService kycSensitiveDocumentCleanupService;
     private final NurseOnboardingMapper nurseOnboardingMapper;
@@ -47,8 +47,8 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
-    @TimedAction("get_pending_nurse_reviews")
-    @AuditAction(action = "view_pending_nurse_reviews", resourceType = "nurse_profile")
+    @TimedAction("GET_PENDING_NURSE_REVIEWS")
+    @AuditAction(action = "GET_PENDING_NURSE_REVIEWS", resourceType = "NURSE_PROFILE")
     public List<NurseOnboardingResponse> getPendingReviews() {
         return nurseProfileRepository
                 .findByNurseStatusOrderByUpdatedAtAsc(NurseStatus.PENDING_REVIEW).stream()
@@ -60,8 +60,8 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @AuditAction(action = "view_nurse_review_detail", resourceType = "nurse_profile")
-    @TimedAction("get_nurse_review_detail")
+    @AuditAction(action = "GET_NURSE_PROFILE_FOR_REVIEW", resourceType = "NURSE_PROFILE")
+    @TimedAction("GET_NURSE_PROFILE_FOR_REVIEW")
     public NurseOnboardingResponse getForDoctor(UUID profileId) {
         return toResponse(findProfile(profileId));
     }
@@ -70,8 +70,8 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @TimedAction("get_nurse_kyc_document_url")
-    @AuditAction(action = "VIEW_NURSE_KYC_DOCUMENT", resourceType = "NURSE_PROFILE")
+    @TimedAction("GET_NURSE_KYC_DOCUMENT_URL")
+    @AuditAction(action = "GET_NURSE_KYC_DOCUMENT_URL", resourceType = "NURSE_PROFILE")
     public String getKycDocumentUrl(UUID profileId, String side) {
         NurseProfile profile = findProfile(profileId);
         NurseKyc kyc = nurseKycRepository.findByNurse(profile)
@@ -84,8 +84,8 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @TimedAction("get_nurse_certification_document_url")
-    @AuditAction(action = "VIEW_NURSE_CERTIFICATION_DOCUMENT", resourceType = "NURSE_CERTIFICATION")
+    @TimedAction("GET_NURSE_CERTIFICATION_DOCUMENT_URL")
+    @AuditAction(action = "GET_NURSE_CERTIFICATION_DOCUMENT_URL", resourceType = "NURSE_CERTIFICATION")
     public String getCertificationDocumentUrl(UUID certificationId) {
         NurseCertification certification = certificationRepository.findById(certificationId)
                 .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED,
@@ -97,7 +97,7 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     @Transactional
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @TimedAction("approve_nurse_profile")
+    @TimedAction("APPROVE_NURSE_PROFILE")
     @AuditAction(action = "APPROVE_NURSE_PROFILE", resourceType = "NURSE_PROFILE")
     public NurseOnboardingResponse approve(UUID profileId, ReviewNurseProfileRequest request) {
         NurseProfile profile = findProfile(profileId);
@@ -136,7 +136,7 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     @Transactional
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @TimedAction("reject_nurse_profile")
+    @TimedAction("REJECT_NURSE_PROFILE")
     @AuditAction(action = "REJECT_NURSE_PROFILE", resourceType = "NURSE_PROFILE")
     public NurseOnboardingResponse reject(UUID profileId, ReviewNurseProfileRequest request) {
         NurseProfile profile = findProfile(profileId);

@@ -1,11 +1,8 @@
-package com.minduc.happabi.service.sqs;
+package com.minduc.happabi.integration.sqs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.dto.message.S3ObjectDeleteMessage;
-import com.minduc.happabi.observability.annotation.AuditAction;
-import com.minduc.happabi.observability.annotation.LogExecution;
-import com.minduc.happabi.observability.annotation.TimedAction;
-import com.minduc.happabi.service.s3.S3Service;
+import com.minduc.happabi.integration.s3.IS3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +26,7 @@ public class SqsFileCleanupWorker {
 
     private final SqsClient sqsClient;
     private final ObjectMapper objectMapper;
-    private final S3Service s3Service;
+    private final IS3Service s3Service;
 
     @Value("${aws.sqs.file-cleanup-queue-url}")
     private String fileCleanupQueueUrl;

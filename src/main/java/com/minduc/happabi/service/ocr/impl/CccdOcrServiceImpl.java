@@ -4,11 +4,11 @@ import com.minduc.happabi.dto.openai.OpenAiCccdOcrResult;
 import com.minduc.happabi.dto.response.nurse.CccdOcrExtractionResponse;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.OcrErrorCode;
+import com.minduc.happabi.integration.openai.OpenAiVisionOcrClient;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
-import com.minduc.happabi.service.ai.OpenAiVisionOcrClient;
 import com.minduc.happabi.service.ocr.CccdOcrFileValidator;
-import com.minduc.happabi.service.ocr.CccdOcrService;
+import com.minduc.happabi.service.ocr.ICccdOcrService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,14 +20,14 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CccdOcrServiceImpl implements CccdOcrService {
+public class CccdOcrServiceImpl implements ICccdOcrService {
 
     private final CccdOcrFileValidator fileValidator;
     private final OpenAiVisionOcrClient openAiVisionOcrClient;
 
     @Override
     @PreAuthorize("hasRole('NURSE')")
-    @TimedAction("NURSE_KYC_EXTRACT")
+    @TimedAction("NURSE_KYC_EXTRACT_FRONT")
     @AuditAction(action = "NURSE_KYC_EXTRACT", resourceType = "NURSE_KYC")
     public CccdOcrExtractionResponse extractFrontSide(MultipartFile frontImage) {
         fileValidator.validateFrontImage(frontImage);

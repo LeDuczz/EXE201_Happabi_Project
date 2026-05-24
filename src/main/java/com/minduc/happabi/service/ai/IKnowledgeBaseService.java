@@ -7,7 +7,7 @@ import com.minduc.happabi.dto.response.ai.KnowledgeItemResponse;
 import java.util.List;
 import java.util.UUID;
 
-public interface KnowledgeBaseService {
+public interface IKnowledgeBaseService {
 
     KnowledgeChunkResponse upsertKnowledgeChunk(UpsertKnowledgeChunkRequest request);
 
@@ -24,4 +24,5 @@ public interface KnowledgeBaseService {
     KnowledgeItemResponse reindexKnowledgeItem(UUID knowledgeItemId);
 
     List<KnowledgeItemResponse> reindexVerifiedKnowledgeItems();
+
 }

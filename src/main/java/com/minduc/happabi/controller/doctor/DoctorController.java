@@ -3,7 +3,7 @@ package com.minduc.happabi.controller.doctor;
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.request.nurse.ReviewNurseProfileRequest;
 import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
-import com.minduc.happabi.service.doctor.DoctorNurseReviewService;
+import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DoctorController {
 
-    private final DoctorNurseReviewService doctorNurseReviewService;
+    private final IDoctorNurseReviewService doctorNurseReviewService;
 
     @GetMapping("/pending-review")
     public ResponseEntity<BaseResponse<List<NurseOnboardingResponse>>> getPendingReviews() {

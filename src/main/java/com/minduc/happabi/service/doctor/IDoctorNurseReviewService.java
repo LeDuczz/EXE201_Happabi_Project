@@ -6,7 +6,8 @@ import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
 import java.util.List;
 import java.util.UUID;
 
-public interface DoctorNurseReviewService {
+public interface IDoctorNurseReviewService {
+
     List<NurseOnboardingResponse> getPendingReviews();
 
     NurseOnboardingResponse getForDoctor(UUID profileId);

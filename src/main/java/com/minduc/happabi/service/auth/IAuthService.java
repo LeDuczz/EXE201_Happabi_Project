@@ -6,7 +6,7 @@ import com.minduc.happabi.dto.response.auth.AuthResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public interface AuthService {
+public interface IAuthService {
 
     void register(RegisterRequest request);
 
@@ -27,4 +27,5 @@ public interface AuthService {
     void forgotPassword(ForgotPasswordRequest request);
 
     void resetPassword(ResetPasswordRequest request);
+
 }

@@ -8,7 +8,7 @@ import com.minduc.happabi.enums.NotificationType;
 
 import java.util.UUID;
 
-public interface NotificationService {
+public interface INotificationService {
 
     Notification create(User targetUser, NotificationType type, String title, String message,
                         String resourceType, String resourceId);
@@ -16,4 +16,5 @@ public interface NotificationService {
     NotificationListResponse getMyNotifications();
 
     NotificationResponse markAsRead(UUID notificationId);
+
 }

@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.auth;
+package com.minduc.happabi.integration.cognito;
 
 import com.minduc.happabi.config.CognitoSecretHashUtil;
 import com.minduc.happabi.dto.request.auth.RegisterRequest;
