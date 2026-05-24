@@ -2,7 +2,7 @@ package com.minduc.happabi.controller.nurse;
 
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.response.nurse.CccdOcrExtractionResponse;
-import com.minduc.happabi.service.ocr.CccdOcrService;
+import com.minduc.happabi.service.ocr.ICccdOcrService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class NurseKycOcrController {
 
-    private final CccdOcrService cccdOcrService;
+    private final ICccdOcrService cccdOcrService;
 
     @PostMapping(value = "/extract", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('NURSE')")

@@ -2,7 +2,7 @@ package com.minduc.happabi.service.ai.impl;
 
 import com.minduc.happabi.service.ai.ChatIntent;
 import com.minduc.happabi.service.ai.RagDocument;
-import com.minduc.happabi.service.ai.RagRetrievalService;
+import com.minduc.happabi.service.ai.IRagRetrievalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
@@ -16,7 +16,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PgVectorRagRetrievalService implements RagRetrievalService {
+public class PgVectorRagRetrievalService implements IRagRetrievalService {
 
     private final VectorStore vectorStore;
 

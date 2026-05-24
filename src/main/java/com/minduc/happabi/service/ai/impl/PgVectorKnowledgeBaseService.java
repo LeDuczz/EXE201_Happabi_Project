@@ -2,7 +2,7 @@ package com.minduc.happabi.service.ai.impl;
 
 import com.minduc.happabi.dto.request.ai.UpsertKnowledgeChunkRequest;
 import com.minduc.happabi.dto.response.ai.KnowledgeChunkResponse;
-import com.minduc.happabi.service.ai.KnowledgeBaseService;
+import com.minduc.happabi.service.ai.IKnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -16,7 +16,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
+public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
 
     private final VectorStore vectorStore;
 

@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.sqs;
+package com.minduc.happabi.integration.sqs;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

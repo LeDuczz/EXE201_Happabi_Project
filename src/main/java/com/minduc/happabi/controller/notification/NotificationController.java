@@ -3,7 +3,7 @@ package com.minduc.happabi.controller.notification;
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.response.notification.NotificationListResponse;
 import com.minduc.happabi.dto.response.notification.NotificationResponse;
-import com.minduc.happabi.service.notification.NotificationService;
+import com.minduc.happabi.service.notification.INotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,7 +16,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class NotificationController {
 
-    private final NotificationService notificationService;
+    private final INotificationService notificationService;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")

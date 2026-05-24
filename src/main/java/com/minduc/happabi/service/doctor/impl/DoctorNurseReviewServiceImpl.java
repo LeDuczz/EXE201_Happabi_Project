@@ -12,10 +12,10 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.*;
-import com.minduc.happabi.service.doctor.DoctorNurseReviewService;
+import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
 import com.minduc.happabi.service.notification.NurseNotificationService;
 import com.minduc.happabi.service.nurse.KycSensitiveDocumentCleanupService;
-import com.minduc.happabi.service.s3.S3Service;
+import com.minduc.happabi.integration.s3.IS3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
+public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
 
     private static final Duration SENSITIVE_DOCUMENT_TTL = Duration.ofMinutes(15);
     private static final String CURRENT_CONTRACT_VERSION = "NURSE_MVP_2026_05";
@@ -39,7 +39,7 @@ public class DoctorNurseReviewServiceImpl implements DoctorNurseReviewService {
     private final NurseCertificationRepository certificationRepository;
     private final NurseContractRepository contractRepository;
     private final NurseReviewEventRepository reviewEventRepository;
-    private final S3Service s3Service;
+    private final IS3Service s3Service;
     private final NurseNotificationService nurseNotificationService;
     private final KycSensitiveDocumentCleanupService kycSensitiveDocumentCleanupService;
     private final NurseOnboardingMapper nurseOnboardingMapper;

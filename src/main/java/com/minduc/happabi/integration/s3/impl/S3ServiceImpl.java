@@ -1,10 +1,11 @@
-package com.minduc.happabi.service.s3.impl;
+package com.minduc.happabi.integration.s3.impl;
 
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.S3ErrorCode;
+import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
-import com.minduc.happabi.service.s3.S3Service;
+import com.minduc.happabi.integration.s3.IS3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,7 +28,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class S3ServiceImpl implements S3Service {
+public class S3ServiceImpl implements IS3Service {
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -55,7 +56,8 @@ public class S3ServiceImpl implements S3Service {
 
     @Override
     @LogExecution
-    @TimedAction("upload_file_to_s3")
+    @TimedAction("UPLOAD_FILE_TO_S3")
+    @AuditAction(action = "UPLOAD_FILE", resourceType = "S3_OBJECT")
     public String upload(String folder, String ownerId, MultipartFile file) {
         validate(folder, file);
 
@@ -96,7 +98,8 @@ public class S3ServiceImpl implements S3Service {
 
     @Override
     @LogExecution
-    @TimedAction("delete_file_from_s3")
+    @TimedAction("DELETE_FILE_FROM_S3")
+    @AuditAction(action = "DELETE_FILE", resourceType = "S3_OBJECT")
     public void delete(String key) {
         if (key == null || key.isBlank()) return;
         try {
@@ -121,11 +124,17 @@ public class S3ServiceImpl implements S3Service {
     }
 
     @Override
+    @TimedAction("GENERATE_PRESIGNED_URL")
+    @AuditAction(action = "GENERATE_PRESIGNED_URL", resourceType = "S3_OBJECT")
+    @LogExecution
     public String presign(String key) {
         return presignWithTtl(key, PRESIGN_TTL);
     }
 
     @Override
+    @LogExecution
+    @AuditAction(action = "GENERATE_PRESIGNED_URL_WITH_TTL", resourceType = "S3_OBJECT")
+    @TimedAction("GENERATE_PRESIGNED_URL_WITH_TTL")
     public String presign(String key, Duration ttl) {
         if (ttl == null || ttl.isNegative() || ttl.isZero()) {
             ttl = PRESIGN_TTL;

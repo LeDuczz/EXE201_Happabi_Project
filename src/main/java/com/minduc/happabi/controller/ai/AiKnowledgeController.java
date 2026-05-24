@@ -3,7 +3,7 @@ package com.minduc.happabi.controller.ai;
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.request.ai.UpsertKnowledgeChunkRequest;
 import com.minduc.happabi.dto.response.ai.KnowledgeChunkResponse;
-import com.minduc.happabi.service.ai.KnowledgeBaseService;
+import com.minduc.happabi.service.ai.IKnowledgeBaseService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class AiKnowledgeController {
 
-    private final KnowledgeBaseService knowledgeBaseService;
+    private final IKnowledgeBaseService knowledgeBaseService;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")

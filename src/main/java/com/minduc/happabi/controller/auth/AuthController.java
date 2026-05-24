@@ -11,7 +11,7 @@ import com.minduc.happabi.dto.request.auth.SocialSyncRequest;
 import com.minduc.happabi.dto.request.auth.VerifyOtpRequest;
 import com.minduc.happabi.dto.response.auth.AuthResponse;
 import com.minduc.happabi.observability.annotation.AuditAction;
-import com.minduc.happabi.service.auth.AuthService;
+import com.minduc.happabi.service.auth.IAuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Auth", description = "Authentication & authorisation endpoints")
 public class AuthController {
 
-    private final AuthService authService;
+    private final IAuthService authService;
 
     @AuditAction(action = "AUTH_REGISTER", resourceType = "USER")
     @PostMapping("/register")

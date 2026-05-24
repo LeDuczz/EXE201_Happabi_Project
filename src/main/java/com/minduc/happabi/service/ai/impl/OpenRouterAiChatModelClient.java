@@ -3,7 +3,7 @@ package com.minduc.happabi.service.ai.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AiChatErrorCode;
-import com.minduc.happabi.service.ai.AiChatModelClient;
+import com.minduc.happabi.service.ai.IAiChatModelClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,7 +19,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OpenRouterAiChatModelClient implements AiChatModelClient {
+public class OpenRouterAiChatModelClient implements IAiChatModelClient {
 
     @Qualifier("openRouterRestClient")
     private final RestClient openRouterRestClient;

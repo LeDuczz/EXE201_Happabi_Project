@@ -9,7 +9,7 @@ import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import org.springframework.web.multipart.MultipartFile;
 
-public interface UserService {
+public interface IUserService {
 
     UserProfileResponse getMe();
 

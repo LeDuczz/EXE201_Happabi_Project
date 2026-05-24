@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.openai;
+package com.minduc.happabi.integration.openai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;

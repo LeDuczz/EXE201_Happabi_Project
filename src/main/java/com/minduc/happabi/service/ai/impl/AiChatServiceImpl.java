@@ -15,15 +15,15 @@ import com.minduc.happabi.exception.code.AiChatErrorCode;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.ai.AiChatModelClient;
-import com.minduc.happabi.service.ai.AiChatService;
+import com.minduc.happabi.service.ai.IAiChatModelClient;
+import com.minduc.happabi.service.ai.IAiChatService;
 import com.minduc.happabi.service.ai.ChatHistoryService;
 import com.minduc.happabi.service.ai.ChatIntent;
 import com.minduc.happabi.service.ai.IntentDetector;
-import com.minduc.happabi.service.ai.ModelRouter;
+import com.minduc.happabi.service.ai.IModelRouter;
 import com.minduc.happabi.service.ai.PromptBuilder;
 import com.minduc.happabi.service.ai.RagDocument;
-import com.minduc.happabi.service.ai.RagRetrievalService;
+import com.minduc.happabi.service.ai.IRagRetrievalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,7 +35,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AiChatServiceImpl implements AiChatService {
+public class AiChatServiceImpl implements IAiChatService {
 
     private static final int RAG_TOP_K = 5;
 
@@ -43,10 +43,10 @@ public class AiChatServiceImpl implements AiChatService {
     private final UserIdentityProviderRepository identityProviderRepository;
     private final ChatHistoryService chatHistoryService;
     private final IntentDetector intentDetector;
-    private final ModelRouter modelRouter;
-    private final RagRetrievalService ragRetrievalService;
+    private final IModelRouter modelRouter;
+    private final IRagRetrievalService ragRetrievalService;
     private final PromptBuilder promptBuilder;
-    private final AiChatModelClient aiChatModelClient;
+    private final IAiChatModelClient aiChatModelClient;
 
     @Override
     @PreAuthorize("isAuthenticated()")

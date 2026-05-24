@@ -11,6 +11,7 @@ import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
+import com.minduc.happabi.integration.cognito.CognitoService;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;

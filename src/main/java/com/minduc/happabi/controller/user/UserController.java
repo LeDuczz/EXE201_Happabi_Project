@@ -8,7 +8,7 @@ import com.minduc.happabi.dto.request.mother.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
-import com.minduc.happabi.service.user.UserService;
+import com.minduc.happabi.service.user.IUserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,7 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
-    private final UserService userService;
+    private final IUserService userService;
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")

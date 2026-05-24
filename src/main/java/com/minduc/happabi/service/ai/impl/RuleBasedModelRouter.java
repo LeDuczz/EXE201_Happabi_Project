@@ -1,12 +1,12 @@
 package com.minduc.happabi.service.ai.impl;
 
 import com.minduc.happabi.service.ai.ChatIntent;
-import com.minduc.happabi.service.ai.ModelRouter;
+import com.minduc.happabi.service.ai.IModelRouter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class RuleBasedModelRouter implements ModelRouter {
+public class RuleBasedModelRouter implements IModelRouter {
 
     @Value("${ai-chat.models.default:gpt-4o-mini}")
     private String defaultModel;

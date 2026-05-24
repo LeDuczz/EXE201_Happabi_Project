@@ -1,6 +1,6 @@
 package com.minduc.happabi.service.ai;
 
-public interface AiChatModelClient {
+public interface IAiChatModelClient {
 
     String generate(String model, String systemPrompt, String userPrompt);
 }

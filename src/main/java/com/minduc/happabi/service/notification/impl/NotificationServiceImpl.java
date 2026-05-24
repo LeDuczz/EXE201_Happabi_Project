@@ -13,7 +13,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NotificationRepository;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.notification.NotificationService;
+import com.minduc.happabi.service.notification.INotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class NotificationServiceImpl implements NotificationService {
+public class NotificationServiceImpl implements INotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;

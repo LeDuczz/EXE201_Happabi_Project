@@ -4,7 +4,7 @@ import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.request.nurse.*;
 import com.minduc.happabi.dto.response.nurse.NurseCertificationResponse;
 import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
-import com.minduc.happabi.service.nurse.NurseOnboardingService;
+import com.minduc.happabi.service.nurse.INurseOnboardingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class NurseController {
 
-    private final NurseOnboardingService nurseOnboardingService;
+    private final INurseOnboardingService nurseOnboardingService;
 
     @GetMapping
     public ResponseEntity<BaseResponse<NurseOnboardingResponse>> getMyOnboarding() {
