@@ -52,7 +52,7 @@ public class SocialAuthService {
     private final UserProviderService userProviderService;
     private final UserCacheService userCacheService;
 
-    @TimedAction("auth_social_login")
+    @TimedAction("SOCIAL_SYNC")
     @LogExecution
     @AuditAction(action = "SOCIAL_SYNC", resourceType = "USER_SESSION")
     @Transactional

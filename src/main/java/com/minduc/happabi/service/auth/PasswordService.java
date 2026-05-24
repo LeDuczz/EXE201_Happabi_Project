@@ -28,7 +28,7 @@ public class PasswordService {
     private final UserRepository userRepository;
     private final CognitoService cognitoService;
 
-    @TimedAction("auth_forgot_password")
+    @TimedAction("FORGOT_PASSWORD")
     @LogExecution
     @AuditAction(action = "FORGOT_PASSWORD", resourceType = "USER")
     public void forgotPassword(ForgotPasswordRequest request) {
@@ -44,7 +44,7 @@ public class PasswordService {
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
         } catch (InvalidParameterException e) {
             throw new AppException(AuthErrorCode.SOCIAL_PROVIDER_MISMATCH,
-                    "Tài khoản này đăng nhập qua mạng xã hội, không có mật khẩu để đặt lại.");
+                    "This account uses social sign-in and does not have a local password to reset.");
         } catch (LimitExceededException e) {
             throw new AppException(AuthErrorCode.RATE_LIMITED);
         } catch (CognitoIdentityProviderException e) {
@@ -53,7 +53,7 @@ public class PasswordService {
         }
     }
 
-    @TimedAction("auth_reset_password")
+    @TimedAction("RESET_PASSWORD")
     @AuditAction(action = "RESET_PASSWORD", resourceType = "USER")
     @LogExecution
     public void resetPassword(ResetPasswordRequest request) {

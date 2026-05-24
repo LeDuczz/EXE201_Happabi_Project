@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/ai-chat")
+@RequestMapping("/api/v1/ai-chat")
 @RequiredArgsConstructor
 @Tag(name = "AI Chat", description = "AI chatbot conversations and messages")
 @SecurityRequirement(name = "bearerAuth")

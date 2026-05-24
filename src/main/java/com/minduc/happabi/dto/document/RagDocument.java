@@ -1,4 +1,4 @@
-package com.minduc.happabi.service.ai;
+package com.minduc.happabi.dto.document;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,4 +18,8 @@ public class RagDocument {
     private String source;
 
     private Double score;
+
+    private String answer;
+
+    private String question;
 }

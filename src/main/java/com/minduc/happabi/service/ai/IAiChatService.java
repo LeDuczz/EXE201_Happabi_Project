@@ -18,4 +18,5 @@ public interface IAiChatService {
     List<AiMessageResponse> getMessages(UUID conversationId);
 
     AiChatResponse sendMessage(UUID conversationId, SendAiMessageRequest request);
+
 }

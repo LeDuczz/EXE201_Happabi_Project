@@ -42,7 +42,7 @@ public class LoginService {
     private final CognitoService cognitoService;
 
     @LogExecution
-    @TimedAction("auth_login")
+    @TimedAction("LOGIN")
     @AuditAction(action = "LOGIN", resourceType = "USER_SESSION")
     @Transactional
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
@@ -64,10 +64,10 @@ public class LoginService {
                         .anyMatch(r -> r.getRoleName() == request.getPortalRole());
                 if (!hasAccess) {
                     throw new AppException(AuthErrorCode.AUTH_FAILED,
-                            "Tài khoản của bạn không có quyền đăng nhập vào portal " + request.getPortalRole());
+                            "Your account is not allowed to sign in to portal " + request.getPortalRole());
                 }
             } else {
-                throw new AppException(AuthErrorCode.AUTH_FAILED, "Portal role là bắt buộc để đăng nhập.");
+                throw new AppException(AuthErrorCode.AUTH_FAILED, "Portal role is required for sign-in.");
             }
 
             user.setLastLoginAt(OffsetDateTime.now());
@@ -99,7 +99,7 @@ public class LoginService {
         }
     }
 
-    @TimedAction("auth_refresh")
+    @TimedAction("REFRESH_TOKEN")
     @AuditAction(action = "REFRESH_TOKEN", resourceType = "USER_SESSION")
     @LogExecution
     public AuthResponse refresh(HttpServletRequest request) {
@@ -137,7 +137,7 @@ public class LoginService {
     }
 
     @LogExecution
-    @TimedAction("auth_logout")
+    @TimedAction("LOGOUT")
     @AuditAction(action = "LOGOUT", resourceType = "USER_SESSION")
     public void logout(String accessToken, HttpServletRequest request, HttpServletResponse response) {
         String cookieValue = CookieUtils.readRefreshTokenFromCookie(request);

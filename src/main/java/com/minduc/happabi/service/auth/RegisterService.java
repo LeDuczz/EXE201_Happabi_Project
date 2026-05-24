@@ -48,7 +48,7 @@ public class RegisterService {
     private final UserProviderService userProviderService;
     private final UserCacheService userCacheService;
 
-    @TimedAction("auth_register")
+    @TimedAction("REGISTER")
     @AuditAction(action = "REGISTER", resourceType = "USER")
     @LogExecution
     @Transactional
@@ -91,13 +91,13 @@ public class RegisterService {
                                          boolean hasRequestedRole, Role userRole) {
         if (hasRequestedRole) {
             throw new AppException(AuthErrorCode.PHONE_ALREADY_EXISTS,
-                    "Vai trò " + request.getRole().name() + " đã được liên kết với tài khoản này.");
+                    "Role " + request.getRole().name() + " is already linked to this account.");
         }
         try {
             cognitoService.adminInitiateAuth(requireMasterUsername(existing), request.getPassword());
         } catch (NotAuthorizedException e) {
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS,
-                    "Số điện thoại đã tồn tại. Vui lòng nhập đúng mật khẩu để thêm vai trò mới.");
+                    "Phone number already exists. Please enter the correct password to add a new role.");
         }
         String groupUsername = existing.getCognitoUsername() != null
                 ? existing.getCognitoUsername()
@@ -143,7 +143,7 @@ public class RegisterService {
         userProviderService.createProfileForRole(newUser, request.getRole());
     }
 
-    @TimedAction("auth_otp_verify")
+    @TimedAction("VERIFY_OTP")
     @AuditAction(action = "VERIFY_OTP", resourceType = "USER")
     @LogExecution
     public void verifyOtp(VerifyOtpRequest request) {
@@ -169,7 +169,7 @@ public class RegisterService {
         }
     }
 
-    @TimedAction("auth_otp_resend")
+    @TimedAction("RESEND_OTP")
     @LogExecution
     @AuditAction(action = "RESEND_OTP", resourceType = "USER")
     public void resendOtp(ResendOtpRequest request) {
@@ -188,7 +188,7 @@ public class RegisterService {
         }
     }
 
-    @TimedAction("auth_local_password_create")
+    @TimedAction("CREATE_LOCAL_PASSWORD")
     @Transactional
     @LogExecution
     @AuditAction(action = "CREATE_LOCAL_PASSWORD", resourceType = "USER")

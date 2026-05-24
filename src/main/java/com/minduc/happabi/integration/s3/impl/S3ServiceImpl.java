@@ -2,20 +2,21 @@ package com.minduc.happabi.integration.s3.impl;
 
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.S3ErrorCode;
+import com.minduc.happabi.integration.s3.IS3Service;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
-import com.minduc.happabi.integration.s3.IS3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
@@ -30,34 +31,34 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class S3ServiceImpl implements IS3Service {
 
+    private static final Map<String, Set<String>> ALLOWED_TYPES = Map.of(
+            "avatars", Set.of("image/jpeg", "image/png", "image/webp"),
+            "certifications", Set.of("image/jpeg", "image/png", "application/pdf"),
+            "kyc", Set.of("image/jpeg", "image/png"),
+            "checklist", Set.of("image/jpeg", "image/png"),
+            "gallery", Set.of("image/jpeg", "image/png", "image/webp")
+    );
+
+    private static final Map<String, Long> MAX_SIZES = Map.of(
+            "avatars", 5L * 1024 * 1024,
+            "certifications", 10L * 1024 * 1024,
+            "kyc", 10L * 1024 * 1024,
+            "checklist", 5L * 1024 * 1024,
+            "gallery", 20L * 1024 * 1024
+    );
+
+    private static final Duration PRESIGN_TTL = Duration.ofHours(1);
+
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
 
     @Value("${aws.s3.bucket}")
     private String bucket;
 
-    private static final Map<String, Set<String>> ALLOWED_TYPES = Map.of(
-            "avatars",         Set.of("image/jpeg", "image/png", "image/webp"),
-            "certifications",  Set.of("image/jpeg", "image/png", "application/pdf"),
-            "kyc",             Set.of("image/jpeg", "image/png"),
-            "checklist",       Set.of("image/jpeg", "image/png"),
-            "gallery",         Set.of("image/jpeg", "image/png", "image/webp")
-    );
-
-    private static final Map<String, Long> MAX_SIZES = Map.of(
-            "avatars",         5L  * 1024 * 1024,   // 5 MB
-            "certifications",  10L * 1024 * 1024,   // 10 MB
-            "kyc",             10L * 1024 * 1024,   // 10 MB
-            "checklist",       5L  * 1024 * 1024,   // 5 MB
-            "gallery",         20L * 1024 * 1024    // 20 MB
-    );
-
-    private static final Duration PRESIGN_TTL = Duration.ofHours(1);
-
     @Override
     @LogExecution
+    @AuditAction(action = "UPLOAD_FILE_TO_S3", resourceType = "S3_OBJECT")
     @TimedAction("UPLOAD_FILE_TO_S3")
-    @AuditAction(action = "UPLOAD_FILE", resourceType = "S3_OBJECT")
     public String upload(String folder, String ownerId, MultipartFile file) {
         validate(folder, file);
 
@@ -77,7 +78,6 @@ public class S3ServiceImpl implements IS3Service {
             s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
             log.info("[S3] Uploaded: bucket={} key={} size={}", bucket, key, file.getSize());
             return key;
-
         } catch (IOException e) {
             log.error("[S3] Upload failed: key={}", key, e);
             throw new AppException(S3ErrorCode.UPLOAD_FAILED, e);
@@ -90,16 +90,20 @@ public class S3ServiceImpl implements IS3Service {
                         "IAM user is missing s3:PutObject permission for bucket " + bucket);
             }
             throw new AppException(S3ErrorCode.UPLOAD_FAILED, e.awsErrorDetails().errorMessage());
+        } catch (SdkClientException e) {
+            log.warn("[S3] Storage connectivity issue: bucket={} key={} error={}",
+                    bucket, key, e.getMessage());
+            throw new AppException(S3ErrorCode.UPLOAD_FAILED, "Storage service temporarily unavailable");
         } catch (Exception e) {
-            log.error("[S3] Upload error: key={}", key, e);
+            log.error("[S3] Unexpected upload error: key={}", key, e);
             throw new AppException(S3ErrorCode.UPLOAD_FAILED, e);
         }
     }
 
     @Override
     @LogExecution
+    @AuditAction(action = "DELETE_FILE_FROM_S3", resourceType = "S3_OBJECT")
     @TimedAction("DELETE_FILE_FROM_S3")
-    @AuditAction(action = "DELETE_FILE", resourceType = "S3_OBJECT")
     public void delete(String key) {
         if (key == null || key.isBlank()) return;
         try {
@@ -117,24 +121,26 @@ public class S3ServiceImpl implements IS3Service {
                         "IAM user is missing s3:DeleteObject permission for bucket " + bucket);
             }
             throw new AppException(S3ErrorCode.DELETE_FAILED, e.awsErrorDetails().errorMessage());
+        } catch (SdkClientException e) {
+            log.warn("[S3] Storage connectivity issue while deleting: key={} error={}",
+                    key, e.getMessage());
+            throw new AppException(S3ErrorCode.DELETE_FAILED, "Storage service temporarily unavailable");
         } catch (Exception e) {
-            log.error("[S3] Delete failed: key={}", key, e);
+            log.error("[S3] Unexpected delete error: key={}", key, e);
             throw new AppException(S3ErrorCode.DELETE_FAILED, e);
         }
     }
 
     @Override
-    @TimedAction("GENERATE_PRESIGNED_URL")
-    @AuditAction(action = "GENERATE_PRESIGNED_URL", resourceType = "S3_OBJECT")
     @LogExecution
+    @TimedAction("GENERATE_PRESIGNED_URL_FOR_S3_OBJECT")
     public String presign(String key) {
         return presignWithTtl(key, PRESIGN_TTL);
     }
 
     @Override
     @LogExecution
-    @AuditAction(action = "GENERATE_PRESIGNED_URL_WITH_TTL", resourceType = "S3_OBJECT")
-    @TimedAction("GENERATE_PRESIGNED_URL_WITH_TTL")
+    @TimedAction("GENERATE_PRESIGNED_URL_FOR_S3_OBJECT_WITH_TTL")
     public String presign(String key, Duration ttl) {
         if (ttl == null || ttl.isNegative() || ttl.isZero()) {
             ttl = PRESIGN_TTL;
@@ -151,11 +157,17 @@ public class S3ServiceImpl implements IS3Service {
                     .build();
 
             String url = s3Presigner.presignGetObject(req).url().toString();
-            log.debug("[S3] Pre-signed URL generated: key={} ttl={}s", key, PRESIGN_TTL.getSeconds());
+            log.debug("[S3] Pre-signed URL generated: key={} ttl={}s", key, ttl.getSeconds());
             return url;
-        } catch (Exception e) {
-            log.error("[S3] Presign failed: key={}", key, e);
+        } catch (S3Exception e) {
             throw new AppException(S3ErrorCode.FILE_NOT_FOUND, key);
+        } catch (SdkClientException e) {
+            log.warn("[S3] Presign connectivity issue: key={} error={}",
+                    key, e.getMessage());
+            throw new AppException(S3ErrorCode.UPLOAD_FAILED, "Storage service temporarily unavailable");
+        } catch (Exception e) {
+            log.error("[S3] Unexpected presign error: key={}", key, e);
+            throw new AppException(S3ErrorCode.UPLOAD_FAILED, e);
         }
     }
 
@@ -164,7 +176,6 @@ public class S3ServiceImpl implements IS3Service {
             throw new AppException(S3ErrorCode.UPLOAD_FAILED, "File must not be empty");
         }
 
-        // Content-type check
         Set<String> allowed = ALLOWED_TYPES.getOrDefault(folder, Set.of());
         String contentType = file.getContentType();
         if (contentType == null || !allowed.contains(contentType.toLowerCase())) {
@@ -172,7 +183,6 @@ public class S3ServiceImpl implements IS3Service {
                     "Folder '" + folder + "' accepts: " + allowed);
         }
 
-        // Size check
         long maxBytes = MAX_SIZES.getOrDefault(folder, 5L * 1024 * 1024);
         if (file.getSize() > maxBytes) {
             throw new AppException(S3ErrorCode.FILE_TOO_LARGE,

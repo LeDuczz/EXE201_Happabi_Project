@@ -27,4 +27,5 @@ public interface IAuthService {
     void forgotPassword(ForgotPasswordRequest request);
 
     void resetPassword(ResetPasswordRequest request);
+
 }

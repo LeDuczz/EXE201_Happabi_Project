@@ -1,5 +1,6 @@
 package com.minduc.happabi.dto.response.ai;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.minduc.happabi.enums.ChatRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AiMessageResponse {
 
     private UUID id;

@@ -47,9 +47,11 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
-    @TimedAction("get_pending_nurse_reviews")
+    @TimedAction("GET_PENDING_NURSE_REVIEWS")
+    @AuditAction(action = "GET_PENDING_NURSE_REVIEWS", resourceType = "NURSE_PROFILE")
     public List<NurseOnboardingResponse> getPendingReviews() {
-        return nurseProfileRepository.findByNurseStatusOrderByUpdatedAtAsc(NurseStatus.PENDING_REVIEW).stream()
+        return nurseProfileRepository
+                .findByNurseStatusOrderByUpdatedAtAsc(NurseStatus.PENDING_REVIEW).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -57,7 +59,9 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
-    @TimedAction("get_nurse_review_detail")
+    @LogExecution
+    @AuditAction(action = "GET_NURSE_PROFILE_FOR_REVIEW", resourceType = "NURSE_PROFILE")
+    @TimedAction("GET_NURSE_PROFILE_FOR_REVIEW")
     public NurseOnboardingResponse getForDoctor(UUID profileId) {
         return toResponse(findProfile(profileId));
     }
@@ -66,8 +70,8 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @TimedAction("get_nurse_kyc_document_url")
-    @AuditAction(action = "VIEW_NURSE_KYC_DOCUMENT", resourceType = "NURSE_PROFILE")
+    @TimedAction("GET_NURSE_KYC_DOCUMENT_URL")
+    @AuditAction(action = "GET_NURSE_KYC_DOCUMENT_URL", resourceType = "NURSE_PROFILE")
     public String getKycDocumentUrl(UUID profileId, String side) {
         NurseProfile profile = findProfile(profileId);
         NurseKyc kyc = nurseKycRepository.findByNurse(profile)
@@ -80,11 +84,12 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @TimedAction("get_nurse_certification_document_url")
-    @AuditAction(action = "VIEW_NURSE_CERTIFICATION_DOCUMENT", resourceType = "NURSE_CERTIFICATION")
+    @TimedAction("GET_NURSE_CERTIFICATION_DOCUMENT_URL")
+    @AuditAction(action = "GET_NURSE_CERTIFICATION_DOCUMENT_URL", resourceType = "NURSE_CERTIFICATION")
     public String getCertificationDocumentUrl(UUID certificationId) {
         NurseCertification certification = certificationRepository.findById(certificationId)
-                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED, "Certification not found."));
+                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED,
+                        "Certification not found."));
         return s3Service.presign(certification.getDocumentS3Key(), SENSITIVE_DOCUMENT_TTL);
     }
 
@@ -92,12 +97,13 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     @Transactional
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @LogExecution
-    @TimedAction("approve_nurse_profile")
+    @TimedAction("APPROVE_NURSE_PROFILE")
     @AuditAction(action = "APPROVE_NURSE_PROFILE", resourceType = "NURSE_PROFILE")
     public NurseOnboardingResponse approve(UUID profileId, ReviewNurseProfileRequest request) {
         NurseProfile profile = findProfile(profileId);
         if (profile.getNurseStatus() != NurseStatus.PENDING_REVIEW) {
-            throw new AppException(AuthErrorCode.AUTH_FAILED, "Only pending review profiles can be approved.");
+            throw new AppException(AuthErrorCode.AUTH_FAILED,
+                    "Only pending review profiles can be approved.");
         }
 
         User actor = currentUser();
@@ -116,7 +122,8 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
             certificationRepository.save(cert);
         });
 
-        transition(profile, NurseStatus.APPROVED_PENDING_CONTRACT, NurseReviewAction.APPROVED, actor, request.getNote());
+        transition(profile, NurseStatus.APPROVED_PENDING_CONTRACT,
+                NurseReviewAction.APPROVED, actor, request.getNote());
         profile.setRejectionReason(null);
         NurseProfile saved = nurseProfileRepository.save(profile);
         ensurePendingContract(saved);
@@ -128,12 +135,14 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
-    @TimedAction("reject_nurse_profile")
+    @LogExecution
+    @TimedAction("REJECT_NURSE_PROFILE")
     @AuditAction(action = "REJECT_NURSE_PROFILE", resourceType = "NURSE_PROFILE")
     public NurseOnboardingResponse reject(UUID profileId, ReviewNurseProfileRequest request) {
         NurseProfile profile = findProfile(profileId);
         if (profile.getNurseStatus() != NurseStatus.PENDING_REVIEW) {
-            throw new AppException(AuthErrorCode.AUTH_FAILED, "Only pending review profiles can be rejected.");
+            throw new AppException(AuthErrorCode.AUTH_FAILED,
+                    "Only pending review profiles can be rejected.");
         }
 
         User actor = currentUser();
@@ -155,7 +164,8 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
 
     private NurseProfile findProfile(UUID profileId) {
         return nurseProfileRepository.findById(profileId)
-                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED, "Nurse profile not found."));
+                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED,
+                        "Nurse profile not found."));
     }
 
     private User currentUser() {
@@ -165,7 +175,8 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
                 .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
     }
 
-    private void transition(NurseProfile profile, NurseStatus toStatus, NurseReviewAction action, User actor, String note) {
+    private void transition(NurseProfile profile, NurseStatus toStatus,
+                            NurseReviewAction action, User actor, String note) {
         NurseStatus fromStatus = profile.getNurseStatus();
         profile.setNurseStatus(toStatus);
         profile.setLastStatusChangedAt(OffsetDateTime.now());
@@ -192,8 +203,10 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
 
     private NurseOnboardingResponse toResponse(NurseProfile profile) {
         NurseKyc kyc = nurseKycRepository.findByNurse(profile).orElse(null);
-        List<NurseCertification> certifications = certificationRepository.findByNurseOrderByIdDesc(profile);
-        NurseContract latestContract = contractRepository.findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
+        List<NurseCertification> certifications = certificationRepository
+                .findByNurseOrderByIdDesc(profile);
+        NurseContract latestContract = contractRepository
+                .findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
         return nurseOnboardingMapper.toResponse(profile, kyc, certifications, latestContract);
     }
 }

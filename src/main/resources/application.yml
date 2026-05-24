@@ -50,25 +50,35 @@ spring:
 
   ai:
     model:
-      chat: none
+      chat: ${SPRING_AI_CHAT_PROVIDER:google-genai}
       audio:
         speech: none
         transcription: none
-      embedding: openai
+      embedding:
+        text: ${AI_CHAT_RAG_EMBEDDING_PROVIDER:google-genai}
       image: none
       moderation: none
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
-      embedding:
-        options:
-          model: ${AI_CHAT_RAG_EMBEDDING_MODEL:text-embedding-3-small}
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          options:
+            model: ${GEMINI_CHAT_MODEL:gemini-2.0-flash}
+            temperature: ${GEMINI_CHAT_TEMPERATURE:0.2}
+        embedding:
+          api-key: ${GEMINI_API_KEY}
+          text:
+            options:
+              model: ${AI_CHAT_RAG_EMBEDDING_MODEL:gemini-embedding-001}
+              dimensions: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:768}
+              task-type: ${AI_CHAT_RAG_EMBEDDING_TASK_TYPE:RETRIEVAL_DOCUMENT}
+              auto-truncate: true
     vectorstore:
       pgvector:
         initialize-schema: ${AI_CHAT_RAG_PGVECTOR_INITIALIZE_SCHEMA:true}
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimensions: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:1536}
+        dimensions: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:768}
         max-document-batch-size: ${AI_CHAT_RAG_PGVECTOR_BATCH_SIZE:10000}
 
 server:
@@ -206,21 +216,36 @@ openai:
   api-key: ${OPENAI_API_KEY:}
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
   model: ${OPENAI_VISION_MODEL:gpt-4o-mini}
+  connect-timeout-ms: ${OPENAI_CONNECT_TIMEOUT_MS:5000}
+  read-timeout-ms: ${OPENAI_READ_TIMEOUT_MS:30000}
 
 openrouter:
-  enabled: ${OPENROUTER_ENABLED:true}
-  api-key: ${OPENROUTER_API_KEY:}
+  api-key: ${OPENROUTER_API_KEY}
   base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
-  model: ${OPENROUTER_MODEL:openrouter/auto}
+  model: ${OPENROUTER_MODEL:openrouter/free}
   temperature: ${OPENROUTER_TEMPERATURE:0.2}
-  site-url: ${OPENROUTER_SITE_URL:https://happabi.vn}
-  app-name: ${OPENROUTER_APP_NAME:Happabi}
+  site-url: ${OPENROUTER_SITE_URL:http://localhost:5173}
+  app-name: ${OPENROUTER_APP_NAME:Happabi DEV}
 
 ai-chat:
+  provider: ${AI_CHAT_PROVIDER:openrouter}
   models:
-    default: ${AI_CHAT_DEFAULT_MODEL:gpt-4o-mini}
-    reasoning: ${AI_CHAT_REASONING_MODEL:gpt-4o-mini}
-    fast: ${AI_CHAT_FAST_MODEL:gpt-4o-mini}
+    default: ${AI_CHAT_DEFAULT_MODEL:gemini-2.0-flash}
+    reasoning: ${AI_CHAT_REASONING_MODEL:gemini-2.0-flash}
+    fast: ${AI_CHAT_FAST_MODEL:gemini-2.0-flash-lite}
   rag:
-    embedding-model: ${AI_CHAT_RAG_EMBEDDING_MODEL:text-embedding-3-small}
-    embedding-dimension: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:1536}
+    embedding-model: ${AI_CHAT_RAG_EMBEDDING_MODEL:gemini-embedding-001}
+    embedding-dimension: ${AI_CHAT_RAG_EMBEDDING_DIMENSION:768}
+    medium-threshold: ${AI_CHAT_RAG_MEDIUM_THRESHOLD:0.60}
+    high-threshold: ${AI_CHAT_RAG_HIGH_THRESHOLD:0.85}
+    
+# ========================
+# PayOs
+# ========================
+payos:
+  client-id: ${PAYOS_CLIENT_ID}
+  api-key: ${PAYOS_API_KEY}
+  checksum-key: ${PAYOS_CHECKSUM_KEY}
+  return-url-success: ${RETURN_URL_SUCCESS}
+  return-url-fail: ${RETURN_URL_FAIL}
+

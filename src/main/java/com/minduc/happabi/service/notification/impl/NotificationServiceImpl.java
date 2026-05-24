@@ -33,7 +33,7 @@ public class NotificationServiceImpl implements INotificationService {
     @Override
     @Transactional
     @LogExecution
-    @TimedAction("create_notification")
+    @TimedAction("CREATE_NOTIFICATION")
     public Notification create(User targetUser, NotificationType type, String title, String message,
                                String resourceType, String resourceId) {
         Notification notification = Notification.builder()
@@ -53,7 +53,7 @@ public class NotificationServiceImpl implements INotificationService {
     @Override
     @Transactional(readOnly = true)
     @LogExecution
-    @TimedAction("get_my_notifications")
+    @TimedAction("GET_MY_NOTIFICATIONS")
     public NotificationListResponse getMyNotifications() {
         User user = currentUser();
         return NotificationListResponse.builder()
@@ -67,7 +67,7 @@ public class NotificationServiceImpl implements INotificationService {
     @Override
     @Transactional
     @LogExecution
-    @TimedAction("mark_notification_as_read")
+    @TimedAction("MARK_NOTIFICATION_AS_READ")
     public NotificationResponse markAsRead(UUID notificationId) {
         User user = currentUser();
         Notification notification = notificationRepository.findByIdWithUser(notificationId)

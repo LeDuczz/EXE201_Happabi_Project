@@ -1,10 +1,10 @@
 package com.minduc.happabi.controller.user;
 
 import com.minduc.happabi.common.base.BaseResponse;
+import com.minduc.happabi.dto.request.mother.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
 import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
 import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
-import com.minduc.happabi.dto.request.mother.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
@@ -16,7 +16,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -92,7 +98,6 @@ public class UserController {
     public ResponseEntity<BaseResponse<String>> uploadAvatar(
             @RequestPart("file") MultipartFile file) {
         String presignedUrl = userService.uploadAvatar(file);
-        return ResponseEntity.ok(
-                BaseResponse.ok("Avatar đã được cập nhật thành công.", presignedUrl));
+        return ResponseEntity.ok(BaseResponse.ok("Avatar updated successfully.", presignedUrl));
     }
 }

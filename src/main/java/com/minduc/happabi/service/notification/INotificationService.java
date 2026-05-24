@@ -16,4 +16,5 @@ public interface INotificationService {
     NotificationListResponse getMyNotifications();
 
     NotificationResponse markAsRead(UUID notificationId);
+
 }

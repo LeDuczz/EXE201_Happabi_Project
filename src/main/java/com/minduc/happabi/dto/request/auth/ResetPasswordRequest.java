@@ -8,17 +8,17 @@ import lombok.Data;
 @Data
 public class ResetPasswordRequest {
 
-    @NotBlank(message = "Số điện thoại không được để trống.")
+    @NotBlank(message = "Phone number is required.")
     @Pattern(
             regexp = "^\\+84[3-9]\\d{8}$",
-            message = "Số điện thoại phải theo định dạng E.164 của Việt Nam (ví dụ: +84901234567)."
+            message = "Phone number must follow Vietnam E.164 format, for example +84901234567."
     )
     private String phone;
 
-    @NotBlank(message = "Mã OTP không được để trống.")
+    @NotBlank(message = "OTP code is required.")
     private String otpCode;
 
-    @NotBlank(message = "Mật khẩu mới không được để trống.")
-    @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự.")
+    @NotBlank(message = "New password is required.")
+    @Size(min = 8, message = "Password must be at least 8 characters.")
     private String newPassword;
 }

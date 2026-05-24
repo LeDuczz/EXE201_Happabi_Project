@@ -7,10 +7,10 @@ import lombok.Data;
 @Data
 public class ResendOtpRequest {
 
-    @NotBlank(message = "Số điện thoại không được để trống.")
+    @NotBlank(message = "Phone number is required.")
     @Pattern(
             regexp = "^\\+84[3-9]\\d{8}$",
-            message = "Số điện thoại phải theo định dạng E.164 của Việt Nam (ví dụ: +84901234567)."
+            message = "Phone number must follow Vietnam E.164 format, for example +84901234567."
     )
     private String phone;
 }

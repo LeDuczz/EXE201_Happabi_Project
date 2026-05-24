@@ -7,12 +7,12 @@ import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
+import com.minduc.happabi.service.user.IUserService;
 import com.minduc.happabi.service.user.MotherProfileAccountService;
 import com.minduc.happabi.service.user.NurseProfileService;
 import com.minduc.happabi.service.user.UserAttributeChangeService;
 import com.minduc.happabi.service.user.UserAvatarService;
 import com.minduc.happabi.service.user.UserProfileService;
-import com.minduc.happabi.service.user.IUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,15 +23,15 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserServiceImpl implements IUserService {
 
-    private final UserProfileService userProfileQueryService;
+    private final UserProfileService userProfileService;
     private final MotherProfileAccountService motherProfileAccountService;
     private final UserAttributeChangeService userAttributeChangeService;
-    private final NurseProfileService nurseProfileQueryService;
+    private final NurseProfileService nurseProfileService;
     private final UserAvatarService userAvatarService;
 
     @Override
     public UserProfileResponse getMe() {
-        return userProfileQueryService.getMe();
+        return userProfileService.getMe();
     }
 
     @Override
@@ -66,11 +66,12 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public NurseProfileResponse getNurseProfile() {
-        return nurseProfileQueryService.getNurseProfile();
+        return nurseProfileService.getNurseProfile();
     }
 
     @Override
     public String uploadAvatar(MultipartFile file) {
         return userAvatarService.uploadAvatar(file);
     }
+
 }
