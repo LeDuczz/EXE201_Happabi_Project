@@ -43,7 +43,7 @@ public class PasswordService {
             throw new AppException(AuthErrorCode.USER_NOT_FOUND);
         } catch (InvalidParameterException e) {
             throw new AppException(AuthErrorCode.SOCIAL_PROVIDER_MISMATCH,
-                    "Tài khoản này đăng nhập qua mạng xã hội, không có mật khẩu để đặt lại.");
+                    "This account uses social sign-in and does not have a local password to reset.");
         } catch (LimitExceededException e) {
             throw new AppException(AuthErrorCode.RATE_LIMITED);
         } catch (CognitoIdentityProviderException e) {

@@ -11,6 +11,7 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.mapper.NurseOnboardingMapper;
 import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.*;
 import com.minduc.happabi.service.notification.NurseNotificationService;
@@ -49,7 +50,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('NURSE')")
-    @TimedAction("nurse_get_onboarding")
+    @LogExecution
+    @TimedAction("NURSE_GET_ONBOARDING")
     public NurseOnboardingResponse getMyOnboarding() {
         return toResponse(currentNurseProfile());
     }
@@ -57,7 +59,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
-    @TimedAction("nurse_update_profile")
+    @LogExecution
+    @TimedAction("NURSE_UPDATE_PROFILE")
     @AuditAction(action = "NURSE_UPDATE_PROFILE", resourceType = "NURSE_PROFILE")
     public NurseOnboardingResponse updateMyProfile(UpdateNurseProfileRequest request) {
         NurseProfile profile = currentNurseProfile();
@@ -78,7 +81,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
-    @TimedAction("nurse_update_kyc")
+    @LogExecution
+    @TimedAction("NURSE_UPDATE_KYC")
     @AuditAction(action = "NURSE_UPDATE_KYC", resourceType = "NURSE_KYC")
     public NurseOnboardingResponse updateMyKyc(UpdateNurseKycRequest request, MultipartFile frontImage, MultipartFile backImage) {
         NurseProfile profile = currentNurseProfile();
@@ -104,7 +108,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
     @Override
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
-    @TimedAction("nurse_add_certification")
+    @LogExecution
+    @TimedAction("NURSE_ADD_CERTIFICATION")
     @AuditAction(action = "NURSE_ADD_CERTIFICATION", resourceType = "NURSE_CERTIFICATION")
     public NurseCertificationResponse addMyCertification(CreateNurseCertificationRequest request, MultipartFile document) {
         NurseProfile profile = currentNurseProfile();
@@ -119,37 +124,45 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
                 .issuedBy(request.getIssuedBy())
                 .issuedDate(request.getIssuedDate())
                 .expiryDate(request.getExpiryDate())
-                .documentS3Key(s3Service.upload("certifications", profile.getUser().getId().toString(), document))
+                .documentS3Key(s3Service.upload("certifications",
+                        profile.getUser().getId().toString(), document))
                 .isVerified(false)
                 .build();
-        return nurseOnboardingMapper.toCertificationResponse(certificationRepository.save(certification));
+        return nurseOnboardingMapper
+                .toCertificationResponse(certificationRepository.save(certification));
     }
 
     @Override
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
-    @TimedAction("nurse_submit_profile")
+    @LogExecution
+    @TimedAction("NURSE_SUBMIT_PROFILE")
     @AuditAction(action = "NURSE_SUBMIT_PROFILE", resourceType = "NURSE_PROFILE")
     public NurseOnboardingResponse submitMyProfile() {
         NurseProfile profile = currentNurseProfile();
         ensureEditable(profile);
         validateReadyToSubmit(profile);
-        transition(profile, NurseStatus.PENDING_REVIEW, NurseReviewAction.SUBMITTED, currentUser(), "Submitted for doctor review");
+        transition(profile, NurseStatus.PENDING_REVIEW, NurseReviewAction.SUBMITTED,
+                currentUser(), "Submitted for doctor review");
         return toResponse(nurseProfileRepository.save(profile));
     }
 
     @Override
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
-    @TimedAction("nurse_sign_contract")
+    @LogExecution
+    @TimedAction("NURSE_SIGN_CONTRACT")
     @AuditAction(action = "NURSE_SIGN_CONTRACT", resourceType = "NURSE_CONTRACT")
-    public NurseOnboardingResponse signContract(SignNurseContractRequest request, HttpServletRequest httpRequest) {
+    public NurseOnboardingResponse signContract(SignNurseContractRequest request,
+                                                HttpServletRequest httpRequest) {
         NurseProfile profile = currentNurseProfile();
         if (profile.getNurseStatus() != NurseStatus.APPROVED_PENDING_CONTRACT) {
-            throw new AppException(AuthErrorCode.AUTH_FAILED, "Nurse profile is not ready for contract signing.");
+            throw new AppException(AuthErrorCode.AUTH_FAILED,
+                    "Nurse profile is not ready for contract signing.");
         }
 
-        NurseContract contract = contractRepository.findTopByNurseAndStatusOrderByCreatedAtDesc(profile, NurseContractStatus.PENDING)
+        NurseContract contract = contractRepository
+                .findTopByNurseAndStatusOrderByCreatedAtDesc(profile, NurseContractStatus.PENDING)
                 .orElseGet(() -> NurseContract.builder()
                         .nurse(profile)
                         .contractVersion(CURRENT_CONTRACT_VERSION)
@@ -162,7 +175,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
         contract.setStatus(NurseContractStatus.SIGNED);
         contractRepository.save(contract);
 
-        transition(profile, NurseStatus.ACTIVE, NurseReviewAction.CONTRACT_SIGNED, currentUser(), "Contract signed");
+        transition(profile, NurseStatus.ACTIVE,
+                NurseReviewAction.CONTRACT_SIGNED, currentUser(), "Contract signed");
         nurseProfileRepository.save(profile);
         nurseNotificationService.notifyActive(profile);
         return toResponse(profile);
@@ -178,7 +192,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
     private NurseProfile currentNurseProfile() {
         User user = currentUser();
         return nurseProfileRepository.findByUser(user)
-                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED, "Nurse profile not found."));
+                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED,
+                        "Nurse profile not found."));
     }
 
     private void ensureEditable(NurseProfile profile) {
@@ -197,7 +212,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
         }
     }
 
-    private void transition(NurseProfile profile, NurseStatus toStatus, NurseReviewAction action, User actor, String note) {
+    private void transition(NurseProfile profile, NurseStatus toStatus,
+                            NurseReviewAction action, User actor, String note) {
         NurseStatus fromStatus = profile.getNurseStatus();
         profile.setNurseStatus(toStatus);
         profile.setLastStatusChangedAt(OffsetDateTime.now());
@@ -214,8 +230,10 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
 
     private NurseOnboardingResponse toResponse(NurseProfile profile) {
         NurseKyc kyc = nurseKycRepository.findByNurse(profile).orElse(null);
-        List<NurseCertification> certifications = certificationRepository.findByNurseOrderByIdDesc(profile);
-        NurseContract latestContract = contractRepository.findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
+        List<NurseCertification> certifications = certificationRepository
+                .findByNurseOrderByIdDesc(profile);
+        NurseContract latestContract = contractRepository
+                .findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
         return nurseOnboardingMapper.toResponse(profile, kyc, certifications, latestContract);
     }
 
@@ -223,7 +241,8 @@ public class NurseOnboardingServiceImpl implements NurseOnboardingService {
         return certificationRepository.countByNurse(profile) > 0;
     }
 
-    private void handleKycImage(MultipartFile image, String ownerId, Supplier<String> oldKeySupplier,
+    private void handleKycImage(MultipartFile image, String ownerId,
+                                Supplier<String> oldKeySupplier,
                                 Consumer<String> newKeySetter) {
         if (image == null || image.isEmpty()) {
             return;

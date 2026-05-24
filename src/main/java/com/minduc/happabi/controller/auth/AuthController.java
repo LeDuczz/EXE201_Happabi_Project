@@ -41,21 +41,21 @@ public class AuthController {
         authService.register(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(BaseResponse.created("Đăng ký thành công.", null));
+                .body(BaseResponse.created("Registration successful.", null));
     }
 
     @PostMapping("/verify-otp")
     public ResponseEntity<BaseResponse<Void>> verifyOtp(
             @Valid @RequestBody VerifyOtpRequest request) {
         authService.verifyOtp(request);
-        return ResponseEntity.ok(BaseResponse.ok("Tài khoản đã được xác thực thành công."));
+        return ResponseEntity.ok(BaseResponse.ok("Account verified successfully."));
     }
 
     @PostMapping("/resend-otp")
     public ResponseEntity<BaseResponse<Void>> resendOtp(
             @Valid @RequestBody ResendOtpRequest request) {
         authService.resendOtp(request);
-        return ResponseEntity.ok(BaseResponse.ok("Mã OTP đã được gửi lại qua SMS."));
+        return ResponseEntity.ok(BaseResponse.ok("OTP code has been resent via SMS."));
     }
 
     @AuditAction(action = "AUTH_LOGIN", resourceType = "USER")
@@ -64,7 +64,7 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletResponse response) {
         AuthResponse authResponse = authService.login(request, response);
-        return ResponseEntity.ok(BaseResponse.ok("Đăng nhập thành công.", authResponse));
+        return ResponseEntity.ok(BaseResponse.ok("Login successful.", authResponse));
     }
 
     @AuditAction(action = "AUTH_SOCIAL_LOGIN", resourceType = "SOCIAL_IDENTITY")
@@ -73,7 +73,7 @@ public class AuthController {
             @Valid @RequestBody SocialSyncRequest request,
             HttpServletResponse response) {
         AuthResponse authResponse = authService.socialSync(request, response);
-        return ResponseEntity.ok(BaseResponse.ok("Đăng nhập bằng tài khoản xã hội thành công.", authResponse));
+        return ResponseEntity.ok(BaseResponse.ok("Social login successful.", authResponse));
     }
 
     @PostMapping("/local-password")
@@ -86,7 +86,7 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<BaseResponse<AuthResponse>> refresh(HttpServletRequest request) {
         AuthResponse authResponse = authService.refresh(request);
-        return ResponseEntity.ok(BaseResponse.ok("Token đã được làm mới.", authResponse));
+        return ResponseEntity.ok(BaseResponse.ok("Token refreshed.", authResponse));
     }
 
     @PostMapping("/logout")
@@ -98,7 +98,7 @@ public class AuthController {
                 ? authorizationHeader.substring(7)
                 : authorizationHeader;
         authService.logout(accessToken, request, response);
-        return ResponseEntity.ok(BaseResponse.ok("Đăng xuất thành công."));
+        return ResponseEntity.ok(BaseResponse.ok("Logout successful."));
     }
 
     @AuditAction(action = "AUTH_FORGOT_PASSWORD", resourceType = "USER")
@@ -106,7 +106,7 @@ public class AuthController {
     public ResponseEntity<BaseResponse<Void>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
-        return ResponseEntity.ok(BaseResponse.ok("Mã OTP đặt lại mật khẩu đã được gửi qua SMS."));
+        return ResponseEntity.ok(BaseResponse.ok("Password reset OTP has been sent via SMS."));
     }
 
     @AuditAction(action = "AUTH_RESET_PASSWORD", resourceType = "USER")
@@ -114,6 +114,6 @@ public class AuthController {
     public ResponseEntity<BaseResponse<Void>> resetPassword(
             @Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
-        return ResponseEntity.ok(BaseResponse.ok("Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại."));
+        return ResponseEntity.ok(BaseResponse.ok("Password reset successful. Please sign in again."));
     }
 }

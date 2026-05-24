@@ -53,9 +53,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    @PreAuthorize("isAuthenticated()")
     @LogExecution
-    @TimedAction("get_current_user_profile")
+    @TimedAction("GET_ME")
     public UserProfileResponse getMe() {
         String cognitoSub = getCurrentSubOrThrow();
         UserProfileResponse cached = userCacheService.getUserProfile(cognitoSub).orElse(null);
@@ -72,9 +71,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAuthority('USER:READ')")
     @LogExecution
-    @TimedAction("get_mother_profile")
+    @TimedAction("GET_MOTHER_PROFILE")
     public MotherProfileResponse getMotherProfile() {
         String cognitoSub = getCurrentSubOrThrow();
         MotherProfileResponse cached = userCacheService.getMotherProfile(cognitoSub).orElse(null);
@@ -93,9 +91,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @PreAuthorize("hasAuthority('USER:UPDATE')")
     @LogExecution
-    @TimedAction("update_mother_profile")
+    @TimedAction("UPDATE_MOTHER_PROFILE")
     public MotherProfileResponse updateMotherProfile(UpdateMotherProfileRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
         User user = findBySub(cognitoSub);
@@ -129,16 +126,16 @@ public class UserServiceImpl implements UserService {
         userCacheService.evictProfiles(cognitoSub);
 
         String avatarUrl = s3ServiceImpl.presign(user.getAvatarS3Key());
-        MotherProfileResponse response = userMapper.toMotherProfileResponse(savedProfile, avatarUrl);
+        MotherProfileResponse response = userMapper.toMotherProfileResponse(savedProfile,
+                avatarUrl);
         userCacheService.putMotherProfile(cognitoSub, response);
         return response;
     }
 
     @Override
     @Transactional
-    @PreAuthorize("isAuthenticated()")
     @LogExecution
-    @TimedAction("request_email_change")
+    @TimedAction("REQUEST_EMAIL_CHANGE")
     @AuditAction(action = "REQUEST_EMAIL_CHANGE", resourceType = "USER_PROFILE")
     public void requestEmailChange(RequestEmailChangeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
@@ -158,15 +155,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @PreAuthorize("isAuthenticated()")
     @LogExecution
-    @TimedAction("confirm_email_change")
+    @TimedAction("CONFIRM_EMAIL_CHANGE")
     public UserProfileResponse confirmEmailChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
-        cognitoService.verifyUserAttribute(requireAccessToken(), "email", request.getCode());
+        cognitoService.verifyUserAttribute(requireAccessToken(), "email",
+                request.getCode());
 
         User user = findBySub(cognitoSub);
-        String verifiedEmail = cognitoService.getCurrentUserAttribute(requireAccessToken(), "email");
+        String verifiedEmail = cognitoService.getCurrentUserAttribute(requireAccessToken(),
+                "email");
         ensureEmailAvailableForUser(verifiedEmail, user);
         user.setEmail(verifiedEmail);
         user.setEmailVerified(true);
@@ -178,9 +176,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @PreAuthorize("isAuthenticated()")
     @LogExecution
-    @TimedAction("request_phone_change")
+    @TimedAction("REQUEST_PHONE_CHANGE")
     @AuditAction(action = "REQUEST_PHONE_CHANGE", resourceType = "USER_PROFILE")
     public void requestPhoneChange(RequestPhoneChangeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
@@ -194,20 +191,22 @@ public class UserServiceImpl implements UserService {
         }
         ensurePhoneAvailableForUser(request.getPhone(), user);
         cognitoService.updatePhoneWithVerification(requireAccessToken(), request.getPhone());
-        cognitoService.resendAttributeVerificationCode(requireAccessToken(), "phone_number");
+        cognitoService.resendAttributeVerificationCode(requireAccessToken(),
+                "phone_number");
     }
 
     @Override
     @Transactional
-    @PreAuthorize("isAuthenticated()")
     @LogExecution
-    @TimedAction("confirm_phone_change")
+    @TimedAction("CONFIRM_PHONE_CHANGE")
     public UserProfileResponse confirmPhoneChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = getCurrentSubOrThrow();
-        cognitoService.verifyUserAttribute(requireAccessToken(), "phone_number", request.getCode());
+        cognitoService.verifyUserAttribute(requireAccessToken(), "phone_number",
+                request.getCode());
 
         User user = findBySub(cognitoSub);
-        String verifiedPhone = cognitoService.getCurrentUserAttribute(requireAccessToken(), "phone_number");
+        String verifiedPhone = cognitoService.getCurrentUserAttribute(requireAccessToken(),
+                "phone_number");
         ensurePhoneAvailableForUser(verifiedPhone, user);
         user.setPhone(verifiedPhone);
         user.setPhoneVerified(true);
@@ -219,12 +218,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAuthority('NURSE:READ')")
     @LogExecution
-    @TimedAction("get_nurse_profile")
+    @TimedAction("GET_NURSE_PROFILE")
     public NurseProfileResponse getNurseProfile() {
         String cognitoSub = getCurrentSubOrThrow();
-        NurseProfileResponse cached = userCacheService.getNurseProfile(cognitoSub).orElse(null);
+        NurseProfileResponse cached = userCacheService.getNurseProfile(cognitoSub)
+                .orElse(null);
         if (cached != null) {
             return cached;
         }
@@ -240,9 +239,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @PreAuthorize("isAuthenticated()")
     @LogExecution
-    @TimedAction("upload_avatar")
+    @TimedAction("UPLOAD_AVATAR")
     @AuditAction(action = "UPLOAD_AVATAR", resourceType = "USER_PROFILE")
     public String uploadAvatar(MultipartFile file) {
         String cognitoSub = getCurrentSubOrThrow();
@@ -257,7 +255,8 @@ public class UserServiceImpl implements UserService {
         log.info("[Avatar] Uploaded new avatar: userId={} key={}", user.getId(), newKey);
 
         if (oldKey != null && !oldKey.isBlank() && !oldKey.equals(newKey)) {
-            eventPublisher.publishEvent(new S3ObjectDeleteRequestedEvent(oldKey, "AVATAR_REPLACED"));
+            eventPublisher.publishEvent(new S3ObjectDeleteRequestedEvent(oldKey,
+                    "AVATAR_REPLACED"));
         }
 
         return s3ServiceImpl.presign(newKey);
@@ -311,7 +310,8 @@ public class UserServiceImpl implements UserService {
 
     private User findBySub(String cognitoSub) {
         return userRepository.findByCognitoSubWithRolesAndProviders(cognitoSub)
-                .or(() -> identityProviderRepository.findUserByProviderUidWithRolesAndProviders(cognitoSub))
+                .or(() -> identityProviderRepository
+                        .findUserByProviderUidWithRolesAndProviders(cognitoSub))
                 .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
     }
 }
