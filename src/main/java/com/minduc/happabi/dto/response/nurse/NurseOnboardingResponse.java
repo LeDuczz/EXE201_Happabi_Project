@@ -1,5 +1,6 @@
 package com.minduc.happabi.dto.response.nurse;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.minduc.happabi.enums.NurseSpecialty;
 import com.minduc.happabi.enums.NurseStatus;
 import lombok.Builder;
@@ -12,6 +13,7 @@ import java.util.UUID;
 
 @Getter
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class NurseOnboardingResponse {
     private UUID profileId;
     private UUID userId;

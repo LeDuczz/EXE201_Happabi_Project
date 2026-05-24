@@ -5,7 +5,6 @@ import com.minduc.happabi.dto.request.auth.LoginRequest;
 import com.minduc.happabi.dto.response.auth.AuthResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.entity.User;
-import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.mapper.UserMapper;
@@ -64,10 +63,10 @@ public class LoginService {
                         .anyMatch(r -> r.getRoleName() == request.getPortalRole());
                 if (!hasAccess) {
                     throw new AppException(AuthErrorCode.AUTH_FAILED,
-                            "Tài khoản của bạn không có quyền đăng nhập vào portal " + request.getPortalRole());
+                            "Your account is not allowed to sign in to portal " + request.getPortalRole());
                 }
             } else {
-                throw new AppException(AuthErrorCode.AUTH_FAILED, "Portal role là bắt buộc để đăng nhập.");
+                throw new AppException(AuthErrorCode.AUTH_FAILED, "Portal role is required for sign-in.");
             }
 
             user.setLastLoginAt(OffsetDateTime.now());

@@ -1,5 +1,6 @@
 package com.minduc.happabi.dto.response.user;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.minduc.happabi.enums.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserProfileResponse {
 
     private UUID id;

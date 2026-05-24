@@ -47,7 +47,8 @@ public class RateLimitService {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private TokenBucketResult tryConsumeWithConfig(String key, int capacity, int refillTokens, int refillSeconds) {
+    private TokenBucketResult tryConsumeWithConfig(String key, int capacity,
+                                                   int refillTokens, int refillSeconds) {
         long nowMs = System.currentTimeMillis();
         try {
             List<Long> result = (List<Long>) stringRedisTemplate.execute(
