@@ -33,27 +33,35 @@ public class PayOsWebHookService implements IPayOsWebhookService {
     public String handlePayOsWebhook(Webhook webhookBody) {
         try {
             WebhookData data = payOS.webhooks().verify(webhookBody);
-
+            String orderCode = String.valueOf(data.getOrderCode());
             WalletTransaction transaction = walletTransactionRepository
                     .findByReferenceIdAndStatus(data.getOrderCode(), TransactionStatus.PENDING)
                     .orElse(null);
             if (transaction != null) {
-                transaction.setStatus(TransactionStatus.SUCCESS);
-                walletTransactionRepository.save(transaction);
+                if ("00".equals(data.getCode())) {
+                    transaction.setStatus(TransactionStatus.SUCCESS);
+                    walletTransactionRepository.save(transaction);
+                    NurseWallet nurseWallet = nurseWalletRepository.findByNurseId(transaction.getNurseId())
+                            .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
 
-                NurseWallet nurseWallet = nurseWalletRepository.findByNurseId(transaction.getNurseId())
-                        .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
-                if (transaction.getTransactionType() == TransactionType.TOPUP_WALLET) {
-                    nurseWallet.setBalance(nurseWallet.getBalance().add(transaction.getAmount()));
-                } else if (transaction.getTransactionType() == TransactionType.TOPUP_DEPOSIT) {
-                    nurseWallet.setDepositBalance(nurseWallet.getDepositBalance().add(transaction.getAmount()));
+                    if (transaction.getTransactionType() == TransactionType.TOPUP_WALLET) {
+                        nurseWallet.setBalance(nurseWallet.getBalance().add(transaction.getAmount()));
+                    } else if (transaction.getTransactionType() == TransactionType.TOPUP_DEPOSIT) {
+                        nurseWallet.setDepositBalance(nurseWallet.getDepositBalance().add(transaction.getAmount()));
+                    }
+                    walletTransactionRepository.save(transaction);
+                } else {
+                    transaction.setStatus(TransactionStatus.FAILED);
+                    transaction.setDescription("FAIL TO PAYMENT: " + data.getDesc());
+                    walletTransactionRepository.save(transaction);
                 }
-                walletTransactionRepository.save(transaction);
+
+
             }
             return "Success to handle PayOsWebhook";
 
         } catch (Exception e) {
-            return "Fail to handle PayOsWebhook";
+            throw new AppException(NurseWalletErrorCode.DATA_WEBHOOK_ERROR, e.getMessage());
         }
 
     }

@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import com.minduc.happabi.config.security.UserContext;
 
 import java.util.Optional;
 
@@ -27,6 +28,10 @@ public class AuthUtils {
                 .orElseThrow(() -> new IllegalStateException("No authenticated principal in context"));
     }
 
+    public String getCurrentUserId() {
+        return SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString();
+    }
+
     /**
      * Returns the {@code email} claim from the current JWT, if present.
      */
@@ -39,8 +44,15 @@ public class AuthUtils {
      */
     public Optional<Jwt> getJwt() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) return Optional.empty();
-        if (auth.getPrincipal() instanceof Jwt jwt) return Optional.of(jwt);
+        if (auth == null || !auth.isAuthenticated())
+            return Optional.empty();
+
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Jwt jwt)
+            return Optional.of(jwt);
+        if (principal instanceof UserContext userContext)
+            return Optional.of(userContext.jwt());
+
         return Optional.empty();
     }
 
@@ -50,7 +62,8 @@ public class AuthUtils {
      */
     public boolean hasRole(String role) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return false;
+        if (auth == null)
+            return false;
         String authority = "ROLE_" + role.toUpperCase();
         return auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equalsIgnoreCase(authority));

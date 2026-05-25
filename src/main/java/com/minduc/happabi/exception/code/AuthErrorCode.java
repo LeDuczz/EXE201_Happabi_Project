@@ -42,6 +42,7 @@ public enum AuthErrorCode implements ServiceErrorCode {
 
     // ── User Lookup ────────────────────────────────────────────────────────────
     USER_NOT_FOUND(HttpStatus.NOT_FOUND,               "User not found."),
+    FAIL_TO_GET_SUB(HttpStatus.INTERNAL_SERVER_ERROR, "Fail to get current sub"),
 
     // ── Password ───────────────────────────────────────────────────────────────
     PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST,          "Current password is incorrect."),
