@@ -1,113 +1,88 @@
 package com.minduc.happabi.mapper;
 
-import com.minduc.happabi.dto.response.nurse.*;
+import com.minduc.happabi.dto.response.nurse.NurseCertificationResponse;
+import com.minduc.happabi.dto.response.nurse.NurseContractResponse;
+import com.minduc.happabi.dto.response.nurse.NurseKycResponse;
+import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
 import com.minduc.happabi.entity.NurseCertification;
 import com.minduc.happabi.entity.NurseContract;
 import com.minduc.happabi.entity.NurseKyc;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.enums.NurseContractStatus;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Component
-public class NurseOnboardingMapper {
+@Mapper(componentModel = "spring")
+public interface NurseOnboardingMapper {
 
-    public NurseOnboardingResponse toResponse(NurseProfile profile,
-                                              NurseKyc kyc,
-                                              List<NurseCertification> certifications,
-                                              NurseContract latestContract) {
-        List<NurseCertificationResponse> certificationResponses = certifications.stream()
-                .map(this::toCertificationResponse)
-                .toList();
+    @Mapping(target = "profileId", source = "profile.id")
+    @Mapping(target = "userId", source = "profile.user.id")
+    @Mapping(target = "fullName", source = "profile.user.fullName")
+    @Mapping(target = "phone", source = "profile.user.phone")
+    @Mapping(target = "email", source = "profile.user.email")
+    @Mapping(target = "licenseNumber", source = "profile.licenseNumber")
+    @Mapping(target = "dateOfBirth", source = "profile.dateOfBirth")
+    @Mapping(target = "specialty", source = "profile.specialty")
+    @Mapping(target = "experienceYears", source = "profile.experienceYears")
+    @Mapping(target = "bio", source = "profile.bio")
+    @Mapping(target = "serviceArea", source = "profile.serviceArea")
+    @Mapping(target = "address", source = "profile.address")
+    @Mapping(target = "city", source = "profile.city")
+    @Mapping(target = "nurseStatus", source = "profile.nurseStatus")
+    @Mapping(target = "rejectionReason", source = "profile.rejectionReason")
+    @Mapping(target = "lastStatusChangedAt", source = "profile.lastStatusChangedAt")
+    @Mapping(target = "profileCompleted", expression = "java(isProfileCompleted(profile))")
+    @Mapping(target = "kycCompleted", expression = "java(isKycCompleted(kyc))")
+    @Mapping(target = "certificationsCompleted", expression = "java(certifications != null && !certifications.isEmpty())")
+    @Mapping(target = "contractSigned", expression = "java(isContractSigned(latestContract))")
+    @Mapping(target = "kyc", source = "kyc")
+    @Mapping(target = "certifications", source = "certifications")
+    @Mapping(target = "latestContract", source = "latestContract")
+    NurseOnboardingResponse toResponse(NurseProfile profile,
+                                       NurseKyc kyc,
+                                       List<NurseCertification> certifications,
+                                       NurseContract latestContract);
 
-        NurseContractResponse contractResponse = latestContract == null
-                ? null
-                : toContractResponse(latestContract);
+    @Mapping(target = "cccdNumberMasked", expression = "java(maskId(kyc.getCccdNumber()))")
+    @Mapping(target = "hasFrontImage", expression = "java(hasText(kyc.getCccdFrontS3Key()))")
+    @Mapping(target = "hasBackImage", expression = "java(hasText(kyc.getCccdBackS3Key()))")
+    NurseKycResponse toKycResponse(NurseKyc kyc);
 
-        return NurseOnboardingResponse.builder()
-                .profileId(profile.getId())
-                .userId(profile.getUser().getId())
-                .fullName(profile.getUser().getFullName())
-                .phone(profile.getUser().getPhone())
-                .email(profile.getUser().getEmail())
-                .licenseNumber(profile.getLicenseNumber())
-                .dateOfBirth(profile.getDateOfBirth())
-                .specialty(profile.getSpecialty())
-                .experienceYears(profile.getExperienceYears())
-                .bio(profile.getBio())
-                .serviceArea(profile.getServiceArea())
-                .address(profile.getAddress())
-                .city(profile.getCity())
-                .nurseStatus(profile.getNurseStatus())
-                .rejectionReason(profile.getRejectionReason())
-                .lastStatusChangedAt(profile.getLastStatusChangedAt())
-                .profileCompleted(isProfileCompleted(profile))
-                .kycCompleted(isKycCompleted(kyc))
-                .certificationsCompleted(!certifications.isEmpty())
-                .contractSigned(latestContract != null && latestContract.getStatus() == NurseContractStatus.SIGNED)
-                .kyc(kyc == null ? null : toKycResponse(kyc))
-                .certifications(certificationResponses)
-                .latestContract(contractResponse)
-                .build();
-    }
+    @Mapping(target = "hasDocument", expression = "java(hasText(certification.getDocumentS3Key()))")
+    @Mapping(target = "verified", source = "isVerified")
+    NurseCertificationResponse toCertificationResponse(NurseCertification certification);
 
-    public NurseKycResponse toKycResponse(NurseKyc kyc) {
-        return NurseKycResponse.builder()
-                .id(kyc.getId())
-                .cccdNumberMasked(maskId(kyc.getCccdNumber()))
-                .cccdName(kyc.getCccdName())
-                .cccdDob(kyc.getCccdDob())
-                .cccdAddress(kyc.getCccdAddress())
-                .hasFrontImage(kyc.getCccdFrontS3Key() != null)
-                .hasBackImage(kyc.getCccdBackS3Key() != null)
-                .ekycStatus(kyc.getEkycStatus())
-                .reviewNote(kyc.getReviewNote())
-                .reviewedAt(kyc.getReviewedAt())
-                .build();
-    }
+    NurseContractResponse toContractResponse(NurseContract contract);
 
-    public NurseCertificationResponse toCertificationResponse(NurseCertification certification) {
-        return NurseCertificationResponse.builder()
-                .id(certification.getId())
-                .certName(certification.getCertName())
-                .issuedBy(certification.getIssuedBy())
-                .issuedDate(certification.getIssuedDate())
-                .expiryDate(certification.getExpiryDate())
-                .hasDocument(certification.getDocumentS3Key() != null)
-                .verified(certification.getIsVerified())
-                .verifiedAt(certification.getVerifiedAt())
-                .build();
-    }
-
-    public NurseContractResponse toContractResponse(NurseContract contract) {
-        return NurseContractResponse.builder()
-                .id(contract.getId())
-                .contractVersion(contract.getContractVersion())
-                .status(contract.getStatus())
-                .signedName(contract.getSignedName())
-                .signedAt(contract.getSignedAt())
-                .build();
-    }
-
-    public boolean isProfileCompleted(NurseProfile profile) {
-        return profile.getLicenseNumber() != null && !profile.getLicenseNumber().isBlank()
+    default boolean isProfileCompleted(NurseProfile profile) {
+        return profile != null
+                && hasText(profile.getLicenseNumber())
                 && profile.getDateOfBirth() != null
                 && profile.getSpecialty() != null
                 && profile.getExperienceYears() != null
-                && profile.getAddress() != null && !profile.getAddress().isBlank()
-                && profile.getCity() != null && !profile.getCity().isBlank();
+                && hasText(profile.getAddress())
+                && hasText(profile.getCity());
     }
 
-    public boolean isKycCompleted(NurseKyc kyc) {
+    default boolean isKycCompleted(NurseKyc kyc) {
         return kyc != null
-                && kyc.getCccdNumber() != null && !kyc.getCccdNumber().isBlank()
-                && kyc.getCccdName() != null && !kyc.getCccdName().isBlank()
-                && kyc.getCccdFrontS3Key() != null && !kyc.getCccdFrontS3Key().isBlank()
-                && kyc.getCccdBackS3Key() != null && !kyc.getCccdBackS3Key().isBlank();
+                && hasText(kyc.getCccdNumber())
+                && hasText(kyc.getCccdName())
+                && hasText(kyc.getCccdFrontS3Key())
+                && hasText(kyc.getCccdBackS3Key());
     }
 
-    private String maskId(String value) {
+    default boolean isContractSigned(NurseContract contract) {
+        return contract != null && contract.getStatus() == NurseContractStatus.SIGNED;
+    }
+
+    default boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    default String maskId(String value) {
         if (value == null || value.length() < 6) {
             return "***";
         }

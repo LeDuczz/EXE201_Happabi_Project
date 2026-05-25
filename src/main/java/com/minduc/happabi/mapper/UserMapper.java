@@ -7,62 +7,58 @@ import com.minduc.happabi.entity.MotherProfile;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.Role;
 import com.minduc.happabi.entity.User;
+import com.minduc.happabi.entity.UserIdentityProvider;
 import com.minduc.happabi.enums.UserRole;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
+import java.time.LocalDate;
 import java.util.List;
 
-@Component
-public class UserMapper {
+@Mapper(componentModel = "spring")
+public interface UserMapper {
 
-    public UserProfileResponse toProfileResponse(User user, String avatarUrl) {
-        List<String> linkedProviders = user.getIdentityProviders().stream()
-                .map(p -> p.getProvider().name())
-                .sorted()
-                .toList();
+    @Mapping(target = "roles", expression = "java(toRoleNames(user.getRoles()))")
+    @Mapping(target = "linkedProviders", expression = "java(toProviderNames(user.getIdentityProviders()))")
+    @Mapping(target = "avatarUrl", source = "avatarUrl")
+    UserProfileResponse toProfileResponse(User user, String avatarUrl);
 
-        List<UserRole> roles = user.getRoles().stream()
+    @Mapping(target = "id", source = "profile.user.id")
+    @Mapping(target = "fullName", source = "profile.user.fullName")
+    @Mapping(target = "phone", source = "profile.user.phone")
+    @Mapping(target = "email", source = "profile.user.email")
+    @Mapping(target = "avatarUrl", source = "avatarUrl")
+    MotherProfileResponse toMotherProfileResponse(MotherProfile profile, String avatarUrl);
+
+    @Mapping(target = "id", source = "profile.user.id")
+    @Mapping(target = "fullName", source = "profile.user.fullName")
+    @Mapping(target = "phone", source = "profile.user.phone")
+    @Mapping(target = "email", source = "profile.user.email")
+    @Mapping(target = "dayOfBirth", expression = "java(toDateString(profile.getDateOfBirth()))")
+    @Mapping(target = "avatarUrl", source = "avatarUrl")
+    NurseProfileResponse toNurseProfileResponse(NurseProfile profile, String avatarUrl);
+
+    default List<UserRole> toRoleNames(List<Role> roles) {
+        if (roles == null) {
+            return List.of();
+        }
+        return roles.stream()
                 .map(Role::getRoleName)
                 .toList();
-
-        return UserProfileResponse.builder()
-                .id(user.getId())
-                .fullName(user.getFullName())
-                .phone(user.getPhone())
-                .phoneVerified(user.getPhoneVerified())
-                .email(user.getEmail())
-                .emailVerified(user.getEmailVerified())
-                .roles(roles)
-                .linkedProviders(linkedProviders)
-                .avatarUrl(avatarUrl)
-                .isActive(user.getIsActive())
-                .build();
     }
 
-    public MotherProfileResponse toMotherProfileResponse(MotherProfile m, String avatarUrl) {
-        return MotherProfileResponse.builder()
-                .id(m.getUser().getId())
-                .fullName(m.getUser().getFullName())
-                .phone(m.getUser().getPhone())
-                .email(m.getUser().getEmail())
-                .avatarUrl(avatarUrl)
-                .babyBirthDate(m.getBabyBirthDate())
-                .dayOfBirth(m.getDayOfBirth())
-                .address(m.getAddress())
-                .city(m.getCity())
-                .build();
+    default List<String> toProviderNames(Iterable<UserIdentityProvider> providers) {
+        if (providers == null) {
+            return List.of();
+        }
+        List<String> names = new java.util.ArrayList<>();
+        providers.forEach(provider -> names.add(provider.getProvider().name()));
+        return names.stream()
+                .sorted()
+                .toList();
     }
 
-    public NurseProfileResponse toNurseProfileResponse(NurseProfile n, String avatarUrl) {
-        return NurseProfileResponse.builder()
-                .id(n.getUser().getId())
-                .fullName(n.getUser().getFullName())
-                .phone(n.getUser().getPhone())
-                .email(n.getUser().getEmail())
-                .dayOfBirth(n.getDateOfBirth() != null ? n.getDateOfBirth().toString() : null)
-                .address(n.getAddress())
-                .city(n.getCity())
-                .avatarUrl(avatarUrl)
-                .build();
+    default String toDateString(LocalDate value) {
+        return value == null ? null : value.toString();
     }
 }
