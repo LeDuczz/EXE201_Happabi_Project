@@ -19,7 +19,17 @@ import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.repository.KnowledgeItemRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.ai.*;
+import com.minduc.happabi.service.ai.AiChatModelClient;
+import com.minduc.happabi.service.ai.AiOutputSanitizer;
+import com.minduc.happabi.service.ai.AiChatService;
+import com.minduc.happabi.service.ai.ChatHistoryService;
+import com.minduc.happabi.service.ai.ChatIntent;
+import com.minduc.happabi.service.ai.IntentDetector;
+import com.minduc.happabi.service.ai.KnowledgeBaseService;
+import com.minduc.happabi.service.ai.ModelRouter;
+import com.minduc.happabi.service.ai.PromptBuilder;
+import com.minduc.happabi.dto.document.RagDocument;
+import com.minduc.happabi.service.ai.RagRetrievalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +54,8 @@ public class AiChatServiceImpl implements IAiChatService {
     private final IModelRouter modelRouter;
     private final IRagRetrievalService ragRetrievalService;
     private final PromptBuilder promptBuilder;
-    private final IAiChatModelClient aiChatModelClient;
+    private final AiChatModelClient aiChatModelClient;
+    private final AiOutputSanitizer aiOutputSanitizer;
     private final IKnowledgeBaseService knowledgeBaseService;
     private final KnowledgeItemRepository knowledgeItemRepository;
 
@@ -121,11 +132,16 @@ public class AiChatServiceImpl implements IAiChatService {
                 List<RagDocument> promptContext = bestMatch == null ? List.of() : ragDocuments;
                 String systemPrompt = promptBuilder.buildSystemPrompt(intent, promptContext);
                 String userPrompt = promptBuilder.buildUserPrompt(userText, recentMessages);
-                assistantText = aiChatModelClient.generate(model, systemPrompt, userPrompt);
+                String rawAssistantText = aiChatModelClient.generate(model, systemPrompt, userPrompt);
+                AiOutputSanitizer.SanitizedAiOutput sanitizedOutput = aiOutputSanitizer.sanitize(rawAssistantText);
+                assistantText = sanitizedOutput.content();
                 resolutionSource = promptContext.isEmpty()
                         ? providerResolutionSource("NO_MATCH")
                         : providerResolutionSource("WITH_RAG");
-                if (promptContext.isEmpty()) {
+                if (sanitizedOutput.leakageDetected()) {
+                    resolutionSource = resolutionSource + "_SANITIZED";
+                }
+                if (promptContext.isEmpty() && !sanitizedOutput.blocked()) {
                     knowledgeBaseService.createPendingReview(user.getId(), conversationId, userText, assistantText, null);
                     pendingReviewCreated = true;
                 }
