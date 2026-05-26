@@ -11,16 +11,15 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.payos.model.webhooks.Webhook;
 
 @RestController
-@RequestMapping("/api/webhook/payos")
+@RequestMapping("/api/v1/webhook/payos")
 @RequiredArgsConstructor
 public class PayOsWebhookController {
 
-    private final IPayOsWebhookService payOsWebhook;
+    private final IPayOsWebhookService payOsWebhookService;
 
     @PostMapping
     public ResponseEntity<BaseResponse<String>> handlePayOsWebhook(@RequestBody Webhook webhookBody) {
-        String response = payOsWebhook.handlePayOsWebhook(webhookBody);
+        String response = payOsWebhookService.handlePayOsWebhook(webhookBody);
         return ResponseEntity.ok(BaseResponse.ok(response));
     }
-
 }

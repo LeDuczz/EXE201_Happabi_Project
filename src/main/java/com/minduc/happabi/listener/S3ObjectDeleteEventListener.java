@@ -1,7 +1,7 @@
 package com.minduc.happabi.listener;
 
 import com.minduc.happabi.dto.event.S3ObjectDeleteRequestedEvent;
-import com.minduc.happabi.service.sqs.SqsFileCleanupPublisher;
+import com.minduc.happabi.integration.sqs.SqsFileCleanupPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

@@ -4,6 +4,7 @@ import com.minduc.happabi.dto.request.auth.ForgotPasswordRequest;
 import com.minduc.happabi.dto.request.auth.ResetPasswordRequest;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
+import com.minduc.happabi.integration.cognito.CognitoService;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
@@ -27,7 +28,7 @@ public class PasswordService {
     private final UserRepository userRepository;
     private final CognitoService cognitoService;
 
-    @TimedAction("auth_forgot_password")
+    @TimedAction("FORGOT_PASSWORD")
     @LogExecution
     @AuditAction(action = "FORGOT_PASSWORD", resourceType = "USER")
     public void forgotPassword(ForgotPasswordRequest request) {
@@ -52,7 +53,7 @@ public class PasswordService {
         }
     }
 
-    @TimedAction("auth_reset_password")
+    @TimedAction("RESET_PASSWORD")
     @AuditAction(action = "RESET_PASSWORD", resourceType = "USER")
     @LogExecution
     public void resetPassword(ResetPasswordRequest request) {

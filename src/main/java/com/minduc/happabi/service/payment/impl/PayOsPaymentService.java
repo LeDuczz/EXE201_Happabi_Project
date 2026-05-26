@@ -19,6 +19,7 @@ import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -32,7 +33,9 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     private String returnUrlSuccess;
 
     @Value("${payos.return-url-cancel}")
-    private String returnUrlFail;
+    private String returnUrlCancel;
+
+    private final static String CANCEL_TRANSACTION_FOR_CREATING_NEW_TRANSACTION_MESSAGE = "Automatically canceled due to creation of a new transaction";
 
     @LogExecution
     @AuditAction(action = "PAY", resourceType = "WALLET_TRACTION")
@@ -40,8 +43,21 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     @Transactional
     @Override
     public String createTopUpPaymentLink(String nurseId, TopUpRequest request) {
-        long orderCode = Instant.now().getEpochSecond() % 1000000000L;
 
+        List<WalletTransaction> pendingTransaction = walletTransactionRepository
+                .findByNurseIdAndStatus(UUID.fromString(nurseId), TransactionStatus.PENDING);
+
+        if (!pendingTransaction.isEmpty()) {
+            for (WalletTransaction transaction : pendingTransaction) {
+                transaction.setStatus(TransactionStatus.CANCELED);
+                transaction.setDescription(CANCEL_TRANSACTION_FOR_CREATING_NEW_TRANSACTION_MESSAGE);
+            }
+            walletTransactionRepository.saveAll(pendingTransaction);
+
+        }
+
+
+        long orderCode = Instant.now().getEpochSecond() % 1000000000L;
 
         WalletTransaction transaction = WalletTransaction.builder()
                 .nurseId(UUID.fromString(nurseId))
@@ -57,7 +73,8 @@ public class PayOsPaymentService implements IPayOsPaymentService {
                 .amount(request.getAmount().longValue())
                 .description("HAPPABI" + orderCode)
                 .returnUrl(returnUrlSuccess)
-                .returnUrl(returnUrlFail)
+                .cancelUrl(returnUrlCancel)
+                .expiredAt(Instant.now().getEpochSecond() + (30 * 60)) //expire at 30 minute
                 .build();
         try {
             CreatePaymentLinkResponse paymentLinkResponse = payOS.paymentRequests().create(paymentLinkRequest);

@@ -7,12 +7,13 @@ import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
+import com.minduc.happabi.integration.cognito.CognitoService;
 import com.minduc.happabi.mapper.UserMapper;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.s3.S3Service;
+import com.minduc.happabi.integration.s3.IS3Service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -36,12 +37,12 @@ public class LoginService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final S3Service s3ServiceImpl;
+    private final IS3Service s3ServiceImpl;
     private final TokenBlacklistService tokenBlacklistService;
     private final CognitoService cognitoService;
 
     @LogExecution
-    @TimedAction("auth_login")
+    @TimedAction("LOGIN")
     @AuditAction(action = "LOGIN", resourceType = "USER_SESSION")
     @Transactional
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
@@ -98,7 +99,7 @@ public class LoginService {
         }
     }
 
-    @TimedAction("auth_refresh")
+    @TimedAction("REFRESH_TOKEN")
     @AuditAction(action = "REFRESH_TOKEN", resourceType = "USER_SESSION")
     @LogExecution
     public AuthResponse refresh(HttpServletRequest request) {
@@ -136,7 +137,7 @@ public class LoginService {
     }
 
     @LogExecution
-    @TimedAction("auth_logout")
+    @TimedAction("LOGOUT")
     @AuditAction(action = "LOGOUT", resourceType = "USER_SESSION")
     public void logout(String accessToken, HttpServletRequest request, HttpServletResponse response) {
         String cookieValue = CookieUtils.readRefreshTokenFromCookie(request);

@@ -2,7 +2,7 @@ package com.minduc.happabi.service.ai.impl;
 
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AiChatErrorCode;
-import com.minduc.happabi.service.ai.AiChatModelClient;
+import com.minduc.happabi.service.ai.IAiChatModelClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "ai-chat", name = "provider", havingValue = "gemini")
-public class GeminiAiChatModelClient implements AiChatModelClient {
+public class GeminiAiChatModelClient implements IAiChatModelClient {
 
     private final ChatClient.Builder chatClientBuilder;
 

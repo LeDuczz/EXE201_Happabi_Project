@@ -22,7 +22,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.UserNotFoun
 
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.repository.UserRoleAssignmentRepository;
-import com.minduc.happabi.service.auth.CognitoService;
+import com.minduc.happabi.integration.cognito.CognitoService;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -6,7 +6,7 @@ import com.minduc.happabi.dto.request.ai.SendAiMessageRequest;
 import com.minduc.happabi.dto.response.ai.AiChatResponse;
 import com.minduc.happabi.dto.response.ai.AiMessageResponse;
 import com.minduc.happabi.dto.response.ai.ConversationResponse;
-import com.minduc.happabi.service.ai.AiChatService;
+import com.minduc.happabi.service.ai.IAiChatService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,7 +31,7 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearerAuth")
 public class AiChatController {
 
-    private final AiChatService aiChatService;
+    private final IAiChatService aiChatService;
 
     @PostMapping("/conversations")
     @PreAuthorize("isAuthenticated()")

@@ -1,8 +1,10 @@
 package com.minduc.happabi.service.ai.impl;
 
-import com.minduc.happabi.service.ai.ChatIntent;
 import com.minduc.happabi.dto.document.RagDocument;
-import com.minduc.happabi.service.ai.RagRetrievalService;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
+import com.minduc.happabi.service.ai.ChatIntent;
+import com.minduc.happabi.service.ai.IRagRetrievalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
@@ -17,7 +19,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PgVectorRagRetrievalService implements RagRetrievalService {
+public class PgVectorRagRetrievalService implements IRagRetrievalService {
 
     private final VectorStore vectorStore;
 
@@ -25,6 +27,8 @@ public class PgVectorRagRetrievalService implements RagRetrievalService {
     private Double mediumThreshold;
 
     @Override
+    @TimedAction("RAG_RETRIEVAL")
+    @LogExecution
     public List<RagDocument> retrieve(String query, ChatIntent intent, int topK) {
         try {
             return vectorStore.similaritySearch(SearchRequest.builder()
@@ -87,5 +91,4 @@ public class PgVectorRagRetrievalService implements RagRetrievalService {
         }
         return document.getText();
     }
-
 }

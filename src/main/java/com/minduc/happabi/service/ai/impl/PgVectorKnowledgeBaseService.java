@@ -7,8 +7,11 @@ import com.minduc.happabi.entity.KnowledgeItem;
 import com.minduc.happabi.enums.KnowledgeStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.CommonErrorCode;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.KnowledgeItemRepository;
-import com.minduc.happabi.service.ai.KnowledgeBaseService;
+import com.minduc.happabi.service.ai.IKnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -22,13 +25,16 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
+public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
 
     private final VectorStore vectorStore;
     private final KnowledgeItemRepository knowledgeItemRepository;
 
     @Override
     @Transactional
+    @LogExecution
+    @AuditAction(action = "UPSERT_KNOWLEDGE_CHUNK", resourceType = "KNOWLEDGE_ITEM")
+    @TimedAction("UPSERT_KNOWLEDGE_CHUNK")
     public KnowledgeChunkResponse upsertKnowledgeChunk(UpsertKnowledgeChunkRequest request) {
         String title = request.getTitle().trim();
         String question = request.getQuestion().trim();
@@ -74,6 +80,9 @@ public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
 
     @Override
     @Transactional
+    @LogExecution
+    @TimedAction("CREATE_PENDING_REVIEW_KNOWLEDGE_ITEM")
+    @AuditAction(action = "CREATE_PENDING_REVIEW_KNOWLEDGE_ITEM", resourceType = "KNOWLEDGE_ITEM")
     public KnowledgeItemResponse createPendingReview(UUID userId,
                                                      UUID conversationId,
                                                      String question,
@@ -97,6 +106,9 @@ public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
 
     @Override
     @Transactional(readOnly = true)
+    @LogExecution
+    @AuditAction(action = "GET_PENDING_REVIEW_KNOWLEDGE_ITEMS", resourceType = "KNOWLEDGE_ITEM")
+    @TimedAction("GET_PENDING_REVIEW_KNOWLEDGE_ITEMS")
     public List<KnowledgeItemResponse> getPendingReviewItems() {
         return knowledgeItemRepository.findByStatusOrderByCreatedAtDesc(KnowledgeStatus.PENDING_REVIEW)
                 .stream()
@@ -106,6 +118,9 @@ public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
 
     @Override
     @Transactional
+    @LogExecution
+    @AuditAction(action = "REVIEW_KNOWLEDGE_ITEM", resourceType = "KNOWLEDGE_ITEM")
+    @TimedAction("REVIEW_KNOWLEDGE_ITEM")
     public KnowledgeItemResponse reviewKnowledgeItem(UUID knowledgeItemId, UUID reviewerId, boolean approved) {
         KnowledgeItem item = knowledgeItemRepository.findById(knowledgeItemId)
                 .orElseThrow(() -> new AppException(CommonErrorCode.NOT_FOUND, "Knowledge item not found."));
@@ -122,6 +137,9 @@ public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
 
     @Override
     @Transactional
+    @LogExecution
+    @AuditAction(action = "REINDEX_KNOWLEDGE_ITEM", resourceType = "KNOWLEDGE_ITEM")
+    @TimedAction("REINDEX_KNOWLEDGE_ITEM")
     public KnowledgeItemResponse reindexKnowledgeItem(UUID knowledgeItemId) {
         KnowledgeItem item = knowledgeItemRepository.findById(knowledgeItemId)
                 .orElseThrow(() -> new AppException(CommonErrorCode.NOT_FOUND, "Knowledge item not found."));
@@ -134,6 +152,9 @@ public class PgVectorKnowledgeBaseService implements KnowledgeBaseService {
 
     @Override
     @Transactional
+    @LogExecution
+    @AuditAction(action = "REINDEX_VERIFIED_KNOWLEDGE_ITEMS", resourceType = "KNOWLEDGE_ITEM")
+    @TimedAction("REINDEX_VERIFIED_KNOWLEDGE_ITEMS")
     public List<KnowledgeItemResponse> reindexVerifiedKnowledgeItems() {
         return knowledgeItemRepository
                 .findByStatusAndVectorIndexedFalseOrderByUpdatedAtDesc(KnowledgeStatus.VERIFIED)

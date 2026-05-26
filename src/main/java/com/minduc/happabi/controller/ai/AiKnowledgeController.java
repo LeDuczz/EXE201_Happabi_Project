@@ -11,7 +11,7 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
-import com.minduc.happabi.service.ai.KnowledgeBaseService;
+import com.minduc.happabi.service.ai.IKnowledgeBaseService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,8 +20,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,7 +37,7 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearerAuth")
 public class AiKnowledgeController {
 
-    private final KnowledgeBaseService knowledgeBaseService;
+    private final IKnowledgeBaseService knowledgeBaseService;
     private final UserRepository userRepository;
     private final UserIdentityProviderRepository identityProviderRepository;
 
