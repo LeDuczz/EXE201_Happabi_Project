@@ -81,12 +81,16 @@ public class DataSeeder {
                     Permission.builder().permissionName("NURSE:UPDATE").resource("NURSE").action("UPDATE").description("Cập nhật hồ sơ điều dưỡng của mình").build(),
                     Permission.builder().permissionName("NURSE:APPROVE").resource("NURSE").action("APPROVE").description("Xét duyệt hồ sơ điều dưỡng").build(),
                     Permission.builder().permissionName("NURSE:MANAGE").resource("NURSE").action("MANAGE").description("Quản lý toàn bộ điều dưỡng (admin)").build(),
+                    Permission.builder().permissionName("DOCTOR:CREATE").resource("DOCTOR").action("CREATE").description("Tạo tài khoản bác sĩ").build(),
                     Permission.builder().permissionName("ROLE:MANAGE").resource("ROLE").action("MANAGE").description("Quản lý roles & permissions").build(),
                     Permission.builder().permissionName("ADMIN:MANAGE").resource("ADMIN").action("MANAGE").description("Toàn quyền hệ thống (admin)").build(),
                     Permission.builder().permissionName("ADMIN:ANALYTICS").resource("ADMIN").action("READ").description("Xem phân tích hệ thống").build()
             ));
             log.info("Permissions seeded successfully.");
         }
+        Permission doctorCreatePermission = ensurePermission(
+                "DOCTOR:CREATE", "DOCTOR", "CREATE", "Tạo tài khoản bác sĩ");
+        permissions = permissionRepository.findAll();
 
         if (rolePermissionRepository.count() == 0 && !roles.isEmpty() && !permissions.isEmpty()) {
             boolean hasChanges = false;
@@ -129,6 +133,38 @@ public class DataSeeder {
                 log.info("Role permissions mapping seeded successfully.");
             }
         }
+
+        Role adminRole = roles.stream()
+                .filter(role -> role.getRoleName() == UserRole.ADMIN)
+                .findFirst()
+                .orElseThrow();
+        ensureRolePermission(adminRole, doctorCreatePermission);
+    }
+
+    private Permission ensurePermission(String permissionName, String resource, String action, String description) {
+        return permissionRepository.findByPermissionName(permissionName)
+                .orElseGet(() -> {
+                    Permission permission = permissionRepository.save(Permission.builder()
+                            .permissionName(permissionName)
+                            .resource(resource)
+                            .action(action)
+                            .description(description)
+                            .build());
+                    log.info("Seeded missing permission: {}", permissionName);
+                    return permission;
+                });
+    }
+
+    private void ensureRolePermission(Role role, Permission permission) {
+        if (rolePermissionRepository.existsByRoleAndPermission(role, permission)) {
+            return;
+        }
+
+        rolePermissionRepository.save(RolePermission.builder()
+                .role(role)
+                .permission(permission)
+                .build());
+        log.info("Assigned permission {} to role {}", permission.getPermissionName(), role.getRoleName());
     }
 
     @Transactional

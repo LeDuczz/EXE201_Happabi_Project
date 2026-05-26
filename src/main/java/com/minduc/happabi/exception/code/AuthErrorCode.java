@@ -13,6 +13,7 @@ public enum AuthErrorCode implements ServiceErrorCode {
 
     // ── Registration ───────────────────────────────────────────────────────────
     PHONE_ALREADY_EXISTS(HttpStatus.CONFLICT,          "Phone number is already registered."),
+    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT,          "Email is already registered."),
 
     INVALID_ROLE_FOR_REGISTRATION(HttpStatus.BAD_REQUEST,
             "Only MOTHER and NURSE roles are allowed for phone+password registration."),

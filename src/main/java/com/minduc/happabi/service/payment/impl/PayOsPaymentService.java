@@ -35,7 +35,7 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     @Value("${payos.return-url-cancel}")
     private String returnUrlCancel;
 
-    private final static String CANCEL_TRANSACTION_FOR_CREATING_NEW_TRANSACTION_MESSAGE = "Automatically canceled due to creation of a new transaction";
+    private static final String CANCEL_TRANSACTION_FOR_CREATING_NEW_TRANSACTION_MESSAGE = "Automatically canceled due to creation of a new transaction";
 
     @LogExecution
     @AuditAction(action = "PAY", resourceType = "WALLET_TRACTION")
