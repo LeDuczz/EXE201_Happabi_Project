@@ -11,6 +11,14 @@ import java.util.Optional;
 @UtilityClass
 public class AuthUtils {
 
+    public Optional<UserContext> getUserContext() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserContext uc) {
+            return Optional.of(uc);
+        }
+        return Optional.empty();
+    }
+
     /**
      * Returns the Cognito {@code sub} (unique user identifier) from the
      * current JWT principal, or empty if not authenticated.

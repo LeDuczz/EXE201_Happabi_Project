@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.user;
 
 import com.minduc.happabi.common.utils.AuthUtils;
+import com.minduc.happabi.dto.UserDTO;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
@@ -9,7 +10,12 @@ import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -63,4 +69,36 @@ public class UserAccountLookupService {
                             "Phone is already verified by another account.");
                 });
     }
+
+    public Page<UserDTO> getAllUsers(String searchTerm, Pageable pageable) {
+        Page<User> users;
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            String pattern = "%" + searchTerm.trim().toLowerCase() + "%";
+            users = userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContaining(
+                    searchTerm, searchTerm, searchTerm, pageable);
+        } else {
+            users = userRepository.findAll(pageable);
+        }
+
+        return users.map(user -> UserDTO.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .isActive(user.getIsActive())
+                .roles(user.getRoles().stream()
+                        .map(role -> role.getRoleName().name())
+                        .toList())
+                .createdAt(user.getCreatedAt())
+                .build());
+    }
+
+    public void toggleUserStatus(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.minduc.happabi.exception.AppException(
+                        com.minduc.happabi.exception.code.AuthErrorCode.USER_NOT_FOUND));
+        user.setIsActive(!user.getIsActive());
+        userRepository.save(user);
+    }
+
 }
