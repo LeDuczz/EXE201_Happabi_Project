@@ -11,6 +11,7 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseCertificationRepository;
 import com.minduc.happabi.integration.s3.IS3Service;
+import com.minduc.happabi.service.doctor.DoctorNurseReviewCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,6 +28,7 @@ public class NurseCertificationOnboardingService {
     private final IS3Service s3Service;
     private final NurseOnboardingMapper nurseOnboardingMapper;
     private final NurseOnboardingSupportService supportService;
+    private final DoctorNurseReviewCacheService reviewCacheService;
 
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
@@ -48,6 +50,8 @@ public class NurseCertificationOnboardingService {
                 .documentS3Key(s3Service.upload("certifications", profile.getUser().getId().toString(), document))
                 .isVerified(false)
                 .build();
-        return nurseOnboardingMapper.toCertificationResponse(certificationRepository.save(certification));
+        NurseCertification saved = certificationRepository.save(certification);
+        reviewCacheService.evictReviewCaches(profile.getId());
+        return nurseOnboardingMapper.toCertificationResponse(saved);
     }
 }

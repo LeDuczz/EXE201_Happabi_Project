@@ -10,6 +10,7 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseKycRepository;
 import com.minduc.happabi.integration.s3.IS3Service;
+import com.minduc.happabi.service.doctor.DoctorNurseReviewCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,6 +31,7 @@ public class NurseKycOnboardingService {
     private final IS3Service s3Service;
     private final NurseOnboardingSupportService supportService;
     private final ApplicationEventPublisher eventPublisher;
+    private final DoctorNurseReviewCacheService reviewCacheService;
 
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
@@ -54,6 +56,7 @@ public class NurseKycOnboardingService {
         handleKycImage(backImage, ownerId, kyc::getCccdBackS3Key, kyc::setCccdBackS3Key);
 
         nurseKycRepository.save(kyc);
+        reviewCacheService.evictReviewCaches(profile.getId());
         return supportService.toResponse(profile);
     }
 
