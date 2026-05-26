@@ -22,6 +22,7 @@ import com.minduc.happabi.repository.KnowledgeItemRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.ai.AiChatModelClient;
+import com.minduc.happabi.service.ai.AiOutputSanitizer;
 import com.minduc.happabi.service.ai.AiChatService;
 import com.minduc.happabi.service.ai.ChatHistoryService;
 import com.minduc.happabi.service.ai.ChatIntent;
@@ -56,6 +57,7 @@ public class AiChatServiceImpl implements AiChatService {
     private final RagRetrievalService ragRetrievalService;
     private final PromptBuilder promptBuilder;
     private final AiChatModelClient aiChatModelClient;
+    private final AiOutputSanitizer aiOutputSanitizer;
     private final KnowledgeBaseService knowledgeBaseService;
     private final KnowledgeItemRepository knowledgeItemRepository;
 
@@ -131,11 +133,16 @@ public class AiChatServiceImpl implements AiChatService {
                 List<RagDocument> promptContext = bestMatch == null ? List.of() : ragDocuments;
                 String systemPrompt = promptBuilder.buildSystemPrompt(intent, promptContext);
                 String userPrompt = promptBuilder.buildUserPrompt(userText, recentMessages);
-                assistantText = aiChatModelClient.generate(model, systemPrompt, userPrompt);
+                String rawAssistantText = aiChatModelClient.generate(model, systemPrompt, userPrompt);
+                AiOutputSanitizer.SanitizedAiOutput sanitizedOutput = aiOutputSanitizer.sanitize(rawAssistantText);
+                assistantText = sanitizedOutput.content();
                 resolutionSource = promptContext.isEmpty()
                         ? providerResolutionSource("NO_MATCH")
                         : providerResolutionSource("WITH_RAG");
-                if (promptContext.isEmpty()) {
+                if (sanitizedOutput.leakageDetected()) {
+                    resolutionSource = resolutionSource + "_SANITIZED";
+                }
+                if (promptContext.isEmpty() && !sanitizedOutput.blocked()) {
                     knowledgeBaseService.createPendingReview(user.getId(), conversationId, userText, assistantText, null);
                     pendingReviewCreated = true;
                 }

@@ -31,7 +31,7 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     @Value("${payos.return-url-success}")
     private String returnUrlSuccess;
 
-    @Value("${payos.return-url-fail}")
+    @Value("${payos.return-url-cancel}")
     private String returnUrlFail;
 
     @LogExecution
