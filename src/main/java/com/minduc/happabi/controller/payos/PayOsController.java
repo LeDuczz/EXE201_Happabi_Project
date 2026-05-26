@@ -7,6 +7,7 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.service.payment.IPayOsPaymentService;
 import com.minduc.happabi.service.payment.IPayOsWebhookService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,8 +23,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/payments")
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
+@Tag(name = "Payments", description = "APIs for handling payments and top-ups")
 public class PayOsController {
 
     private final IPayOsWebhookService payOsWebhook;

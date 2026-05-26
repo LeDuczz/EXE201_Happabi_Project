@@ -6,6 +6,7 @@ import com.minduc.happabi.dto.WalletDTO;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.service.nurse.INurseWalletService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/wallets")
 @RequiredArgsConstructor
+@Tag(name = "Wallets", description = "APIs for managing nurse wallets and transactions")
 public class WalletController {
     private final INurseWalletService nurseWalletService;
 

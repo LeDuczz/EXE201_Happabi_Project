@@ -4,6 +4,7 @@ import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.request.nurse.ReviewNurseProfileRequest;
 import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
 import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/doctor/nurses")
 @RequiredArgsConstructor
+@Tag(name = "Doctor Nurse Review", description = "APIs for doctors to review nurse onboarding applications")
 public class DoctorController {
 
     private final IDoctorNurseReviewService doctorNurseReviewService;
