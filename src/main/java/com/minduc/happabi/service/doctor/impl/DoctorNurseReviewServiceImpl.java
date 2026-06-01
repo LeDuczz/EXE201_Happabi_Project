@@ -17,6 +17,7 @@ import com.minduc.happabi.service.doctor.DoctorNurseReviewCacheService;
 import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
 import com.minduc.happabi.service.notification.NurseNotificationService;
 import com.minduc.happabi.service.nurse.KycSensitiveDocumentCleanupService;
+import com.minduc.happabi.service.nurse.NurseAccessCacheService;
 import com.minduc.happabi.integration.s3.IS3Service;
 import com.minduc.happabi.integration.s3.S3ObjectDownload;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     private final KycSensitiveDocumentCleanupService kycSensitiveDocumentCleanupService;
     private final NurseOnboardingMapper nurseOnboardingMapper;
     private final DoctorNurseReviewCacheService reviewCacheService;
+    private final NurseAccessCacheService nurseAccessCacheService;
 
     @Override
     @LogExecution
@@ -222,6 +224,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
                 .actor(actor)
                 .note(note)
                 .build());
+        nurseAccessCacheService.evict(profile.getUser().getId());
     }
 
     private void ensurePendingContract(NurseProfile profile) {

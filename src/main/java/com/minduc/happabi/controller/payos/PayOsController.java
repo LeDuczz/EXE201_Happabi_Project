@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,6 +37,7 @@ public class PayOsController {
 
 //    @PreAuthorize("hasRole('NURSE') AND hasAuthority('')")
     @PostMapping("/create-topup-link")
+    @PreAuthorize("hasRole('NURSE') and @nurseAccessGuard.isActive(authentication)")
     public ResponseEntity<BaseResponse<Map<String, String>>> createTopUpLink(@Valid @RequestBody TopUpRequest  topUpRequest) {
         String nurseId = AuthUtils.getCurrentUserId();
         String checkoutUrl = payOsPayment.createTopUpPaymentLink(nurseId, topUpRequest);
