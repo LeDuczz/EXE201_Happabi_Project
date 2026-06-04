@@ -21,7 +21,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DoctorNurseReviewCacheService {
 
-    private static final String CACHE_NAME = "doctor_nurse_review";
     private static final String PENDING_REVIEWS_KEY = "doctor:nurse-review:pending";
     private static final String DETAIL_KEY_PREFIX = "doctor:nurse-review:detail:";
     private static final Duration PENDING_TTL = Duration.ofSeconds(45);
@@ -146,7 +145,7 @@ public class DoctorNurseReviewCacheService {
 
     private void record(String cacheType, String operation, String result, String reason) {
         metricsRecorder.increment("happabi.cache.operations", Map.of(
-                "cache", CACHE_NAME,
+                "cache", "doctor_nurse_review",
                 "profile", cacheType,
                 "operation", operation,
                 "result", result,

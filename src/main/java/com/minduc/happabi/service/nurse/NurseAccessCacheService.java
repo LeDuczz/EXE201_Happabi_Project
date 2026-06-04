@@ -18,7 +18,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class NurseAccessCacheService {
 
-    private static final String CACHE_NAME = "nurse_access";
     private static final String CACHE_KEY_PREFIX = "nurse:access:";
     private static final Duration CACHE_TTL = Duration.ofMinutes(5);
 
@@ -110,7 +109,7 @@ public class NurseAccessCacheService {
 
     private void record(String operation, String result, String reason) {
         metricsRecorder.increment("happabi.cache.operations", Map.of(
-                "cache", CACHE_NAME,
+                "cache", "nurse_access",
                 "profile", "status",
                 "operation", operation,
                 "result", result,

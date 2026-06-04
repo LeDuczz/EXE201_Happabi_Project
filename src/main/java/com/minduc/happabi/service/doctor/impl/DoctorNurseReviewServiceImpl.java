@@ -18,6 +18,7 @@ import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
 import com.minduc.happabi.service.notification.NurseNotificationService;
 import com.minduc.happabi.service.nurse.KycSensitiveDocumentCleanupService;
 import com.minduc.happabi.service.nurse.NurseAccessCacheService;
+import com.minduc.happabi.service.user.UserCacheService;
 import com.minduc.happabi.integration.s3.IS3Service;
 import com.minduc.happabi.integration.s3.S3ObjectDownload;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     private final NurseOnboardingMapper nurseOnboardingMapper;
     private final DoctorNurseReviewCacheService reviewCacheService;
     private final NurseAccessCacheService nurseAccessCacheService;
+    private final UserCacheService userCacheService;
 
     @Override
     @LogExecution
@@ -138,6 +140,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
         ensurePendingContract(saved);
         nurseNotificationService.notifyApprovedPendingContract(saved);
         reviewCacheService.evictReviewCaches(saved.getId());
+        userCacheService.evictProfiles(saved.getUser().getCognitoSub());
 
         return toResponse(saved);
     }
@@ -169,6 +172,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
         NurseProfile saved = nurseProfileRepository.save(profile);
         nurseNotificationService.notifyRejected(saved, note);
         reviewCacheService.evictReviewCaches(saved.getId());
+        userCacheService.evictProfiles(saved.getUser().getCognitoSub());
         return toResponse(saved);
     }
 
