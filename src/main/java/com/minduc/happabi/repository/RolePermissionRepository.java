@@ -1,6 +1,8 @@
 package com.minduc.happabi.repository;
 
 import com.minduc.happabi.entity.RolePermission;
+import com.minduc.happabi.entity.Permission;
+import com.minduc.happabi.entity.Role;
 import com.minduc.happabi.enums.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +14,8 @@ import java.util.UUID;
 
 @Repository
 public interface RolePermissionRepository extends JpaRepository<RolePermission, UUID> {
+
+    boolean existsByRoleAndPermission(Role role, Permission permission);
 
     @Query("""
         SELECT rp FROM RolePermission rp

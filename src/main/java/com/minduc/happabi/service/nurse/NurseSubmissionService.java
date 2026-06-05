@@ -7,6 +7,8 @@ import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseProfileRepository;
+import com.minduc.happabi.service.doctor.DoctorNurseReviewCacheService;
+import com.minduc.happabi.service.user.UserCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +22,8 @@ public class NurseSubmissionService {
 
     private final NurseProfileRepository nurseProfileRepository;
     private final NurseOnboardingSupportService supportService;
+    private final DoctorNurseReviewCacheService reviewCacheService;
+    private final UserCacheService userCacheService;
 
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
@@ -31,6 +35,9 @@ public class NurseSubmissionService {
         supportService.validateReadyToSubmit(profile);
         supportService.transition(profile, NurseStatus.PENDING_REVIEW,
                 NurseReviewAction.SUBMITTED, supportService.currentUser(), "Submitted for doctor review");
-        return supportService.toResponse(nurseProfileRepository.save(profile));
+        NurseProfile saved = nurseProfileRepository.save(profile);
+        reviewCacheService.evictReviewCaches(saved.getId());
+        userCacheService.evictProfiles(saved.getUser().getCognitoSub());
+        return supportService.toResponse(saved);
     }
 }
