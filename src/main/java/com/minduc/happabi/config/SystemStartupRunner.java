@@ -25,6 +25,8 @@ public class SystemStartupRunner implements ApplicationRunner {
         log.info("System startup initialization");
 
         dataSeeder.seedRolesAndPermissions();
+        dataSeeder.seedServiceOfferings();
+        dataSeeder.seedDemoNurses();
 
         try {
             dataSeeder.seedAdminAccount();

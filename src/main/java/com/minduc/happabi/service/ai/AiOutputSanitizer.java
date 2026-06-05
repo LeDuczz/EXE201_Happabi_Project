@@ -56,7 +56,7 @@ public class AiOutputSanitizer {
     );
 
     public SanitizedAiOutput sanitize(String output) {
-        String normalized = normalize(output);
+        String normalized = stripProviderMetadata(normalize(output));
         if (normalized.isBlank()) {
             return new SanitizedAiOutput(FALLBACK_ANSWER.trim(), true, true);
         }
@@ -98,6 +98,38 @@ public class AiOutputSanitizer {
                 .replaceAll("(?m)^\\s*[-*+]\\s+", "- ")
                 .replaceAll("(?m)^\\s*---+\\s*$", "")
                 .trim();
+    }
+
+    private String stripProviderMetadata(String value) {
+        String[] lines = value.split("\\R", -1);
+        StringBuilder cleaned = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (isProviderMetadataLine(trimmed)) {
+                continue;
+            }
+            String withoutFinalAnswerLabel = removeFinalAnswerLabel(trimmed);
+            if (!withoutFinalAnswerLabel.isBlank()) {
+                if (!cleaned.isEmpty()) {
+                    cleaned.append('\n');
+                }
+                cleaned.append(withoutFinalAnswerLabel);
+            }
+        }
+        return cleaned.toString().trim();
+    }
+
+    private boolean isProviderMetadataLine(String line) {
+        if (line.isBlank()) {
+            return false;
+        }
+        String normalized = Normalizer.normalize(line, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
+        return normalized.matches("^(user\\s+safety|model\\s+safety|content\\s+safety|safety|safety\\s+rating|moderation|moderation\\s+result)\\s*[:：].*$")
+                || normalized.matches("^(safe|unsafe|blocked|not\\s+blocked)$");
+    }
+
+    private String removeFinalAnswerLabel(String line) {
+        return line.replaceFirst("(?i)^\\s*(final\\s+answer|answer|response)\\s*[:：]\\s*", "").trim();
     }
 
     private boolean containsLeakage(String value) {
