@@ -3,6 +3,7 @@ package com.minduc.happabi.integration.s3.impl;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.S3ErrorCode;
 import com.minduc.happabi.integration.s3.IS3Service;
+import com.minduc.happabi.integration.s3.S3ObjectDownload;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
@@ -12,9 +13,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -146,6 +150,41 @@ public class S3ServiceImpl implements IS3Service {
             ttl = PRESIGN_TTL;
         }
         return presignWithTtl(key, ttl);
+    }
+
+    @Override
+    @LogExecution
+    @TimedAction("DOWNLOAD_S3_OBJECT")
+    public S3ObjectDownload download(String key) {
+        if (key == null || key.isBlank()) {
+            throw new AppException(S3ErrorCode.FILE_NOT_FOUND, "File key is missing");
+        }
+        try {
+            GetObjectRequest request = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
+            ResponseBytes<GetObjectResponse> objectBytes = s3Client.getObjectAsBytes(request);
+            GetObjectResponse response = objectBytes.response();
+            return new S3ObjectDownload(
+                    objectBytes.asByteArray(),
+                    response.contentType(),
+                    response.contentLength()
+            );
+        } catch (S3Exception e) {
+            if (e.statusCode() == 403) {
+                throw new AppException(S3ErrorCode.ACCESS_DENIED,
+                        "IAM user is missing s3:GetObject permission for bucket " + bucket);
+            }
+            throw new AppException(S3ErrorCode.FILE_NOT_FOUND, key);
+        } catch (SdkClientException e) {
+            log.warn("[S3] Storage connectivity issue while downloading: key={} error={}",
+                    key, e.getMessage());
+            throw new AppException(S3ErrorCode.UPLOAD_FAILED, "Storage service temporarily unavailable");
+        } catch (Exception e) {
+            log.error("[S3] Unexpected download error: key={}", key, e);
+            throw new AppException(S3ErrorCode.UPLOAD_FAILED, e);
+        }
     }
 
     private String presignWithTtl(String key, Duration ttl) {

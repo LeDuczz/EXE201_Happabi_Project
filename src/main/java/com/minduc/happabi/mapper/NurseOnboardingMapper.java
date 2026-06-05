@@ -45,7 +45,7 @@ public interface NurseOnboardingMapper {
                                        List<NurseCertification> certifications,
                                        NurseContract latestContract);
 
-    @Mapping(target = "cccdNumberMasked", expression = "java(maskId(kyc.getCccdNumber()))")
+    @Mapping(target = "cccdNumber", source = "cccdNumber")
     @Mapping(target = "hasFrontImage", expression = "java(hasText(kyc.getCccdFrontS3Key()))")
     @Mapping(target = "hasBackImage", expression = "java(hasText(kyc.getCccdBackS3Key()))")
     NurseKycResponse toKycResponse(NurseKyc kyc);
@@ -82,10 +82,4 @@ public interface NurseOnboardingMapper {
         return value != null && !value.isBlank();
     }
 
-    default String maskId(String value) {
-        if (value == null || value.length() < 6) {
-            return "***";
-        }
-        return value.substring(0, 3) + "********" + value.substring(value.length() - 3);
-    }
 }

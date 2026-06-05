@@ -38,6 +38,7 @@ public class NurseOnboardingSupportService {
     private final NurseContractRepository contractRepository;
     private final NurseReviewEventRepository reviewEventRepository;
     private final NurseOnboardingMapper nurseOnboardingMapper;
+    private final NurseAccessCacheService nurseAccessCacheService;
 
     public User currentUser() {
         String sub = AuthUtils.getCurrentSub()
@@ -82,6 +83,7 @@ public class NurseOnboardingSupportService {
                 .actor(actor)
                 .note(note)
                 .build());
+        nurseAccessCacheService.evict(profile.getUser().getId());
     }
 
     public NurseOnboardingResponse toResponse(NurseProfile profile) {

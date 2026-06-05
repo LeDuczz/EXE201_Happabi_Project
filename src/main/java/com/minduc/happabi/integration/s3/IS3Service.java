@@ -14,4 +14,6 @@ public interface IS3Service {
 
     String presign(String key, Duration ttlSeconds);
 
+    S3ObjectDownload download(String key);
+
 }
