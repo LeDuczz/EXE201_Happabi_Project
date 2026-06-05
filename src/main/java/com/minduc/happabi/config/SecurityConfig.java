@@ -1,5 +1,6 @@
 package com.minduc.happabi.config;
 
+
 import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.CustomAccessDeniedHandler;
 import com.minduc.happabi.exception.CustomAuthenticationEntryPoint;
@@ -7,7 +8,6 @@ import com.minduc.happabi.filter.GlobalIpRateLimitFilter;
 import com.minduc.happabi.filter.RateLimitFilter;
 import com.minduc.happabi.filter.TokenBlacklistFilter;
 import com.minduc.happabi.service.permission.PermissionCacheService;
-import com.minduc.happabi.service.user.IUserIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,14 +19,10 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.oauth2.jwt.Jwt;
-import com.minduc.happabi.config.security.UserContext;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,7 +40,6 @@ public class SecurityConfig {
     private final GlobalIpRateLimitFilter globalIpRateLimitFilter;
     private final RateLimitFilter rateLimitFilter;
     private final TokenBlacklistFilter tokenBlacklistFilter;
-    private final IUserIdentityService userIdentityService;
 
     private static final String[] PUBLIC_POST = {
             "/api/v1/auth/register",
@@ -55,7 +50,6 @@ public class SecurityConfig {
             "/api/v1/auth/social/sync",
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
-            "/api/v1/webhook/payos",
     };
 
     private static final String[] PUBLIC_GET = {
@@ -64,84 +58,79 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/api-docs/**",
             "/actuator/health",
-            "/actuator/prometheus", // Prometheus scraper không có token — bảo vệ ở network level
+            "/actuator/prometheus",   // Prometheus scraper không có token — bảo vệ ở network level
     };
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .logout(AbstractHttpConfigurer::disable)
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
-                        .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
-                        .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(cognitoJwtConverter()))
-                        .authenticationEntryPoint(authEntryPoint))
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(authEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler))
-                .addFilterBefore(globalIpRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(tokenBlacklistFilter, UsernamePasswordAuthenticationFilter.class);
+            .csrf(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .logout(AbstractHttpConfigurer::disable)
+            .sessionManagement(sm ->
+                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
+                .requestMatchers(HttpMethod.GET,  PUBLIC_GET).permitAll()
+                .anyRequest().authenticated()
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(cognitoJwtConverter()))
+                .authenticationEntryPoint(authEntryPoint)
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(authEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
+            .addFilterBefore(globalIpRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(tokenBlacklistFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
-    public Converter<Jwt, AbstractAuthenticationToken> cognitoJwtConverter() {
-        return new Converter<Jwt, AbstractAuthenticationToken>() {
-            @Override
-            public AbstractAuthenticationToken convert(Jwt jwt) {
-                Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
-                String sub = jwt.getClaimAsString("sub");
+    public JwtAuthenticationConverter cognitoJwtConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
 
-                UUID userId = userIdentityService.getUserIdByCognitoSub(sub);
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            Collection<GrantedAuthority> authorities = new ArrayList<>();
 
-                UserContext principal = new UserContext(userId, jwt);
+            List<String> groups = jwt.getClaimAsStringList("cognito:groups");
 
-                return new UsernamePasswordAuthenticationToken(principal, null, authorities);
-            }
-        };
-    }
-
-    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-        Collection<GrantedAuthority> authorities = new ArrayList<>();
-
-        List<String> groups = jwt.getClaimAsStringList("cognito:groups");
-
-        Set<String> validRoles = Arrays.stream(UserRole.values())
-                .map(Enum::name)
-                .collect(Collectors.toSet());
-
-        Set<String> assignedRoles = new HashSet<>();
-        if (groups != null && !groups.isEmpty()) {
-            assignedRoles = groups.stream()
-                    .map(String::toUpperCase)
-                    .filter(validRoles::contains)
+            Set<String> validRoles = Arrays.stream(UserRole.values())
+                    .map(Enum::name)
                     .collect(Collectors.toSet());
-        }
 
-        if (assignedRoles.isEmpty()) {
-            assignedRoles.add("MOTHER");
-        }
+            Set<String> assignedRoles = new HashSet<>();
+            if (groups != null && !groups.isEmpty()) {
+                assignedRoles = groups.stream()
+                        .map(String::toUpperCase)
+                        .filter(validRoles::contains)
+                        .collect(Collectors.toSet());
+            }
 
-        for (String roleName : assignedRoles) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
+            if (assignedRoles.isEmpty()) {
+                assignedRoles.add("MOTHER");
+            }
 
-            List<String> permissions = permissionCacheService.getPermissions(roleName);
-            if (permissions != null) {
-                for (String permission : permissions) {
-                    authorities.add(new SimpleGrantedAuthority(permission));
+            for (String roleName : assignedRoles) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
+
+                List<String> permissions = permissionCacheService.getPermissions(roleName);
+                if (permissions != null) {
+                    for (String permission : permissions) {
+                        authorities.add(new SimpleGrantedAuthority(permission));
+                    }
                 }
             }
-        }
 
-        return authorities;
+            return authorities;
+        });
+
+        converter.setPrincipalClaimName("sub");
+        return converter;
     }
 }

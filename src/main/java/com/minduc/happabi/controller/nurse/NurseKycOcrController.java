@@ -3,7 +3,6 @@ package com.minduc.happabi.controller.nurse;
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.response.nurse.CccdOcrExtractionResponse;
 import com.minduc.happabi.service.ocr.ICccdOcrService;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/nurses/onboarding/me/kyc")
 @RequiredArgsConstructor
-@Tag(name = "Nurse KYC OCR", description = "APIs for nurses to extract KYC information using OCR")
 public class NurseKycOcrController {
 
     private final ICccdOcrService cccdOcrService;

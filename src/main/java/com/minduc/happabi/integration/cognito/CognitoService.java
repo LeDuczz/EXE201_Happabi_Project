@@ -124,13 +124,6 @@ public class CognitoService {
                 .build());
     }
 
-    public void adminDeleteUser(String username) {
-        cognitoClient.adminDeleteUser(AdminDeleteUserRequest.builder()
-                .userPoolId(userPoolId)
-                .username(username)
-                .build());
-    }
-
     public void adminSetPermanentPassword(String username, String password) {
         cognitoClient.adminSetUserPassword(AdminSetUserPasswordRequest.builder()
                 .userPoolId(userPoolId)
