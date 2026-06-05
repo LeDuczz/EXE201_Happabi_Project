@@ -5,7 +5,6 @@ import com.minduc.happabi.dto.request.mother.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
 import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
 import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
-import com.minduc.happabi.dto.request.user.UpdateNurseProfileDisplayRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
@@ -91,14 +90,6 @@ public class UserController {
     @PreAuthorize("hasAuthority('NURSE:READ')")
     public ResponseEntity<BaseResponse<NurseProfileResponse>> getNurseProfile() {
         NurseProfileResponse profile = userService.getNurseProfile();
-        return ResponseEntity.ok(BaseResponse.ok(profile));
-    }
-
-    @PatchMapping("/me/nurse-profile/display")
-    @PreAuthorize("hasRole('NURSE')")
-    public ResponseEntity<BaseResponse<NurseProfileResponse>> updateNurseProfileDisplay(
-            @Valid @RequestBody UpdateNurseProfileDisplayRequest request) {
-        NurseProfileResponse profile = userService.updateNurseProfileDisplay(request);
         return ResponseEntity.ok(BaseResponse.ok(profile));
     }
 

@@ -9,7 +9,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -33,11 +33,6 @@ public class SystemConfigService implements ISystemConfigService {
         config.setConfigValue(newValue);
         config.setUpdatedBy(UUID.fromString(adminId));
         systemConfigRepository.save(config);
-    }
-
-    @Override
-    public List<SystemConfig> getAllConfigs() {
-        return systemConfigRepository.findAll();
     }
 
 }

@@ -4,16 +4,17 @@ import com.minduc.happabi.dto.request.mother.UpdateMotherProfileRequest;
 import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
 import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
 import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
-import com.minduc.happabi.dto.request.user.UpdateNurseProfileDisplayRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
-import com.minduc.happabi.service.user.*;
-import jakarta.transaction.Transactional;
+import com.minduc.happabi.service.user.IUserService;
+import com.minduc.happabi.service.user.MotherProfileAccountService;
+import com.minduc.happabi.service.user.NurseProfileService;
+import com.minduc.happabi.service.user.UserAttributeChangeService;
+import com.minduc.happabi.service.user.UserAvatarService;
+import com.minduc.happabi.service.user.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,7 +28,6 @@ public class UserServiceImpl implements IUserService {
     private final UserAttributeChangeService userAttributeChangeService;
     private final NurseProfileService nurseProfileService;
     private final UserAvatarService userAvatarService;
-    private final UserAccountLookupService userAccountLookupService;
 
     @Override
     public UserProfileResponse getMe() {
@@ -70,24 +70,8 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
-    public NurseProfileResponse updateNurseProfileDisplay(UpdateNurseProfileDisplayRequest request) {
-        return nurseProfileService.updateDisplayProfile(request);
-    }
-
-    @Override
     public String uploadAvatar(MultipartFile file) {
         return userAvatarService.uploadAvatar(file);
-    }
-
-    @Override
-    public Page<com.minduc.happabi.dto.UserDTO> getAllUsers(String searchTerm, Pageable pageable) {
-        return userAccountLookupService.getAllUsers(searchTerm, pageable);
-    }
-
-    @Override
-    @Transactional
-    public void toggleUserStatus(java.util.UUID userId) {
-        userAccountLookupService.toggleUserStatus(userId);
     }
 
 }

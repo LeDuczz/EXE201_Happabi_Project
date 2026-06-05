@@ -9,6 +9,5 @@ import java.util.UUID;
 
 public interface NurseCertificationRepository extends JpaRepository<NurseCertification, UUID> {
     List<NurseCertification> findByNurseOrderByIdDesc(NurseProfile nurse);
-    List<NurseCertification> findByNurseAndIsVerifiedTrueOrderByIdDesc(NurseProfile nurse);
     long countByNurse(NurseProfile nurse);
 }

@@ -14,7 +14,7 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class NurseKycResponse {
     private UUID id;
-    private String cccdNumber;
+    private String cccdNumberMasked;
     private String cccdName;
     private LocalDate cccdDob;
     private String cccdAddress;
