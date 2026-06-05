@@ -26,6 +26,7 @@ public class SystemStartupRunner implements ApplicationRunner {
 
         dataSeeder.seedRolesAndPermissions();
         dataSeeder.seedServiceOfferings();
+        dataSeeder.seedDemoNurses();
 
         try {
             dataSeeder.seedAdminAccount();

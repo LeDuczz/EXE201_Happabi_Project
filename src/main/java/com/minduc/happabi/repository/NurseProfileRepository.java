@@ -30,4 +30,7 @@ public interface NurseProfileRepository extends JpaRepository<NurseProfile, UUID
     @EntityGraph(attributePaths = {"user"})
     Optional<NurseProfile> findByIdAndNurseStatus(UUID id, NurseStatus nurseStatus);
 
+    @EntityGraph(attributePaths = {"user"})
+    List<NurseProfile> findByIdInAndNurseStatus(List<UUID> ids, NurseStatus nurseStatus);
+
 }

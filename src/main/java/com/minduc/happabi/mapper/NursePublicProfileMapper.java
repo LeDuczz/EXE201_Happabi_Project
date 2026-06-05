@@ -15,6 +15,7 @@ public interface NursePublicProfileMapper {
     @Mapping(target = "profileId", source = "profile.id")
     @Mapping(target = "fullName", source = "profile.user.fullName")
     @Mapping(target = "avatarUrl", source = "avatarUrl")
+    @Mapping(target = "featured", source = "profile.isFeatured")
     @Mapping(target = "certificationCount", expression = "java(certificationCount(certifications))")
     @Mapping(target = "certifications", source = "certifications")
     NursePublicProfileResponse toResponse(NurseProfile profile,
