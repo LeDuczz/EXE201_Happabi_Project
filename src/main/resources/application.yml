@@ -40,7 +40,13 @@ spring:
     elasticsearch:
       repositories:
               enabled: true
-
+  # ========================
+  # CACHE
+  # ========================
+  cache:
+    type: redis
+    redis:
+      time-to-live:
 
   # ========================
   # ELASTICSEARCH
@@ -87,6 +93,7 @@ server:
 logging:
   file:
     path: ${LOG_PATH:logs}
+
 
 # ========================
 # ACTUATOR (PROMETHEUS)
@@ -247,5 +254,5 @@ payos:
   api-key: ${PAYOS_API_KEY}
   checksum-key: ${PAYOS_CHECKSUM_KEY}
   return-url-success: ${RETURN_URL_SUCCESS}
-  return-url-fail: ${RETURN_URL_FAIL}
+  return-url-cancel: ${RETURN_URL_CANCEL}
 
