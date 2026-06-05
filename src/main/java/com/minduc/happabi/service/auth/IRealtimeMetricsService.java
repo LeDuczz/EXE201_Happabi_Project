@@ -6,12 +6,4 @@ public interface IRealtimeMetricsService {
 
     Map<String, Double> getDailyGmvLast30Days();
 
-    Map<String, Long> getDailyBookingCountLast30Days();
-
-    Map<String, Long> getUserGrowthLast30Days();
-
-    Map<String, Long> getRoleDistribution();
-
-    Map<String, Object> getDashboardSummary();
-
 }

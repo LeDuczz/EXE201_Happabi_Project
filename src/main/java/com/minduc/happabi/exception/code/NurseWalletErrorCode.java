@@ -11,9 +11,7 @@ import org.springframework.http.HttpStatus;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum NurseWalletErrorCode implements ServiceErrorCode {
     NURSE_WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Nurse wallet not found"),
-    CASH_BOOKING_ACCEPTANCE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Nurse booking acceptance error"),
-    DATA_WEBHOOK_ERROR(HttpStatus.BAD_REQUEST, "Data Webhook error"),
-
+    CASH_BOOKING_ACCEPTANCE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Nurse booking acceptance error");
     ;
     HttpStatus httpStatus;
     String message;

@@ -52,7 +52,4 @@ public class WalletTransaction {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
-
-    @Column(name = "description")
-    private String description;
 }

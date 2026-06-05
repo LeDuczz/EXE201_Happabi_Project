@@ -15,7 +15,6 @@ import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseContractRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.service.notification.NurseNotificationService;
-import com.minduc.happabi.service.user.UserCacheService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +35,6 @@ public class NurseContractSigningService {
     private final NurseContractRepository contractRepository;
     private final NurseNotificationService nurseNotificationService;
     private final NurseOnboardingSupportService supportService;
-    private final UserCacheService userCacheService;
 
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
@@ -66,7 +64,6 @@ public class NurseContractSigningService {
                 NurseReviewAction.CONTRACT_SIGNED, supportService.currentUser(), "Contract signed");
         nurseProfileRepository.save(profile);
         nurseNotificationService.notifyActive(profile);
-        userCacheService.evictProfiles(profile.getUser().getCognitoSub());
         return supportService.toResponse(profile);
     }
 }
