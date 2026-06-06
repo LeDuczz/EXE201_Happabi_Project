@@ -15,6 +15,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseCertificationRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
+import com.minduc.happabi.service.booking.IServiceEligibilityService;
 import com.minduc.happabi.service.mother.IMotherNurseProfileService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -39,6 +40,7 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
     private final NurseCertificationRepository certificationRepository;
     private final NursePublicProfileMapper nursePublicProfileMapper;
     private final IS3Service s3Service;
+    private final IServiceEligibilityService serviceEligibilityService;
 
     @Override
     @Transactional(readOnly = true)
@@ -76,7 +78,12 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
                 ? certificationRepository.findByNurseAndIsVerifiedTrueOrderByIdDesc(profile)
                 : List.of();
         String avatarUrl = s3Service.presign(profile.getUser().getAvatarS3Key());
-        return nursePublicProfileMapper.toResponse(profile, certifications, avatarUrl);
+        return nursePublicProfileMapper.toResponse(
+                profile,
+                certifications,
+                avatarUrl,
+                serviceEligibilityService.getNurseSkills(profile, true),
+                serviceEligibilityService.getEligibleServices(profile, null));
     }
 
     private Specification<NurseProfile> publicProfileSpec(AvailabilityStatus availabilityStatus,

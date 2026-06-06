@@ -17,6 +17,7 @@ import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IBookingService;
+import com.minduc.happabi.service.booking.IServiceEligibilityService;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,7 @@ public class BookingServiceImpl implements IBookingService {
     private final UserAccountLookupService userAccountLookupService;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
+    private final IServiceEligibilityService serviceEligibilityService;
 
     @Value("${app.booking.hold-ttl-minutes:15}")
     private long holdTtlMinutes;
@@ -59,6 +61,9 @@ public class BookingServiceImpl implements IBookingService {
         User mother = userAccountLookupService.getCurrentUser();
         NurseProfile nurseProfile = getBookableNurse(request);
         ServiceOffering serviceOffering = getActiveService(request);
+        if (!serviceEligibilityService.isEligibleForService(nurseProfile, serviceOffering)) {
+            throw new AppException(BookingErrorCode.NURSE_SKILL_NOT_ELIGIBLE);
+        }
         OffsetDateTime endAt = calculateEndAt(request.getStartAt(), serviceOffering);
 
         boolean alreadyBooked = bookingRepository.existsByNurseProfile_IdAndStartAtAndStatusIn(

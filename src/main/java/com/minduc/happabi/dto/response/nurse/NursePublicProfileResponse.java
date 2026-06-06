@@ -3,6 +3,7 @@ package com.minduc.happabi.dto.response.nurse;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.NurseSpecialty;
+import com.minduc.happabi.dto.response.booking.ServiceOfferingResponse;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -30,4 +31,6 @@ public class NursePublicProfileResponse {
     private Boolean featured;
     private Long certificationCount;
     private List<NursePublicCertificationResponse> certifications;
+    private List<NurseSkillResponse> skills;
+    private List<ServiceOfferingResponse> eligibleServiceOfferings;
 }

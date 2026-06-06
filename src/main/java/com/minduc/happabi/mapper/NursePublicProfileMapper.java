@@ -1,7 +1,9 @@
 package com.minduc.happabi.mapper;
 
+import com.minduc.happabi.dto.response.booking.ServiceOfferingResponse;
 import com.minduc.happabi.dto.response.nurse.NursePublicCertificationResponse;
 import com.minduc.happabi.dto.response.nurse.NursePublicProfileResponse;
+import com.minduc.happabi.dto.response.nurse.NurseSkillResponse;
 import com.minduc.happabi.entity.NurseCertification;
 import com.minduc.happabi.entity.NurseProfile;
 import org.mapstruct.Mapper;
@@ -18,9 +20,13 @@ public interface NursePublicProfileMapper {
     @Mapping(target = "featured", source = "profile.isFeatured")
     @Mapping(target = "certificationCount", expression = "java(certificationCount(certifications))")
     @Mapping(target = "certifications", source = "certifications")
+    @Mapping(target = "skills", source = "skills")
+    @Mapping(target = "eligibleServiceOfferings", source = "eligibleServiceOfferings")
     NursePublicProfileResponse toResponse(NurseProfile profile,
                                           List<NurseCertification> certifications,
-                                          String avatarUrl);
+                                          String avatarUrl,
+                                          List<NurseSkillResponse> skills,
+                                          List<ServiceOfferingResponse> eligibleServiceOfferings);
 
     NursePublicCertificationResponse toCertificationResponse(NurseCertification certification);
 
