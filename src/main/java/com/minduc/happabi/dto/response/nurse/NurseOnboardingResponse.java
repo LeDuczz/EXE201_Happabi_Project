@@ -37,5 +37,6 @@ public class NurseOnboardingResponse {
     private Boolean contractSigned;
     private NurseKycResponse kyc;
     private List<NurseCertificationResponse> certifications;
+    private List<NurseSkillResponse> skills;
     private NurseContractResponse latestContract;
 }

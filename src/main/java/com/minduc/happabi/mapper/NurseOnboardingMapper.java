@@ -4,6 +4,7 @@ import com.minduc.happabi.dto.response.nurse.NurseCertificationResponse;
 import com.minduc.happabi.dto.response.nurse.NurseContractResponse;
 import com.minduc.happabi.dto.response.nurse.NurseKycResponse;
 import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
+import com.minduc.happabi.dto.response.nurse.NurseSkillResponse;
 import com.minduc.happabi.entity.NurseCertification;
 import com.minduc.happabi.entity.NurseContract;
 import com.minduc.happabi.entity.NurseKyc;
@@ -39,10 +40,12 @@ public interface NurseOnboardingMapper {
     @Mapping(target = "contractSigned", expression = "java(isContractSigned(latestContract))")
     @Mapping(target = "kyc", source = "kyc")
     @Mapping(target = "certifications", source = "certifications")
+    @Mapping(target = "skills", source = "skills")
     @Mapping(target = "latestContract", source = "latestContract")
     NurseOnboardingResponse toResponse(NurseProfile profile,
                                        NurseKyc kyc,
                                        List<NurseCertification> certifications,
+                                       List<NurseSkillResponse> skills,
                                        NurseContract latestContract);
 
     @Mapping(target = "cccdNumber", source = "cccdNumber")

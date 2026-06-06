@@ -3,23 +3,28 @@ package com.minduc.happabi.seed;
 import com.minduc.happabi.entity.Permission;
 import com.minduc.happabi.entity.NurseCertification;
 import com.minduc.happabi.entity.NurseProfile;
+import com.minduc.happabi.entity.NurseSkillEntity;
 import com.minduc.happabi.entity.Role;
 import com.minduc.happabi.entity.RolePermission;
 import com.minduc.happabi.entity.ServiceOffering;
+import com.minduc.happabi.entity.ServiceOfferingRequiredSkill;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.entity.UserIdentityProvider;
 import com.minduc.happabi.entity.UserRoleAssignment;
 import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.NurseSpecialty;
+import com.minduc.happabi.enums.NurseSkill;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.enums.ServiceOfferingType;
 import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.repository.NurseCertificationRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
+import com.minduc.happabi.repository.NurseSkillRepository;
 import com.minduc.happabi.repository.PermissionRepository;
 import com.minduc.happabi.repository.RolePermissionRepository;
 import com.minduc.happabi.repository.RoleRepository;
+import com.minduc.happabi.repository.ServiceOfferingRequiredSkillRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,8 +43,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -53,8 +61,10 @@ public class DataSeeder {
     private final UserRoleAssignmentRepository userRoleAssignmentRepository;
     private final UserIdentityProviderRepository userIdentityProviderRepository;
     private final ServiceOfferingRepository serviceOfferingRepository;
+    private final ServiceOfferingRequiredSkillRepository serviceOfferingRequiredSkillRepository;
     private final NurseProfileRepository nurseProfileRepository;
     private final NurseCertificationRepository nurseCertificationRepository;
+    private final NurseSkillRepository nurseSkillRepository;
     private final CognitoService cognitoService;
 
     @Value("${app.seed.admin.enabled:true}")
@@ -318,8 +328,69 @@ public class DataSeeder {
                 2520000L,
                 14280000L,
                 130);
+        seedRequiredSkills();
 
         log.info("Service offerings seed completed.");
+    }
+
+    private void seedRequiredSkills() {
+        upsertRequiredSkills("SINGLE_PRENATAL_RELAX_MASSAGE",
+                NurseSkill.PRENATAL_RELAXATION_MASSAGE,
+                NurseSkill.PARENT_COMMUNICATION,
+                NurseSkill.CUSTOMER_CARE);
+        upsertRequiredSkills("SINGLE_LACTATION_CARE",
+                NurseSkill.LACTATION_STIMULATION,
+                NurseSkill.BREAST_CARE,
+                NurseSkill.MOTHER_BABY_CONSULTING);
+        upsertRequiredSkills("SINGLE_BLOCKED_MILK_DUCT",
+                NurseSkill.BLOCKED_MILK_DUCT_SUPPORT,
+                NurseSkill.BREAST_CARE,
+                NurseSkill.SITUATION_HANDLING);
+        upsertRequiredSkills("SINGLE_BABY_LATCH_GUIDE",
+                NurseSkill.BREASTFEEDING_POSITION_GUIDANCE,
+                NurseSkill.MOTHER_BABY_CONSULTING,
+                NurseSkill.PARENT_COMMUNICATION);
+        upsertRequiredSkills("SINGLE_NEWBORN_CARE_1H",
+                NurseSkill.NEWBORN_BASIC_CARE,
+                NurseSkill.NEWBORN_HEALTH_MONITORING,
+                NurseSkill.NEWBORN_WARNING_SIGN_RECOGNITION);
+        upsertRequiredSkills("SINGLE_NEWBORN_BATH",
+                NurseSkill.NEWBORN_BATHING,
+                NurseSkill.NEWBORN_BASIC_CARE,
+                NurseSkill.NEWBORN_SKIN_CARE);
+        upsertRequiredSkills("SINGLE_BABY_HEALTH_FOLLOWUP",
+                NurseSkill.NEWBORN_HEALTH_MONITORING,
+                NurseSkill.HOME_NEWBORN_CARE_GUIDANCE,
+                NurseSkill.MOTHER_BABY_CONSULTING);
+        upsertRequiredSkills("COMBO_MASSAGE_LACTATION",
+                NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                NurseSkill.LACTATION_STIMULATION,
+                NurseSkill.BREAST_CARE);
+        upsertRequiredSkills("COMBO_BABY_CARE_BATH",
+                NurseSkill.NEWBORN_BASIC_CARE,
+                NurseSkill.NEWBORN_BATHING,
+                NurseSkill.NEWBORN_SKIN_CARE);
+        upsertRequiredSkills("PACKAGE_SILVER",
+                NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                NurseSkill.LACTATION_STIMULATION,
+                NurseSkill.NEWBORN_BATHING,
+                NurseSkill.NEWBORN_BASIC_CARE,
+                NurseSkill.SCHEDULE_MANAGEMENT);
+        upsertRequiredSkills("PACKAGE_GOLD",
+                NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                NurseSkill.LACTATION_STIMULATION,
+                NurseSkill.NEWBORN_BATHING,
+                NurseSkill.NEWBORN_BASIC_CARE,
+                NurseSkill.NEWBORN_HEALTH_MONITORING,
+                NurseSkill.SCHEDULE_MANAGEMENT);
+        upsertRequiredSkills("PACKAGE_DIAMOND",
+                NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                NurseSkill.LACTATION_STIMULATION,
+                NurseSkill.NEWBORN_BATHING,
+                NurseSkill.NEWBORN_BASIC_CARE,
+                NurseSkill.NEWBORN_HEALTH_MONITORING,
+                NurseSkill.HOME_NEWBORN_CARE_GUIDANCE,
+                NurseSkill.SCHEDULE_MANAGEMENT);
     }
 
     @Transactional
@@ -350,6 +421,26 @@ public class DataSeeder {
                 true,
                 true,
                 List.of(
+                        NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                        NurseSkill.PRENATAL_RELAXATION_MASSAGE,
+                        NurseSkill.LACTATION_STIMULATION,
+                        NurseSkill.BLOCKED_MILK_DUCT_SUPPORT,
+                        NurseSkill.BREAST_CARE,
+                        NurseSkill.BREASTFEEDING_POSITION_GUIDANCE,
+                        NurseSkill.POSTPARTUM_HEALTH_MONITORING,
+                        NurseSkill.NEWBORN_BATHING,
+                        NurseSkill.NEWBORN_BASIC_CARE,
+                        NurseSkill.NEWBORN_HEALTH_MONITORING,
+                        NurseSkill.NEWBORN_SKIN_CARE,
+                        NurseSkill.HOME_NEWBORN_CARE_GUIDANCE,
+                        NurseSkill.NEWBORN_WARNING_SIGN_RECOGNITION,
+                        NurseSkill.PARENT_COMMUNICATION,
+                        NurseSkill.MOTHER_BABY_CONSULTING,
+                        NurseSkill.SITUATION_HANDLING,
+                        NurseSkill.CUSTOMER_CARE,
+                        NurseSkill.SCHEDULE_MANAGEMENT
+                ),
+                List.of(
                         new DemoCertificationSeed("Chứng chỉ hộ sinh", "Đại học Y Dược TP.HCM", 2018),
                         new DemoCertificationSeed("Chăm sóc trẻ sơ sinh nâng cao", "Bệnh viện Từ Dũ", 2021)
                 )
@@ -373,6 +464,18 @@ public class DataSeeder {
                 true,
                 false,
                 List.of(
+                        NurseSkill.NEWBORN_BATHING,
+                        NurseSkill.NEWBORN_BASIC_CARE,
+                        NurseSkill.NEWBORN_HEALTH_MONITORING,
+                        NurseSkill.NEWBORN_SKIN_CARE,
+                        NurseSkill.HOME_NEWBORN_CARE_GUIDANCE,
+                        NurseSkill.NEWBORN_WARNING_SIGN_RECOGNITION,
+                        NurseSkill.PARENT_COMMUNICATION,
+                        NurseSkill.MOTHER_BABY_CONSULTING,
+                        NurseSkill.CUSTOMER_CARE,
+                        NurseSkill.SCHEDULE_MANAGEMENT
+                ),
+                List.of(
                         new DemoCertificationSeed("Điều dưỡng đa khoa", "Cao đẳng Y tế TP.HCM", 2019)
                 )
         ));
@@ -394,6 +497,13 @@ public class DataSeeder {
                 "Hồ Chí Minh",
                 false,
                 false,
+                List.of(
+                        NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                        NurseSkill.PRENATAL_RELAXATION_MASSAGE,
+                        NurseSkill.FOOT_PAIN_RELIEF_MASSAGE,
+                        NurseSkill.PARENT_COMMUNICATION,
+                        NurseSkill.CUSTOMER_CARE
+                ),
                 List.of()
         ));
 
@@ -414,6 +524,20 @@ public class DataSeeder {
                 "Hà Nội",
                 true,
                 true,
+                List.of(
+                        NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                        NurseSkill.BLOCKED_MILK_DUCT_SUPPORT,
+                        NurseSkill.BREAST_CARE,
+                        NurseSkill.BREASTFEEDING_POSITION_GUIDANCE,
+                        NurseSkill.POSTPARTUM_HEALTH_MONITORING,
+                        NurseSkill.NEWBORN_BASIC_CARE,
+                        NurseSkill.NEWBORN_HEALTH_MONITORING,
+                        NurseSkill.NEWBORN_WARNING_SIGN_RECOGNITION,
+                        NurseSkill.HOME_NEWBORN_CARE_GUIDANCE,
+                        NurseSkill.MOTHER_BABY_CONSULTING,
+                        NurseSkill.SITUATION_HANDLING,
+                        NurseSkill.SCHEDULE_MANAGEMENT
+                ),
                 List.of(
                         new DemoCertificationSeed("Điều dưỡng nhi khoa", "Bệnh viện Nhi Trung ương", 2017),
                         new DemoCertificationSeed("Tư vấn nuôi con bằng sữa mẹ", "Hiệp hội Sữa mẹ Việt Nam", 2020)
@@ -437,6 +561,14 @@ public class DataSeeder {
                 "Đà Nẵng",
                 true,
                 false,
+                List.of(
+                        NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
+                        NurseSkill.NEWBORN_BATHING,
+                        NurseSkill.NEWBORN_BASIC_CARE,
+                        NurseSkill.NEWBORN_SKIN_CARE,
+                        NurseSkill.PARENT_COMMUNICATION,
+                        NurseSkill.CUSTOMER_CARE
+                ),
                 List.of(
                         new DemoCertificationSeed("Hộ sinh cơ bản", "Cao đẳng Y tế Đà Nẵng", 2018)
                 )
@@ -513,6 +645,7 @@ public class DataSeeder {
         profile.setLastStatusChangedAt(OffsetDateTime.now());
 
         NurseProfile savedProfile = nurseProfileRepository.save(profile);
+        upsertDemoSkills(savedProfile, seed.skills());
         upsertDemoCertifications(savedProfile, seed.certifications());
     }
 
@@ -544,6 +677,24 @@ public class DataSeeder {
             certification.setVerifiedAt(OffsetDateTime.now());
             nurseCertificationRepository.save(certification);
         }
+    }
+
+    private void upsertDemoSkills(NurseProfile profile, List<NurseSkill> skills) {
+        if (skills == null || skills.isEmpty()) {
+            return;
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        skills.forEach(skill -> {
+            NurseSkillEntity entity = nurseSkillRepository.findByNurseAndSkill(profile, skill)
+                    .orElseGet(() -> NurseSkillEntity.builder()
+                            .nurse(profile)
+                            .skill(skill)
+                            .build());
+            if (entity.getVerifiedAt() == null) {
+                entity.setVerifiedAt(now);
+            }
+            nurseSkillRepository.save(entity);
+        });
     }
 
     private void upsertServiceOffering(String code,
@@ -578,6 +729,18 @@ public class DataSeeder {
         serviceOffering.setSortOrder(sortOrder);
 
         serviceOfferingRepository.save(serviceOffering);
+    }
+
+    private void upsertRequiredSkills(String serviceCode, NurseSkill... skills) {
+        ServiceOffering serviceOffering = serviceOfferingRepository.findByServiceCode(serviceCode)
+                .orElseThrow(() -> new IllegalStateException("Service offering must be seeded before required skills: " + serviceCode));
+        Set<NurseSkill> nextSkills = Arrays.stream(skills).collect(Collectors.toSet());
+        serviceOfferingRequiredSkillRepository.deleteByServiceOfferingAndSkillNotIn(serviceOffering, nextSkills);
+        nextSkills.forEach(skill -> serviceOfferingRequiredSkillRepository.findByServiceOfferingAndSkill(serviceOffering, skill)
+                .orElseGet(() -> serviceOfferingRequiredSkillRepository.save(ServiceOfferingRequiredSkill.builder()
+                        .serviceOffering(serviceOffering)
+                        .skill(skill)
+                        .build())));
     }
 
     private Permission ensurePermission(String permissionName, String resource, String action, String description) {
@@ -766,6 +929,7 @@ public class DataSeeder {
                                  String city,
                                  Boolean backgroundChecked,
                                  Boolean featured,
+                                 List<NurseSkill> skills,
                                  List<DemoCertificationSeed> certifications) {
     }
 

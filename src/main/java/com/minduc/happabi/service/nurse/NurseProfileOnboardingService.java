@@ -6,6 +6,7 @@ import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseProfileRepository;
+import com.minduc.happabi.service.booking.IServiceEligibilityService;
 import com.minduc.happabi.service.doctor.DoctorNurseReviewCacheService;
 import com.minduc.happabi.service.user.UserCacheService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class NurseProfileOnboardingService {
     private final NurseOnboardingSupportService supportService;
     private final DoctorNurseReviewCacheService reviewCacheService;
     private final UserCacheService userCacheService;
+    private final IServiceEligibilityService serviceEligibilityService;
 
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('NURSE')")
@@ -47,6 +49,7 @@ public class NurseProfileOnboardingService {
         if (request.getServiceArea() != null) profile.setServiceArea(request.getServiceArea());
         if (request.getAddress() != null) profile.setAddress(request.getAddress());
         if (request.getCity() != null) profile.setCity(request.getCity());
+        if (request.getSkills() != null) serviceEligibilityService.replaceDeclaredSkills(profile, request.getSkills());
 
         NurseProfile saved = nurseProfileRepository.save(profile);
         reviewCacheService.evictReviewCaches(saved.getId());

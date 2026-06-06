@@ -18,6 +18,7 @@ import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
 import com.minduc.happabi.service.notification.NurseNotificationService;
 import com.minduc.happabi.service.nurse.KycSensitiveDocumentCleanupService;
 import com.minduc.happabi.service.nurse.NurseAccessCacheService;
+import com.minduc.happabi.service.booking.IServiceEligibilityService;
 import com.minduc.happabi.service.user.UserCacheService;
 import com.minduc.happabi.integration.s3.IS3Service;
 import com.minduc.happabi.integration.s3.S3ObjectDownload;
@@ -49,6 +50,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     private final DoctorNurseReviewCacheService reviewCacheService;
     private final NurseAccessCacheService nurseAccessCacheService;
     private final UserCacheService userCacheService;
+    private final IServiceEligibilityService serviceEligibilityService;
 
     @Override
     @LogExecution
@@ -132,6 +134,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
             cert.setVerifiedBy(actor);
             certificationRepository.save(cert);
         });
+        serviceEligibilityService.verifyDeclaredSkills(profile, actor);
 
         transition(profile, NurseStatus.APPROVED_PENDING_CONTRACT,
                 NurseReviewAction.APPROVED, actor, request.getNote());
@@ -247,6 +250,11 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
                 .findByNurseOrderByIdDesc(profile);
         NurseContract latestContract = contractRepository
                 .findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
-        return nurseOnboardingMapper.toResponse(profile, kyc, certifications, latestContract);
+        return nurseOnboardingMapper.toResponse(
+                profile,
+                kyc,
+                certifications,
+                serviceEligibilityService.getNurseSkills(profile, false),
+                latestContract);
     }
 }
