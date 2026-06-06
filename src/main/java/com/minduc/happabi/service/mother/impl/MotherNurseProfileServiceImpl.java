@@ -10,6 +10,9 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.integration.s3.IS3Service;
 import com.minduc.happabi.mapper.NursePublicProfileMapper;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseCertificationRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.service.mother.IMotherNurseProfileService;
@@ -40,6 +43,8 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('MOTHER')")
+    @TimedAction("SEARCH_ACTIVE_NURSES")
+    @LogExecution
     public Page<NursePublicProfileResponse> searchActiveNurses(String keyword,
                                                                String city,
                                                                NurseSpecialty specialty,
@@ -58,6 +63,8 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('MOTHER')")
+    @LogExecution
+    @TimedAction("GET_ACTIVE_NURSE_PROFILE")
     public NursePublicProfileResponse getActiveNurse(UUID profileId) {
         NurseProfile profile = nurseProfileRepository.findByIdAndNurseStatus(profileId, NurseStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PUBLIC_PROFILE_NOT_FOUND));

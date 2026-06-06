@@ -11,6 +11,8 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AiChatErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.mapper.NurseComparisonMapper;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseCertificationRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.service.ai.AiOutputSanitizer;
@@ -53,6 +55,8 @@ public class MotherNurseComparisonServiceImpl implements IMotherNurseComparisonS
     @Override
     @Transactional(readOnly = true)
     @PreAuthorize("hasRole('MOTHER')")
+    @LogExecution
+    @TimedAction("MOTHER_NURSE_COMPARISON")
     public NurseAiComparisonResponse compareNurses(NurseAiComparisonRequest request) {
         List<UUID> profileIds = normalizeProfileIds(request);
         List<NurseProfile> profiles = nurseProfileRepository.findByIdInAndNurseStatus(profileIds, NurseStatus.ACTIVE);
