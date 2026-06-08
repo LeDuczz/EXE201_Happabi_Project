@@ -792,7 +792,7 @@ public class DataSeeder {
                 .or(() -> Optional.ofNullable(cognitoSub).flatMap(userRepository::findByCognitoSubWithRolesAndProviders))
                 .orElseGet(() -> userRepository.save(User.builder()
                         .fullName(adminFullName)
-                        .cognitoUsername(username)
+                        .cognitoUsername(cognitoSub)
                         .cognitoSub(cognitoSub)
                         .phone(phone)
                         .phoneVerified(true)
@@ -801,7 +801,7 @@ public class DataSeeder {
                         .isActive(true)
                         .build()));
 
-        boolean changed = syncAdminUser(admin, adminRole, username, cognitoSub, phone);
+        boolean changed = syncAdminUser(admin, adminRole, cognitoSub, cognitoSub, phone);
         if (changed) {
             userRepository.save(admin);
         }
@@ -829,11 +829,13 @@ public class DataSeeder {
         }
     }
 
-    private boolean syncAdminUser(User admin, Role adminRole, String username, String cognitoSub, String phone) {
+    private boolean syncAdminUser(User admin, Role adminRole, String canonicalUsername, String cognitoSub, String phone) {
         boolean changed = false;
 
-        if (admin.getCognitoUsername() == null || admin.getCognitoUsername().isBlank()) {
-            admin.setCognitoUsername(username);
+        if (canonicalUsername != null
+                && !canonicalUsername.isBlank()
+                && !canonicalUsername.equals(admin.getCognitoUsername())) {
+            admin.setCognitoUsername(canonicalUsername);
             changed = true;
         }
         if (cognitoSub != null && !cognitoSub.isBlank() && !cognitoSub.equals(admin.getCognitoSub())) {

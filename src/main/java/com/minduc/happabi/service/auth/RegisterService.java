@@ -130,7 +130,7 @@ public class RegisterService {
     private void createNewLocalUser(RegisterRequest request, Role userRole, String cognitoSub) {
         User newUser = User.builder()
                 .fullName(request.getFullName())
-                .cognitoUsername(request.getPhone())
+                .cognitoUsername(cognitoSub)
                 .cognitoSub(cognitoSub)
                 .phone(request.getPhone())
                 .isActive(true)

@@ -124,6 +124,12 @@ app:
       full-name: ${APP_SEED_ADMIN_FULL_NAME:}
       email: ${APP_SEED_ADMIN_EMAIL:}
       enabled: ${APP_SEED_ADMIN_ENABLED:true}
+  work-session:
+    check-in-open-minutes: ${APP_WORK_SESSION_CHECK_IN_OPEN_MINUTES:10}
+    auto-confirm-hours: ${APP_WORK_SESSION_AUTO_CONFIRM_HOURS:48}
+    auto-confirm-fixed-delay-ms: ${APP_WORK_SESSION_AUTO_CONFIRM_FIXED_DELAY_MS:300000}
+    evidence-retention-days: ${APP_WORK_SESSION_EVIDENCE_RETENTION_DAYS:60}
+    evidence-cleanup-fixed-delay-ms: ${APP_WORK_SESSION_EVIDENCE_CLEANUP_FIXED_DELAY_MS:3600000}
 
 # ========================
 # Khi chưa có ELK, để host=localhost, logback sẽ fail-safe (async, neverBlock=true)

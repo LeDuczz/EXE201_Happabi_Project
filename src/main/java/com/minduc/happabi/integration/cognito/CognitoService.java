@@ -92,6 +92,7 @@ public class CognitoService {
                 .authFlow(AuthFlowType.REFRESH_TOKEN_AUTH)
                 .clientId(clientId)
                 .authParameters(Map.of(
+                        "USERNAME", username,
                         "REFRESH_TOKEN", refreshToken,
                         "SECRET_HASH", secretHash(username)
                 ))
