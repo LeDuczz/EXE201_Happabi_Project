@@ -57,7 +57,7 @@ public class AdminDoctorAccountServiceImpl implements IAdminDoctorAccountService
         try {
             User doctor = userRepository.save(User.builder()
                     .fullName(fullName)
-                    .cognitoUsername(phone)
+                    .cognitoUsername(cognitoSub)
                     .cognitoSub(cognitoSub)
                     .phone(phone)
                     .phoneVerified(true)

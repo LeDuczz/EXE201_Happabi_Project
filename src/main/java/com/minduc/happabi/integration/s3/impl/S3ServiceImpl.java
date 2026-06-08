@@ -40,6 +40,7 @@ public class S3ServiceImpl implements IS3Service {
             "certifications", Set.of("image/jpeg", "image/png", "application/pdf"),
             "kyc", Set.of("image/jpeg", "image/png"),
             "checklist", Set.of("image/jpeg", "image/png"),
+            "work-sessions", Set.of("image/jpeg", "image/png"),
             "gallery", Set.of("image/jpeg", "image/png", "image/webp")
     );
 
@@ -48,6 +49,7 @@ public class S3ServiceImpl implements IS3Service {
             "certifications", 10L * 1024 * 1024,
             "kyc", 10L * 1024 * 1024,
             "checklist", 5L * 1024 * 1024,
+            "work-sessions", 5L * 1024 * 1024,
             "gallery", 20L * 1024 * 1024
     );
 

@@ -68,6 +68,11 @@ public class SocialAuthService {
             String accessToken = (String) tokens.get("access_token");
             String refreshToken = (String) tokens.get("refresh_token");
             Integer expiresIn = (Integer) tokens.get("expires_in");
+            if (accessToken == null || accessToken.isBlank()
+                    || refreshToken == null || refreshToken.isBlank()) {
+                throw new AppException(AuthErrorCode.INVALID_CREDENTIALS,
+                        "Failed to retrieve access or refresh token from Cognito");
+            }
 
             SignedJWT signedJWT = SignedJWT.parse(idToken);
             String cognitoSub = signedJWT.getJWTClaimsSet().getStringClaim("sub");
@@ -75,6 +80,7 @@ public class SocialAuthService {
             String name = signedJWT.getJWTClaimsSet().getStringClaim("name");
             String username = signedJWT.getJWTClaimsSet().getStringClaim("cognito:username");
             boolean emailVerified = readBooleanClaim(signedJWT, "email_verified");
+            String refreshUsername = resolveRefreshUsername(accessToken, username, cognitoSub);
             AuthProvider provider = request.getProvider() != null
                     ? request.getProvider()
                     : resolveProvider(signedJWT);
@@ -89,13 +95,13 @@ public class SocialAuthService {
                     .or(() -> identityProviderRepository
                             .findUserByProviderAndProviderUid(provider, providerSubject))
                     .orElseGet(() -> resolveOrCreateSocialUser(
-                            cognitoSub, username, providerSubject, email, name, provider));
+                            cognitoSub, refreshUsername, providerSubject, email, name, provider));
 
-            syncMasterCognitoFields(user, cognitoSub, username);
+            syncMasterCognitoFields(user, cognitoSub, refreshUsername);
             syncVerifiedEmail(user, emailVerified);
             syncIdentityProviders(user, linkedIdentities, provider, providerSubject);
 
-            String groupUsername = username != null ? username : cognitoSub;
+            String groupUsername = refreshUsername;
             user.getRoles().forEach(role -> assignCognitoGroup(groupUsername, role.getRoleName().name()));
 
             boolean shouldEnsureMotherRole = request.getIntent() == SocialAuthIntent.MOTHER_LOGIN_OR_REGISTER;
@@ -110,7 +116,7 @@ public class SocialAuthService {
             userRepository.save(user);
             userCacheService.evictProfiles(cognitoSub);
 
-            CookieUtils.addRefreshTokenCookie(response, refreshToken + "::" + groupUsername);
+            CookieUtils.addRefreshTokenCookie(response, refreshToken + "::" + refreshUsername);
 
             String avatarUrl = s3ServiceImpl.presign(user.getAvatarS3Key());
             UserProfileResponse profile = userMapper.toProfileResponse(user, avatarUrl);
@@ -170,7 +176,7 @@ public class SocialAuthService {
         if (user.getCognitoSub() == null) {
             user.setCognitoSub(cognitoSub);
         }
-        if (user.getCognitoUsername() == null && username != null) {
+        if (username != null && !username.equals(user.getCognitoUsername())) {
             user.setCognitoUsername(username);
         }
     }
@@ -205,6 +211,24 @@ public class SocialAuthService {
             return Boolean.parseBoolean(stringValue);
         }
         return false;
+    }
+
+    private String resolveRefreshUsername(String accessToken, String idTokenUsername, String fallbackSub) {
+        try {
+            String accessTokenUsername = SignedJWT.parse(accessToken)
+                    .getJWTClaimsSet()
+                    .getStringClaim("username");
+            if (accessTokenUsername != null && !accessTokenUsername.isBlank()) {
+                return accessTokenUsername;
+            }
+        } catch (Exception e) {
+            log.warn("[Auth] Cannot extract social refresh username from access token, using fallback username");
+        }
+
+        if (idTokenUsername != null && !idTokenUsername.isBlank()) {
+            return idTokenUsername;
+        }
+        return fallbackSub;
     }
 
     private AuthProvider resolveProvider(SignedJWT jwt) throws ParseException {
