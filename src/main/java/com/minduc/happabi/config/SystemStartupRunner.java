@@ -7,6 +7,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
 
 import com.minduc.happabi.seed.DataSeeder;
+import com.minduc.happabi.seed.TestDataSeeder;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import java.net.ConnectException;
@@ -19,6 +20,7 @@ import java.net.UnknownHostException;
 public class SystemStartupRunner implements ApplicationRunner {
 
     private final DataSeeder dataSeeder;
+    private final TestDataSeeder testDataSeeder;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -30,9 +32,10 @@ public class SystemStartupRunner implements ApplicationRunner {
 
         try {
             dataSeeder.seedAdminAccount();
+            testDataSeeder.seedAll();
         } catch (SdkClientException e) {
             if (isNetworkAwsError(e)) {
-                log.warn("[Startup] AWS unavailable. Skip admin seed.", e);
+                log.warn("[Startup] AWS unavailable. Skip Cognito-backed account seed.", e);
             } else {
                 throw e;
             }

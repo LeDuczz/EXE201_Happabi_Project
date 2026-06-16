@@ -6,6 +6,7 @@ import com.minduc.happabi.repository.NurseProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -37,6 +38,7 @@ public class NurseAccessCacheService {
         return status;
     }
 
+    @Async("appTaskExecutor")
     public void evict(UUID userId) {
         if (userId == null) {
             return;

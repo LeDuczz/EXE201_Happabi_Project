@@ -1,21 +1,24 @@
-package com.minduc.happabi.service.notification;
+package com.minduc.happabi.service.notification.impl;
 
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.service.notification.INotificationPublisher;
+import com.minduc.happabi.service.notification.INurseNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class NurseNotificationService {
+public class NurseNotificationService implements INurseNotificationService {
 
     private static final String RESOURCE_TYPE = "NURSE_PROFILE";
 
-    private final INotificationService notificationService;
+    private final INotificationPublisher notificationPublisher;
 
+    @Override
     public void notifyRejected(NurseProfile profile, String reason) {
-        notificationService.create(
-                profile.getUser(),
+        publish(
+                profile,
                 NotificationType.NURSE_PROFILE_REJECTED,
                 "Ho so dieu duong can cap nhat",
                 reason == null || reason.isBlank()
@@ -26,9 +29,10 @@ public class NurseNotificationService {
         );
     }
 
+    @Override
     public void notifyApprovedPendingContract(NurseProfile profile) {
-        notificationService.create(
-                profile.getUser(),
+        publish(
+                profile,
                 NotificationType.NURSE_PROFILE_APPROVED_PENDING_CONTRACT,
                 "Ho so dieu duong da duoc duyet",
                 "Vui long xem va xac nhan hop dong de kich hoat tai khoan nurse.",
@@ -37,9 +41,10 @@ public class NurseNotificationService {
         );
     }
 
+    @Override
     public void notifyActive(NurseProfile profile) {
-        notificationService.create(
-                profile.getUser(),
+        publish(
+                profile,
                 NotificationType.NURSE_PROFILE_ACTIVE,
                 "Tai khoan nurse da duoc kich hoat",
                 "Ban da co the nhan lich va hoat dong tren Happabi.",
@@ -48,9 +53,10 @@ public class NurseNotificationService {
         );
     }
 
+    @Override
     public void notifySuspended(NurseProfile profile, String reason) {
-        notificationService.create(
-                profile.getUser(),
+        publish(
+                profile,
                 NotificationType.NURSE_SUSPENDED,
                 "Tai khoan nurse dang bi tam khoa",
                 reason == null || reason.isBlank()
@@ -61,14 +67,34 @@ public class NurseNotificationService {
         );
     }
 
+    @Override
     public void notifyReactivated(NurseProfile profile) {
-        notificationService.create(
-                profile.getUser(),
+        publish(
+                profile,
                 NotificationType.NURSE_REACTIVATED,
                 "Tai khoan nurse da duoc mo lai",
                 "Ban co the tiep tuc nhan lich tren Happabi.",
                 RESOURCE_TYPE,
                 profile.getId().toString()
+        );
+    }
+
+    private void publish(NurseProfile profile,
+                         NotificationType type,
+                         String title,
+                         String message,
+                         String resourceType,
+                         String resourceId) {
+        if (profile == null || profile.getUser() == null || profile.getUser().getId() == null) {
+            return;
+        }
+        notificationPublisher.publish(
+                profile.getUser().getId(),
+                type,
+                title,
+                message,
+                resourceType,
+                resourceId
         );
     }
 }

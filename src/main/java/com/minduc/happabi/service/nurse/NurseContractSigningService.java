@@ -14,7 +14,7 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseContractRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
-import com.minduc.happabi.service.notification.NurseNotificationService;
+import com.minduc.happabi.service.notification.INurseNotificationService;
 import com.minduc.happabi.service.user.UserCacheService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ public class NurseContractSigningService {
 
     private final NurseProfileRepository nurseProfileRepository;
     private final NurseContractRepository contractRepository;
-    private final NurseNotificationService nurseNotificationService;
+    private final INurseNotificationService nurseNotificationService;
     private final NurseOnboardingSupportService supportService;
     private final UserCacheService userCacheService;
 

@@ -8,6 +8,7 @@ import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.observability.metrics.MetricsRecorder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -63,6 +64,7 @@ public class UserCacheService {
     }
 
 
+    @Async("appTaskExecutor")
     public void evictProfiles(String cognitoSub) {
         List<String> keys = List.of(
                 cacheKey("identity", cognitoSub),

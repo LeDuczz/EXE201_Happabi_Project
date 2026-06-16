@@ -1,5 +1,6 @@
 package com.minduc.happabi.service.payment.impl;
 
+import com.minduc.happabi.dto.event.BusinessMetricRequestedEvent;
 import com.minduc.happabi.entity.NurseWallet;
 import com.minduc.happabi.entity.WalletTransaction;
 import com.minduc.happabi.enums.TransactionStatus;
@@ -8,17 +9,19 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.NurseWalletErrorCode;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
-import com.minduc.happabi.observability.document.BusinessMetricDocument;
-import com.minduc.happabi.repository.BusinessMetricRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.payment.IPayOsWebhookService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import vn.payos.PayOS;
 import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
+
+import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +30,7 @@ public class PayOsWebHookService implements IPayOsWebhookService {
     private final PayOS payOS;
     private final WalletTransactionRepository walletTransactionRepository;
     private final NurseWalletRepository nurseWalletRepository;
-    private final BusinessMetricRepository businessMetricRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @LogExecution
     @AuditAction(action = "HANDLE", resourceType = "WALLET_TRANSACTION")
@@ -53,13 +56,13 @@ public class PayOsWebHookService implements IPayOsWebhookService {
                     }
                     walletTransactionRepository.save(transaction);
 
-                    BusinessMetricDocument metric = new BusinessMetricDocument();
-                    metric.setEventId(java.util.UUID.randomUUID().toString());
-                    metric.setEventType("TRANSACTION_SUCCESS");
-                    metric.setTimestamp(java.time.Instant.now());
-                    metric.setAmount(transaction.getAmount());
-                    metric.setStatus("SUCCESS");
-                    businessMetricRepository.save(metric);
+                    eventPublisher.publishEvent(new BusinessMetricRequestedEvent(
+                            UUID.randomUUID(),
+                            "TRANSACTION_SUCCESS",
+                            Instant.now(),
+                            transaction.getAmount(),
+                            "SUCCESS"
+                    ));
 
                 } else {
                     transaction.setStatus(TransactionStatus.FAILED);
