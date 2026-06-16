@@ -19,6 +19,8 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, UUID> 
 
     boolean existsByBooking_Id(UUID bookingId);
 
+    Optional<WorkSession> findByBooking_Id(UUID bookingId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select ws

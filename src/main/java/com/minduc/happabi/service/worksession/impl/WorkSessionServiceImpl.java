@@ -22,13 +22,13 @@ import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.exception.code.WorkSessionErrorCode;
 import com.minduc.happabi.integration.s3.IS3Service;
-import com.minduc.happabi.integration.sqs.SqsFileCleanupPublisher;
+import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import com.minduc.happabi.mapper.WorkSessionMapper;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.WorkSessionChecklistItemRepository;
 import com.minduc.happabi.repository.WorkSessionEvidenceRepository;
 import com.minduc.happabi.repository.WorkSessionRepository;
-import com.minduc.happabi.service.notification.INotificationService;
+import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import com.minduc.happabi.service.worksession.IWorkSessionService;
 import lombok.RequiredArgsConstructor;
@@ -67,9 +67,9 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private final UserAccountLookupService userAccountLookupService;
     private final IS3Service s3Service;
     private final WorkSessionMapper workSessionMapper;
-    private final INotificationService notificationService;
+    private final INotificationPublisher notificationPublisher;
     private final ApplicationEventPublisher eventPublisher;
-    private final SqsFileCleanupPublisher fileCleanupPublisher;
+    private final IFileCleanupPublisher fileCleanupPublisher;
 
     @Value("${app.work-session.check-in-open-minutes:10}")
     private long checkInOpenMinutes;
@@ -476,13 +476,25 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     }
 
     private void notifyMother(WorkSession session, String title, String message) {
-        notificationService.create(session.getMother(), NotificationType.WORK_SESSION_UPDATED,
-                title, message, "WORK_SESSION", session.getId().toString());
+        notificationPublisher.publish(
+                session.getMother().getId(),
+                NotificationType.WORK_SESSION_UPDATED,
+                title,
+                message,
+                "WORK_SESSION",
+                session.getId().toString()
+        );
     }
 
     private void notifyNurse(WorkSession session, String title, String message) {
-        notificationService.create(session.getNurseProfile().getUser(), NotificationType.WORK_SESSION_UPDATED,
-                title, message, "WORK_SESSION", session.getId().toString());
+        notificationPublisher.publish(
+                session.getNurseProfile().getUser().getId(),
+                NotificationType.WORK_SESSION_UPDATED,
+                title,
+                message,
+                "WORK_SESSION",
+                session.getId().toString()
+        );
     }
 
     private String normalize(String value) {

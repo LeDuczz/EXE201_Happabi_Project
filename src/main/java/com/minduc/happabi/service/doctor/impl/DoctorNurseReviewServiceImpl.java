@@ -15,7 +15,7 @@ import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.*;
 import com.minduc.happabi.service.doctor.DoctorNurseReviewCacheService;
 import com.minduc.happabi.service.doctor.IDoctorNurseReviewService;
-import com.minduc.happabi.service.notification.NurseNotificationService;
+import com.minduc.happabi.service.notification.INurseNotificationService;
 import com.minduc.happabi.service.nurse.KycSensitiveDocumentCleanupService;
 import com.minduc.happabi.service.nurse.NurseAccessCacheService;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
@@ -44,7 +44,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     private final NurseContractRepository contractRepository;
     private final NurseReviewEventRepository reviewEventRepository;
     private final IS3Service s3Service;
-    private final NurseNotificationService nurseNotificationService;
+    private final INurseNotificationService nurseNotificationService;
     private final KycSensitiveDocumentCleanupService kycSensitiveDocumentCleanupService;
     private final NurseOnboardingMapper nurseOnboardingMapper;
     private final DoctorNurseReviewCacheService reviewCacheService;

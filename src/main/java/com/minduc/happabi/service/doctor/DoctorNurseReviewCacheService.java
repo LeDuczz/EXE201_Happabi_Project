@@ -8,6 +8,7 @@ import com.minduc.happabi.observability.metrics.MetricsRecorder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -46,19 +47,24 @@ public class DoctorNurseReviewCacheService {
         put(detailKey(profileId), value, DETAIL_TTL, "detail");
     }
 
+    @Async("appTaskExecutor")
     public void evictPendingReviews() {
         delete(PENDING_REVIEWS_KEY, "pending");
     }
 
+    @Async("appTaskExecutor")
     public void evictDetail(UUID profileId) {
         if (profileId != null) {
             delete(detailKey(profileId), "detail");
         }
     }
 
+    @Async("appTaskExecutor")
     public void evictReviewCaches(UUID profileId) {
-        evictPendingReviews();
-        evictDetail(profileId);
+        delete(PENDING_REVIEWS_KEY, "pending");
+        if (profileId != null) {
+            delete(detailKey(profileId), "detail");
+        }
     }
 
     private <T> Optional<T> get(String key, Class<T> type, String cacheType) {

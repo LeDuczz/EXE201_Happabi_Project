@@ -149,6 +149,9 @@ aws:
     file-cleanup-queue-url: ${AWS_SQS_FILE_CLEANUP_QUEUE_URL:}
     file-cleanup-worker-enabled: ${AWS_SQS_FILE_CLEANUP_WORKER_ENABLED:false}
     file-cleanup-poll-delay-ms: ${AWS_SQS_FILE_CLEANUP_POLL_DELAY_MS:5000}
+    nurse-review-aggregation-queue-url: ${AWS_SQS_NURSE_REVIEW_AGGREGATION_QUEUE_URL:}
+    nurse-review-aggregation-worker-enabled: ${AWS_SQS_NURSE_REVIEW_AGGREGATION_WORKER_ENABLED:false}
+    nurse-review-aggregation-poll-delay-ms: ${AWS_SQS_NURSE_REVIEW_AGGREGATION_POLL_DELAY_MS:5000}
 
   cognito:
     user-pool-id: ${AWS_USER_POOL_ID}

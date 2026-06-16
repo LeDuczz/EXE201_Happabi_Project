@@ -1,4 +1,4 @@
-package com.minduc.happabi.integration.sqs;
+package com.minduc.happabi.integration.sqs.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.dto.message.S3ObjectDeleteMessage;

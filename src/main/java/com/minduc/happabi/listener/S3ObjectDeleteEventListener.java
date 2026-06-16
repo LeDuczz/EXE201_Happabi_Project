@@ -1,9 +1,10 @@
 package com.minduc.happabi.listener;
 
 import com.minduc.happabi.dto.event.S3ObjectDeleteRequestedEvent;
-import com.minduc.happabi.integration.sqs.SqsFileCleanupPublisher;
+import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -13,8 +14,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @RequiredArgsConstructor
 public class S3ObjectDeleteEventListener {
 
-    private final SqsFileCleanupPublisher fileCleanupPublisher;
+    private final IFileCleanupPublisher fileCleanupPublisher;
 
+    @Async("appTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onS3ObjectDeleteRequested(S3ObjectDeleteRequestedEvent event) {
         try {

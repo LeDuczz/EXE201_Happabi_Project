@@ -1,8 +1,9 @@
-package com.minduc.happabi.integration.sqs;
+package com.minduc.happabi.integration.sqs.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.dto.message.S3ObjectDeleteMessage;
+import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +18,7 @@ import java.time.OffsetDateTime;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SqsFileCleanupPublisher {
+public class SqsFileCleanupPublisher implements IFileCleanupPublisher {
 
     private final SqsClient sqsClient;
     private final ObjectMapper objectMapper;
@@ -28,6 +29,7 @@ public class SqsFileCleanupPublisher {
     @Value("${aws.s3.bucket}")
     private String bucket;
 
+    @Override
     public void publishDeleteObject(String key, String reason) {
         if (key == null || key.isBlank()) {
             return;
