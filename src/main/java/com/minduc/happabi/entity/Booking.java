@@ -64,7 +64,7 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_status", nullable = false, length = 40)
     @Builder.Default
-    private BookingStatus status = BookingStatus.DRAFT;
+    private BookingStatus status = BookingStatus.PENDING_PAYMENT;
 
     @Column(name = "start_at", nullable = false)
     private OffsetDateTime startAt;
@@ -72,7 +72,7 @@ public class Booking {
     @Column(name = "end_at", nullable = false)
     private OffsetDateTime endAt;
 
-    @Column(name = "hold_expires_at", nullable = false)
+    @Column(name = "payment_expires_at", nullable = false)
     private OffsetDateTime paymentExpiresAt;
 
     @Column(name = "gross_amount", nullable = false)
@@ -104,7 +104,7 @@ public class Booking {
     @Column(name = "mother_note", columnDefinition = "TEXT")
     private String motherNote;
 
-    @Column(name = "hold_key", nullable = false, length = 220, unique = true)
+    @Column(name = "booking_key", nullable = false, length = 220, unique = true)
     private String bookingKey;
 
     @CreationTimestamp
@@ -119,3 +119,4 @@ public class Booking {
     @Column(name = "version", nullable = false)
     private Long version;
 }
+

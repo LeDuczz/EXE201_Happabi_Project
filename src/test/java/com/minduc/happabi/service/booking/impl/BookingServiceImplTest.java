@@ -1,7 +1,7 @@
 package com.minduc.happabi.service.booking.impl;
 
-import com.minduc.happabi.dto.request.booking.CreateBookingDraftRequest;
-import com.minduc.happabi.dto.response.booking.BookingDraftResponse;
+import com.minduc.happabi.dto.request.booking.CreateBookingRequest;
+import com.minduc.happabi.dto.response.booking.BookingResponse;
 import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.BookingSlot;
 import com.minduc.happabi.entity.NurseProfile;
@@ -12,6 +12,7 @@ import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NurseStatus;
+import com.minduc.happabi.enums.NotificationType;
 import com.minduc.happabi.enums.ServiceOfferingType;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.BookingErrorCode;
@@ -21,6 +22,7 @@ import com.minduc.happabi.repository.BookingSlotRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
+import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,12 +66,15 @@ class BookingServiceImplTest {
     @Mock
     private IServiceEligibilityService serviceEligibilityService;
 
+    @Mock
+    private INotificationPublisher notificationPublisher;
+
     private BookingServiceImpl service;
     private User mother;
     private NurseProfile nurse;
     private ServiceOffering offering;
     private BookingSlot slot;
-    private CreateBookingDraftRequest request;
+    private CreateBookingRequest request;
 
     @BeforeEach
     void setUp() {
@@ -79,7 +84,8 @@ class BookingServiceImplTest {
                 nurseProfileRepository,
                 serviceOfferingRepository,
                 userAccountLookupService,
-                serviceEligibilityService);
+                serviceEligibilityService,
+                notificationPublisher);
         ReflectionTestUtils.setField(service, "paymentTtlMinutes", 15L);
 
         mother = User.builder().id(UUID.randomUUID()).fullName("Mother").build();
@@ -105,7 +111,7 @@ class BookingServiceImplTest {
                 .startAt(OffsetDateTime.of(2026, 6, 18, 9, 0, 0, 0, ZoneOffset.UTC))
                 .status(BookingSlotStatus.AVAILABLE)
                 .build();
-        request = new CreateBookingDraftRequest();
+        request = new CreateBookingRequest();
         request.setNurseProfileId(nurse.getId());
         request.setServiceOfferingId(offering.getId());
         request.setStartAt(slot.getStartAt());
@@ -114,7 +120,7 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void createDraftCreatesPendingPaymentBookingWithLockedSlot() {
+    void createBookingCreatesPendingPaymentBookingWithLockedSlot() {
         mockHappyPath();
         when(bookingRepository.saveAndFlush(any(Booking.class))).thenAnswer(invocation -> {
             Booking booking = invocation.getArgument(0);
@@ -122,11 +128,10 @@ class BookingServiceImplTest {
             return booking;
         });
 
-        BookingDraftResponse response = service.createDraft(request);
+        BookingResponse response = service.createBooking(request);
 
         assertThat(response.getStatus()).isEqualTo(BookingStatus.PENDING_PAYMENT);
         assertThat(response.getBookingId()).isNotNull();
-        assertThat(response.getDraftId()).isEqualTo(response.getBookingId());
         assertThat(response.getSlotId()).isEqualTo(slot.getId());
         assertThat(response.getDepositAmount()).isEqualTo(54000L);
         assertThat(response.getRemainingCashAmount()).isEqualTo(126000L);
@@ -134,10 +139,17 @@ class BookingServiceImplTest {
         assertThat(response.getPaymentOption()).isEqualTo(BookingPaymentOption.DEPOSIT_30_PERCENT);
         assertThat(response.getServiceAddress()).isEqualTo("12 Nguyen Hue");
         assertThat(slot.getStatus()).isEqualTo(BookingSlotStatus.BOOKED);
+        verify(notificationPublisher).publish(
+                eq(mother.getId()),
+                eq(NotificationType.BOOKING_PAYMENT_PENDING),
+                any(),
+                any(),
+                eq("BOOKING"),
+                eq(response.getBookingId().toString()));
     }
 
     @Test
-    void createDraftSupportsFullAppPayment() {
+    void createBookingSupportsFullAppPayment() {
         request.setPaymentOption(BookingPaymentOption.FULL_APP_PAYMENT);
         mockHappyPath();
         when(bookingRepository.saveAndFlush(any(Booking.class))).thenAnswer(invocation -> {
@@ -146,7 +158,7 @@ class BookingServiceImplTest {
             return booking;
         });
 
-        BookingDraftResponse response = service.createDraft(request);
+        BookingResponse response = service.createBooking(request);
 
         assertThat(response.getDepositAmount()).isEqualTo(180000L);
         assertThat(response.getRemainingCashAmount()).isZero();
@@ -154,50 +166,50 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void createDraftRejectsUnavailableNurse() {
+    void createBookingRejectsUnavailableNurse() {
         nurse.setAvailabilityStatus(AvailabilityStatus.OFFLINE);
         when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
 
-        assertThatThrownBy(() -> service.createDraft(request))
+        assertThatThrownBy(() -> service.createBooking(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
                 .isEqualTo(BookingErrorCode.NURSE_NOT_AVAILABLE);
     }
 
     @Test
-    void createDraftRejectsUnknownActiveNurse() {
+    void createBookingRejectsUnknownActiveNurse() {
         when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.createDraft(request))
+        assertThatThrownBy(() -> service.createBooking(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
                 .isEqualTo(UserErrorCode.NURSE_PUBLIC_PROFILE_NOT_FOUND);
     }
 
     @Test
-    void createDraftRejectsPackageService() {
+    void createBookingRejectsPackageService() {
         offering.setServiceType(null);
         when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
         when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
 
-        assertThatThrownBy(() -> service.createDraft(request))
+        assertThatThrownBy(() -> service.createBooking(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
                 .isEqualTo(BookingErrorCode.SERVICE_OFFERING_NOT_FOUND);
     }
 
     @Test
-    void createDraftRejectsStartTimeNotAlignedToHour() {
+    void createBookingRejectsStartTimeNotAlignedToHour() {
         request.setStartAt(request.getStartAt().plusMinutes(30));
         when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
         when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
         when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.createDraft(request))
+        assertThatThrownBy(() -> service.createBooking(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
                 .isEqualTo(BookingErrorCode.BOOKING_SLOT_INVALID);
@@ -205,11 +217,11 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void createDraftRejectsAlreadyBookedSlot() {
+    void createBookingRejectsAlreadyBookedSlot() {
         mockHappyPath();
         slot.setStatus(BookingSlotStatus.BOOKED);
 
-        assertThatThrownBy(() -> service.createDraft(request))
+        assertThatThrownBy(() -> service.createBooking(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
                 .isEqualTo(BookingErrorCode.BOOKING_SLOT_ALREADY_BOOKED);
@@ -217,7 +229,7 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void createDraftRejectsOverlappingBookingInsideDuration() {
+    void createBookingRejectsOverlappingBookingInsideDuration() {
         offering.setDurationMinutes(180);
         BookingSlot tenOClock = slotAt(request.getStartAt().plusHours(1));
         BookingSlot elevenOClock = slotAt(request.getStartAt().plusHours(2));
@@ -228,7 +240,7 @@ class BookingServiceImplTest {
         when(bookingSlotRepository.findByNurseProfileIdAndStartAtForUpdate(nurse.getId(), elevenOClock.getStartAt()))
                 .thenReturn(Optional.of(elevenOClock));
 
-        assertThatThrownBy(() -> service.createDraft(request))
+        assertThatThrownBy(() -> service.createBooking(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
                 .isEqualTo(BookingErrorCode.BOOKING_SLOT_ALREADY_BOOKED);
@@ -255,3 +267,4 @@ class BookingServiceImplTest {
                 .build();
     }
 }
+

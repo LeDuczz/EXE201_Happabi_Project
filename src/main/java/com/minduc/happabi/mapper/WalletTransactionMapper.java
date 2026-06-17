@@ -7,8 +7,6 @@ import org.springframework.stereotype.Component;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-import static com.minduc.happabi.enums.TransactionType.*;
-
 @Component
 public class WalletTransactionMapper {
 
@@ -20,30 +18,30 @@ public class WalletTransactionMapper {
       return null;
     }
 
-    String description = "";
+    String description = "Giao dich khac";
     String typeStr = "";
 
     if (walletTransaction.getTransactionType() != null) {
       switch (walletTransaction.getTransactionType()) {
         case TOPUP_WALLET -> {
-          description = "Nạp tiền vào ví";
+          description = "Nap tien vao vi";
           typeStr = "TOPUP";
         }
         case TOPUP_DEPOSIT -> {
-          description = "Nạp tiền ký quỹ";
+          description = "Nap tien ky quy";
           typeStr = "TOPUP";
         }
+        case BOOKING_EARNING -> {
+          description = "Thu nhap tu don booking";
+          typeStr = "BOOKING_EARNING";
+        }
         case FEE_DEDUCTION -> {
-          description = "Chiết khấu hoa hồng đơn hàng";
+          description = "Chiet khau hoa hong don hang";
           typeStr = "COMMISSION";
         }
         case PAYOUT -> {
-          description = "Rút tiền về ngân hàng";
+          description = "Rut tien ve ngan hang";
           typeStr = "WITHDRAW";
-        }
-        default -> {
-          description = "Giao dịch khác";
-          typeStr = walletTransaction.getTransactionType().name();
         }
       }
     }
@@ -53,10 +51,10 @@ public class WalletTransactionMapper {
       .amount(walletTransaction.getAmount())
       .type(typeStr)
       .status(walletTransaction.getStatus() != null ? walletTransaction.getStatus().name() : null)
-      .createdAt(walletTransaction.getCreatedAt() != null ? DATE_TIME_FORMATTER.format(walletTransaction.getCreatedAt()) : null)
+      .createdAt(walletTransaction.getCreatedAt() != null
+        ? DATE_TIME_FORMATTER.format(walletTransaction.getCreatedAt())
+        : null)
       .description(description)
       .build();
-
   }
-
 }

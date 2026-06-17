@@ -9,28 +9,25 @@ import com.minduc.happabi.exception.code.NurseWalletErrorCode;
 import com.minduc.happabi.exception.code.WalletTransactionErrorCode;
 import com.minduc.happabi.mapper.WalletTransactionMapper;
 import com.minduc.happabi.repository.NurseWalletRepository;
-import com.minduc.happabi.repository.PlatformRevenueRepository;
-import com.minduc.happabi.repository.SystemConfigRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.nurse.INurseWalletService;
 import com.minduc.happabi.service.systemconfig.ISystemConfigService;
-import com.minduc.happabi.service.systemconfig.impl.SystemConfigService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class NurseWalletService implements INurseWalletService {
 
+    private static final String PLATFORM_FEE_RATE_KEY = "PLATFORM_FEE_RATE";
+    private static final String DEFAULT_PLATFORM_FEE_RATE = "0.15";
+
     private final NurseWalletRepository nurseWalletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
-    private final PlatformRevenueRepository platformRevenueRepository;
     private final ISystemConfigService systemConfigService;
     private final WalletTransactionMapper walletTransactionMapper;
 
@@ -61,7 +58,10 @@ public class NurseWalletService implements INurseWalletService {
         BigDecimal feeRate, requiredFee, totalAvailable;
 
         try {
-             feeRate = new BigDecimal(systemConfigService.getConfigValue("PLATFORM_FEE_RATE", "0.10"));
+             feeRate = new BigDecimal(systemConfigService.getConfigValue(
+                     PLATFORM_FEE_RATE_KEY,
+                     DEFAULT_PLATFORM_FEE_RATE
+             ));
              requiredFee = bookingAmount.multiply(feeRate);
              totalAvailable = wallet.getBalance().add(wallet.getDepositBalance());
         } catch (Exception e) {

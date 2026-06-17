@@ -1,7 +1,7 @@
 package com.minduc.happabi.service.booking.impl;
 
-import com.minduc.happabi.dto.request.booking.CreateBookingDraftRequest;
-import com.minduc.happabi.dto.response.booking.BookingDraftResponse;
+import com.minduc.happabi.dto.request.booking.CreateBookingRequest;
+import com.minduc.happabi.dto.response.booking.BookingResponse;
 import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.BookingSlot;
 import com.minduc.happabi.entity.NurseProfile;
@@ -12,16 +12,21 @@ import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NurseStatus;
+import com.minduc.happabi.enums.NotificationType;
 import com.minduc.happabi.enums.ServiceOfferingType;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.BookingSlotRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IBookingService;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
+import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,14 +59,18 @@ public class BookingServiceImpl implements IBookingService {
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final UserAccountLookupService userAccountLookupService;
     private final IServiceEligibilityService serviceEligibilityService;
+    private final INotificationPublisher notificationPublisher;
 
     @Value("${app.booking.payment-ttl-minutes:15}")
     private long paymentTtlMinutes;
 
     @Override
+    @LogExecution
+    @TimedAction("CREATE_BOOKING")
+    @AuditAction(action = "CREATE_BOOKING", resourceType = "BOOKING")
     @Transactional
     @PreAuthorize("hasRole('MOTHER')")
-    public BookingDraftResponse createDraft(CreateBookingDraftRequest request) {
+    public BookingResponse createBooking(CreateBookingRequest request) {
         User mother = userAccountLookupService.getCurrentUser();
         NurseProfile nurseProfile = getBookableNurse(request);
         ServiceOffering serviceOffering = getActiveService(request);
@@ -114,13 +123,37 @@ public class BookingServiceImpl implements IBookingService {
                 slot.setStatus(BookingSlotStatus.BOOKED);
                 slot.setBooking(booking);
             }
+            notifyMotherPaymentPending(booking);
+            log.info("[Booking] Created pending payment booking id={} nurseId={} motherId={} startAt={} endAt={} appPaymentAmount={}",
+                    booking.getId(), nurseProfile.getId(), mother.getId(), startAt, endAt, booking.getAppPaymentAmount());
             return toResponse(booking, primarySlot, nurseProfile, serviceOffering);
         } catch (DataIntegrityViolationException e) {
+            log.warn("[Booking] Slot conflict while creating booking nurseId={} startAt={} endAt={}",
+                    nurseProfile.getId(), startAt, endAt);
             throw new AppException(BookingErrorCode.BOOKING_SLOT_ALREADY_BOOKED, e);
         }
     }
 
-    private NurseProfile getBookableNurse(CreateBookingDraftRequest request) {
+    @Override
+    @LogExecution
+    @TimedAction("GET_MY_PENDING_BOOKING_PAYMENTS")
+    @AuditAction(action = "GET_MY_PENDING_BOOKING_PAYMENTS", resourceType = "BOOKING")
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('MOTHER')")
+    public List<BookingResponse> getMyPendingPayments() {
+        User mother = userAccountLookupService.getCurrentUser();
+        return bookingRepository.findPendingPaymentsByMotherId(
+                        mother.getId(), BookingStatus.PENDING_PAYMENT, OffsetDateTime.now())
+                .stream()
+                .map(booking -> toResponse(
+                        booking,
+                        booking.getSlot(),
+                        booking.getNurseProfile(),
+                        booking.getServiceOffering()))
+                .toList();
+    }
+
+    private NurseProfile getBookableNurse(CreateBookingRequest request) {
         NurseProfile nurseProfile = nurseProfileRepository.findByIdAndNurseStatus(
                         request.getNurseProfileId(), NurseStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PUBLIC_PROFILE_NOT_FOUND));
@@ -130,7 +163,7 @@ public class BookingServiceImpl implements IBookingService {
         return nurseProfile;
     }
 
-    private ServiceOffering getActiveService(CreateBookingDraftRequest request) {
+    private ServiceOffering getActiveService(CreateBookingRequest request) {
         return serviceOfferingRepository.findById(request.getServiceOfferingId())
                 .filter(service -> Boolean.TRUE.equals(service.getIsActive()))
                 .filter(service -> service.getServiceType() == ServiceOfferingType.SINGLE)
@@ -163,7 +196,7 @@ public class BookingServiceImpl implements IBookingService {
         List<BookingSlot> slots = new ArrayList<>(slotStarts.size());
         for (OffsetDateTime slotStart : slotStarts) {
             slots.add(bookingSlotRepository.findByNurseProfileIdAndStartAtForUpdate(nurseProfile.getId(), slotStart)
-                    .orElseThrow(() -> new AppException(BookingErrorCode.BOOKING_DRAFT_CREATE_FAILED)));
+                    .orElseThrow(() -> new AppException(BookingErrorCode.BOOKING_CREATE_FAILED)));
         }
         return slots;
     }
@@ -191,12 +224,11 @@ public class BookingServiceImpl implements IBookingService {
         return new PaymentBreakdown(depositAmount, amount - depositAmount, depositAmount);
     }
 
-    private BookingDraftResponse toResponse(Booking booking,
+    private BookingResponse toResponse(Booking booking,
                                             BookingSlot slot,
                                             NurseProfile nurseProfile,
                                             ServiceOffering serviceOffering) {
-        return BookingDraftResponse.builder()
-                .draftId(booking.getId())
+        return BookingResponse.builder()
                 .bookingId(booking.getId())
                 .slotId(slot.getId())
                 .nurseProfileId(nurseProfile.getId())
@@ -221,6 +253,19 @@ public class BookingServiceImpl implements IBookingService {
         return "booking:nurse:%s:%s".formatted(nurseProfile.getId(), startAt.toInstant());
     }
 
+    private void notifyMotherPaymentPending(Booking booking) {
+        notificationPublisher.publish(
+                booking.getMother().getId(),
+                NotificationType.BOOKING_PAYMENT_PENDING,
+                "Booking is waiting for payment",
+                "Your booking for %s has been created. Please complete payment before %s."
+                        .formatted(booking.getServiceOffering().getServiceName(),
+                                booking.getPaymentExpiresAt().toLocalTime()),
+                "BOOKING",
+                booking.getId().toString()
+        );
+    }
+
     private String normalize(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -230,5 +275,6 @@ public class BookingServiceImpl implements IBookingService {
 
     private record PaymentBreakdown(Long depositAmount, Long remainingCashAmount, Long appPaymentAmount) {
     }
-    
+
 }
+

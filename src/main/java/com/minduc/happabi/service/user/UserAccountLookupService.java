@@ -95,8 +95,8 @@ public class UserAccountLookupService {
 
     public void toggleUserStatus(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new com.minduc.happabi.exception.AppException(
-                        com.minduc.happabi.exception.code.AuthErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(
+                        AuthErrorCode.USER_NOT_FOUND));
         user.setIsActive(!user.getIsActive());
         userRepository.save(user);
     }

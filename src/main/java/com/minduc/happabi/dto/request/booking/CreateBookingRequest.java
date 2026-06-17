@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class CreateBookingDraftRequest {
+public class CreateBookingRequest {
 
     @NotNull
     private UUID nurseProfileId;
@@ -34,3 +34,4 @@ public class CreateBookingDraftRequest {
 
     private BookingPaymentOption paymentOption;
 }
+

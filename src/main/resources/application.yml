@@ -19,7 +19,6 @@ spring:
         jdbc:
           time_zone: ${SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE}
         format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL}
-
   # ========================
   # SECURITY / OAuth2
   # ========================
