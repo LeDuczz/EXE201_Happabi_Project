@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/bookings")
 @RequiredArgsConstructor
-@Tag(name = "Bookings", description = "Mother booking draft and hold flow")
+@Tag(name = "Bookings", description = "Mother booking flow")
 @SecurityRequirement(name = "bearerAuth")
 public class BookingController {
 
@@ -30,6 +30,6 @@ public class BookingController {
     public ResponseEntity<BaseResponse<BookingDraftResponse>> createDraft(
             @Valid @RequestBody CreateBookingDraftRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(BaseResponse.created("Booking draft created and slot held.", bookingService.createDraft(request)));
+                .body(BaseResponse.created("Booking created and waiting for payment.", bookingService.createDraft(request)));
     }
 }

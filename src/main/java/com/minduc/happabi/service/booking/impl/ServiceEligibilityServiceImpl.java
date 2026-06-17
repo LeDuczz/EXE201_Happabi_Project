@@ -41,7 +41,7 @@ public class ServiceEligibilityServiceImpl implements IServiceEligibilityService
     @Transactional(readOnly = true)
     public List<ServiceOfferingResponse> getEligibleServices(NurseProfile nurseProfile, ServiceOfferingType serviceType) {
         List<ServiceOffering> services = serviceType == null
-                ? serviceOfferingRepository.findByIsActiveTrueOrderBySortOrderAscServiceNameAsc()
+                ? serviceOfferingRepository.findByServiceTypeAndIsActiveTrueOrderBySortOrderAscServiceNameAsc(ServiceOfferingType.SINGLE)
                 : serviceOfferingRepository.findByServiceTypeAndIsActiveTrueOrderBySortOrderAscServiceNameAsc(serviceType);
         Set<NurseSkill> verifiedSkills = getVerifiedSkillSet(nurseProfile);
         Map<ServiceOffering, Set<NurseSkill>> requiredSkills = requiredSkillRepository.findByServiceOfferingIn(services)

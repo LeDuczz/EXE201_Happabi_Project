@@ -1,18 +1,23 @@
 package com.minduc.happabi.service.booking.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.dto.request.booking.CreateBookingDraftRequest;
 import com.minduc.happabi.dto.response.booking.BookingDraftResponse;
+import com.minduc.happabi.entity.Booking;
+import com.minduc.happabi.entity.BookingSlot;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.ServiceOffering;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.AvailabilityStatus;
+import com.minduc.happabi.enums.BookingPaymentOption;
+import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NurseStatus;
+import com.minduc.happabi.enums.ServiceOfferingType;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.repository.BookingRepository;
+import com.minduc.happabi.repository.BookingSlotRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
@@ -22,12 +27,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,7 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,6 +50,9 @@ class BookingServiceImplTest {
     private BookingRepository bookingRepository;
 
     @Mock
+    private BookingSlotRepository bookingSlotRepository;
+
+    @Mock
     private NurseProfileRepository nurseProfileRepository;
 
     @Mock
@@ -57,31 +62,25 @@ class BookingServiceImplTest {
     private UserAccountLookupService userAccountLookupService;
 
     @Mock
-    private StringRedisTemplate stringRedisTemplate;
-
-    @Mock
-    private ValueOperations<String, String> valueOperations;
-
-    @Mock
     private IServiceEligibilityService serviceEligibilityService;
 
     private BookingServiceImpl service;
     private User mother;
     private NurseProfile nurse;
     private ServiceOffering offering;
+    private BookingSlot slot;
     private CreateBookingDraftRequest request;
 
     @BeforeEach
     void setUp() {
         service = new BookingServiceImpl(
                 bookingRepository,
+                bookingSlotRepository,
                 nurseProfileRepository,
                 serviceOfferingRepository,
                 userAccountLookupService,
-                stringRedisTemplate,
-                new ObjectMapper().findAndRegisterModules(),
                 serviceEligibilityService);
-        ReflectionTestUtils.setField(service, "holdTtlMinutes", 15L);
+        ReflectionTestUtils.setField(service, "paymentTtlMinutes", 15L);
 
         mother = User.builder().id(UUID.randomUUID()).fullName("Mother").build();
         nurse = NurseProfile.builder()
@@ -92,41 +91,66 @@ class BookingServiceImplTest {
                 .build();
         offering = ServiceOffering.builder()
                 .id(UUID.randomUUID())
+                .serviceType(ServiceOfferingType.SINGLE)
                 .serviceName("Newborn bath")
-                .durationMinutes(45)
+                .durationMinutes(60)
                 .grossAmount(180000L)
                 .platformFeeAmount(27000L)
                 .nurseEarningAmount(153000L)
                 .isActive(true)
                 .build();
+        slot = BookingSlot.builder()
+                .id(UUID.randomUUID())
+                .nurseProfile(nurse)
+                .startAt(OffsetDateTime.of(2026, 6, 18, 9, 0, 0, 0, ZoneOffset.UTC))
+                .status(BookingSlotStatus.AVAILABLE)
+                .build();
         request = new CreateBookingDraftRequest();
         request.setNurseProfileId(nurse.getId());
         request.setServiceOfferingId(offering.getId());
-        request.setStartAt(OffsetDateTime.now().plusDays(1));
+        request.setStartAt(slot.getStartAt());
         request.setServiceAddress("  12 Nguyen Hue  ");
         request.setMotherNote("  please be on time  ");
     }
 
     @Test
-    void createDraftCreatesRedisHoldAndReturnsDraftResponse() {
-        when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
-        when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
-        when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
-        when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(true);
-        when(bookingRepository.existsByNurseProfile_IdAndStartAtAndStatusIn(eq(nurse.getId()), eq(request.getStartAt()), anyCollection()))
-                .thenReturn(false);
-        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(anyString(), eq(mother.getId().toString()), eq(Duration.ofMinutes(15))))
-                .thenReturn(true);
+    void createDraftCreatesPendingPaymentBookingWithLockedSlot() {
+        mockHappyPath();
+        when(bookingRepository.saveAndFlush(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(UUID.randomUUID());
+            return booking;
+        });
 
         BookingDraftResponse response = service.createDraft(request);
 
-        assertThat(response.getStatus()).isEqualTo(BookingStatus.DRAFT);
-        assertThat(response.getNurseName()).isEqualTo("Nurse A");
-        assertThat(response.getEndAt()).isEqualTo(request.getStartAt().plusMinutes(45));
+        assertThat(response.getStatus()).isEqualTo(BookingStatus.PENDING_PAYMENT);
+        assertThat(response.getBookingId()).isNotNull();
+        assertThat(response.getDraftId()).isEqualTo(response.getBookingId());
+        assertThat(response.getSlotId()).isEqualTo(slot.getId());
+        assertThat(response.getDepositAmount()).isEqualTo(54000L);
+        assertThat(response.getRemainingCashAmount()).isEqualTo(126000L);
+        assertThat(response.getAppPaymentAmount()).isEqualTo(54000L);
+        assertThat(response.getPaymentOption()).isEqualTo(BookingPaymentOption.DEPOSIT_30_PERCENT);
         assertThat(response.getServiceAddress()).isEqualTo("12 Nguyen Hue");
-        assertThat(response.getMotherNote()).isEqualTo("please be on time");
-        verify(valueOperations).set(anyString(), anyString(), eq(Duration.ofMinutes(15)));
+        assertThat(slot.getStatus()).isEqualTo(BookingSlotStatus.BOOKED);
+    }
+
+    @Test
+    void createDraftSupportsFullAppPayment() {
+        request.setPaymentOption(BookingPaymentOption.FULL_APP_PAYMENT);
+        mockHappyPath();
+        when(bookingRepository.saveAndFlush(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(UUID.randomUUID());
+            return booking;
+        });
+
+        BookingDraftResponse response = service.createDraft(request);
+
+        assertThat(response.getDepositAmount()).isEqualTo(180000L);
+        assertThat(response.getRemainingCashAmount()).isZero();
+        assertThat(response.getAppPaymentAmount()).isEqualTo(180000L);
     }
 
     @Test
@@ -153,64 +177,81 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void createDraftRejectsServiceWhenNurseIsNotEligible() {
+    void createDraftRejectsPackageService() {
+        offering.setServiceType(null);
         when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
         when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
-        when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(false);
 
         assertThatThrownBy(() -> service.createDraft(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
-                .isEqualTo(BookingErrorCode.NURSE_SKILL_NOT_ELIGIBLE);
+                .isEqualTo(BookingErrorCode.SERVICE_OFFERING_NOT_FOUND);
     }
 
     @Test
-    void createDraftReleasesHoldWhenDraftSerializationFails() {
-        ObjectMapper failingMapper = org.mockito.Mockito.mock(ObjectMapper.class);
-        service = new BookingServiceImpl(
-                bookingRepository,
-                nurseProfileRepository,
-                serviceOfferingRepository,
-                userAccountLookupService,
-                stringRedisTemplate,
-                failingMapper,
-                serviceEligibilityService);
-        ReflectionTestUtils.setField(service, "holdTtlMinutes", 15L);
+    void createDraftRejectsStartTimeNotAlignedToHour() {
+        request.setStartAt(request.getStartAt().plusMinutes(30));
         when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
         when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
         when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(true);
-        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(anyString(), eq(mother.getId().toString()), eq(Duration.ofMinutes(15))))
-                .thenReturn(true);
-        try {
-            when(failingMapper.writeValueAsString(any())).thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("boom") {});
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new AssertionError(e);
-        }
 
         assertThatThrownBy(() -> service.createDraft(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
-                .isEqualTo(BookingErrorCode.BOOKING_DRAFT_CREATE_FAILED);
-        verify(stringRedisTemplate).delete(org.mockito.ArgumentMatchers.startsWith("booking:hold:nurse:"));
-        verify(stringRedisTemplate).delete(org.mockito.ArgumentMatchers.startsWith("booking:draft:"));
+                .isEqualTo(BookingErrorCode.BOOKING_SLOT_INVALID);
+        verify(bookingSlotRepository, never()).insertIfAbsent(any(), any(), any());
     }
 
     @Test
-    void createDraftDoesNotCreateHoldWhenSlotAlreadyBooked() {
-        when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
-        when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
-        when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
-        when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(true);
-        when(bookingRepository.existsByNurseProfile_IdAndStartAtAndStatusIn(eq(nurse.getId()), eq(request.getStartAt()), anyCollection()))
-                .thenReturn(true);
+    void createDraftRejectsAlreadyBookedSlot() {
+        mockHappyPath();
+        slot.setStatus(BookingSlotStatus.BOOKED);
 
         assertThatThrownBy(() -> service.createDraft(request))
                 .isInstanceOf(AppException.class)
                 .extracting("errorCode")
                 .isEqualTo(BookingErrorCode.BOOKING_SLOT_ALREADY_BOOKED);
-        verify(stringRedisTemplate, never()).opsForValue();
+        verify(bookingRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createDraftRejectsOverlappingBookingInsideDuration() {
+        offering.setDurationMinutes(180);
+        BookingSlot tenOClock = slotAt(request.getStartAt().plusHours(1));
+        BookingSlot elevenOClock = slotAt(request.getStartAt().plusHours(2));
+        tenOClock.setStatus(BookingSlotStatus.BOOKED);
+        mockHappyPath();
+        when(bookingSlotRepository.findByNurseProfileIdAndStartAtForUpdate(nurse.getId(), tenOClock.getStartAt()))
+                .thenReturn(Optional.of(tenOClock));
+        when(bookingSlotRepository.findByNurseProfileIdAndStartAtForUpdate(nurse.getId(), elevenOClock.getStartAt()))
+                .thenReturn(Optional.of(elevenOClock));
+
+        assertThatThrownBy(() -> service.createDraft(request))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(BookingErrorCode.BOOKING_SLOT_ALREADY_BOOKED);
+        verify(bookingRepository, never()).saveAndFlush(any());
+    }
+
+    private void mockHappyPath() {
+        when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
+        when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
+        when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
+        when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(true);
+        when(bookingRepository.existsByNurseProfile_IdAndStartAtAndStatusIn(eq(nurse.getId()), eq(request.getStartAt()), anyCollection()))
+                .thenReturn(false);
+        when(bookingSlotRepository.findByNurseProfileIdAndStartAtForUpdate(nurse.getId(), request.getStartAt()))
+                .thenReturn(Optional.of(slot));
+    }
+
+    private BookingSlot slotAt(OffsetDateTime startAt) {
+        return BookingSlot.builder()
+                .id(UUID.randomUUID())
+                .nurseProfile(nurse)
+                .startAt(startAt)
+                .status(BookingSlotStatus.AVAILABLE)
+                .build();
     }
 }

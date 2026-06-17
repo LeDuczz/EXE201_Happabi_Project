@@ -117,6 +117,8 @@ management:
 # ========================
 app:
   env: ${APP_ENV:local}
+  booking:
+    payment-ttl-minutes: ${APP_BOOKING_PAYMENT_TTL_MINUTES:15}
   seed:
     admin:
       phone: ${APP_SEED_ADMIN_PHONE:}
@@ -164,8 +166,8 @@ aws:
 # ========================
 rate-limit:
   global:
-    capacity: 100
-    refill-tokens: 100
+    capacity: 300
+    refill-tokens: 200
     refill-seconds: 60
 
   endpoints:
