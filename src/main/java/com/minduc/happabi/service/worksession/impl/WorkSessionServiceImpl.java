@@ -24,10 +24,13 @@ import com.minduc.happabi.exception.code.WorkSessionErrorCode;
 import com.minduc.happabi.integration.s3.IS3Service;
 import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import com.minduc.happabi.mapper.WorkSessionMapper;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.WorkSessionChecklistItemRepository;
 import com.minduc.happabi.repository.WorkSessionEvidenceRepository;
 import com.minduc.happabi.repository.WorkSessionRepository;
+import com.minduc.happabi.service.booking.IBookingSettlementService;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import com.minduc.happabi.service.worksession.IWorkSessionService;
@@ -68,6 +71,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private final IS3Service s3Service;
     private final WorkSessionMapper workSessionMapper;
     private final INotificationPublisher notificationPublisher;
+    private final IBookingSettlementService bookingSettlementService;
     private final ApplicationEventPublisher eventPublisher;
     private final IFileCleanupPublisher fileCleanupPublisher;
 
@@ -81,6 +85,8 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private long evidenceRetentionDays;
 
     @Scheduled(fixedDelayString = "${app.work-session.auto-confirm-fixed-delay-ms:300000}")
+    @TimedAction("AUTO_CONFIRM_WORK_SESSIONS")
+    @AuditAction(action = "AUTO_CONFIRM_WORK_SESSIONS", resourceType = "WORK_SESSION")
     @Transactional
     public void autoConfirmExpiredSessions() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -93,6 +99,8 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
                     WorkSessionStatus.AUTO_CONFIRMED,
                     now);
             if (updated == 1) {
+                WorkSession session = getSessionForUpdate(id);
+                bookingSettlementService.settleCompletedWorkSession(session);
                 log.info("[WorkSession] Auto-confirmed session id={}", id);
             }
         }
@@ -118,7 +126,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     @Transactional
     public WorkSession createFromAcceptedBooking(Booking booking) {
         if (booking == null || booking.getId() == null) {
-            throw new AppException(BookingErrorCode.BOOKING_DRAFT_CREATE_FAILED, "Booking is missing.");
+            throw new AppException(BookingErrorCode.BOOKING_CREATE_FAILED, "Booking is missing.");
         }
         if (workSessionRepository.existsByBooking_Id(booking.getId())) {
             throw new AppException(WorkSessionErrorCode.WORK_SESSION_ALREADY_EXISTS);
@@ -135,6 +143,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
                 .build();
         WorkSession saved = workSessionRepository.save(session);
         checklistItemRepository.saveAll(buildChecklistItems(saved));
+        notifyBookingConfirmed(saved);
         return saved;
     }
 
@@ -311,6 +320,8 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     }
 
     @Override
+    @TimedAction("CONFIRM_WORK_SESSION_BY_MOTHER")
+    @AuditAction(action = "CONFIRM_WORK_SESSION_BY_MOTHER", resourceType = "WORK_SESSION")
     @Transactional
     @PreAuthorize("hasRole('MOTHER')")
     public WorkSessionResponse confirmByMother(UUID workSessionId) {
@@ -319,7 +330,9 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         requireStatus(session, WorkSessionStatus.PENDING_MOTHER_CONFIRMATION);
         session.setStatus(WorkSessionStatus.COMPLETED);
         session.setConfirmedAt(OffsetDateTime.now());
-        return toResponse(workSessionRepository.save(session));
+        WorkSession saved = workSessionRepository.save(session);
+        bookingSettlementService.settleCompletedWorkSession(saved);
+        return toResponse(saved);
     }
 
     @Override
@@ -497,6 +510,29 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         );
     }
 
+    private void notifyBookingConfirmed(WorkSession session) {
+        notificationPublisher.publish(
+                session.getMother().getId(),
+                NotificationType.BOOKING_PAYMENT_SUCCESS,
+                "Booking confirmed",
+                "Your payment was successful. Your session with %s is scheduled for %s."
+                        .formatted(session.getNurseProfile().getUser().getFullName(),
+                                session.getScheduledStartAt()),
+                "WORK_SESSION",
+                session.getId().toString()
+        );
+        notificationPublisher.publish(
+                session.getNurseProfile().getUser().getId(),
+                NotificationType.NURSE_BOOKING_ASSIGNED,
+                "New booking assigned",
+                "You have a new session for %s at %s."
+                        .formatted(session.getServiceOffering().getServiceName(),
+                                session.getScheduledStartAt()),
+                "WORK_SESSION",
+                session.getId().toString()
+        );
+    }
+
     private String normalize(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -504,3 +540,4 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         return value.trim();
     }
 }
+

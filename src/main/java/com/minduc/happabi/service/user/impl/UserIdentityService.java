@@ -1,6 +1,5 @@
 package com.minduc.happabi.service.user.impl;
 
-
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.user.IUserIdentityService;
@@ -10,13 +9,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-
 @Service
 @RequiredArgsConstructor
 public class UserIdentityService implements IUserIdentityService {
+
     private final UserCacheService userCacheService;
     private final UserRepository userRepository;
-
 
     @Override
     public UUID getUserIdByCognitoSub(String sub) {

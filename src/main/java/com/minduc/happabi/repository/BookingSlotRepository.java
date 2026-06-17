@@ -1,6 +1,7 @@
 package com.minduc.happabi.repository;
 
 import com.minduc.happabi.entity.BookingSlot;
+import com.minduc.happabi.enums.BookingSlotStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -33,5 +34,15 @@ public interface BookingSlotRepository extends JpaRepository<BookingSlot, UUID> 
               and slot.startAt = :startAt
             """)
     Optional<BookingSlot> findByNurseProfileIdAndStartAtForUpdate(@Param("nurseProfileId") UUID nurseProfileId,
-                                                                  @Param("startAt") OffsetDateTime startAt);
+                                                                   @Param("startAt") OffsetDateTime startAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update BookingSlot slot
+            set slot.status = :availableStatus,
+                slot.booking = null
+            where slot.booking.id = :bookingId
+            """)
+    int releaseByBookingId(@Param("bookingId") UUID bookingId,
+                           @Param("availableStatus") BookingSlotStatus availableStatus);
 }

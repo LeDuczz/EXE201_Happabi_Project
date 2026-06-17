@@ -1,8 +1,13 @@
 package com.minduc.happabi.service.booking;
 
-import com.minduc.happabi.dto.request.booking.CreateBookingDraftRequest;
-import com.minduc.happabi.dto.response.booking.BookingDraftResponse;
+import com.minduc.happabi.dto.request.booking.CreateBookingRequest;
+import com.minduc.happabi.dto.response.booking.BookingResponse;
+
+import java.util.List;
 
 public interface IBookingService {
-    BookingDraftResponse createDraft(CreateBookingDraftRequest request);
+    BookingResponse createBooking(CreateBookingRequest request);
+
+    List<BookingResponse> getMyPendingPayments();
 }
+

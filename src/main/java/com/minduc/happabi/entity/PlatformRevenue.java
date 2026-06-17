@@ -8,7 +8,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "platform_revenue")
+@Table(
+        name = "platform_revenue",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_platform_revenue_booking", columnNames = "booking_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor

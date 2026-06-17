@@ -12,8 +12,7 @@ import java.util.UUID;
 @Getter
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class BookingDraftResponse {
-    private UUID draftId;
+public class BookingResponse {
     private UUID bookingId;
     private UUID slotId;
     private UUID nurseProfileId;
@@ -32,3 +31,4 @@ public class BookingDraftResponse {
     private String serviceAddress;
     private String motherNote;
 }
+
