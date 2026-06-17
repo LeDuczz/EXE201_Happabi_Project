@@ -1,5 +1,6 @@
 package com.minduc.happabi.entity;
 
+import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.BookingStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,6 +13,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,7 +27,12 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "bookings")
+@Table(
+        name = "bookings",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_bookings_slot", columnNames = "slot_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -49,6 +57,10 @@ public class Booking {
     @JoinColumn(name = "service_id", nullable = false)
     private ServiceOffering serviceOffering;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "slot_id", nullable = false)
+    private BookingSlot slot;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_status", nullable = false, length = 40)
     @Builder.Default
@@ -61,7 +73,7 @@ public class Booking {
     private OffsetDateTime endAt;
 
     @Column(name = "hold_expires_at", nullable = false)
-    private OffsetDateTime holdExpiresAt;
+    private OffsetDateTime paymentExpiresAt;
 
     @Column(name = "gross_amount", nullable = false)
     private Long grossAmount;
@@ -72,6 +84,20 @@ public class Booking {
     @Column(name = "nurse_earning_amount", nullable = false)
     private Long nurseEarningAmount;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_option", nullable = false, length = 40)
+    @Builder.Default
+    private BookingPaymentOption paymentOption = BookingPaymentOption.DEPOSIT_30_PERCENT;
+
+    @Column(name = "deposit_amount", nullable = false)
+    private Long depositAmount;
+
+    @Column(name = "remaining_cash_amount", nullable = false)
+    private Long remainingCashAmount;
+
+    @Column(name = "app_payment_amount", nullable = false)
+    private Long appPaymentAmount;
+
     @Column(name = "service_address", nullable = false, length = 300)
     private String serviceAddress;
 
@@ -79,7 +105,7 @@ public class Booking {
     private String motherNote;
 
     @Column(name = "hold_key", nullable = false, length = 220, unique = true)
-    private String holdKey;
+    private String bookingKey;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -88,4 +114,8 @@ public class Booking {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 }

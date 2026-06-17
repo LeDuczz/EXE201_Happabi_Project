@@ -1,5 +1,6 @@
 package com.minduc.happabi.dto.request.booking;
 
+import com.minduc.happabi.enums.BookingPaymentOption;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,4 +31,6 @@ public class CreateBookingDraftRequest {
 
     @Size(max = 2000)
     private String motherNote;
+
+    private BookingPaymentOption paymentOption;
 }

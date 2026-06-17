@@ -179,7 +179,7 @@ public class DataSeeder {
                 "Massage thư giãn mẹ bầu (60 phút)",
                 null,
                 null,
-                60,
+                120,
                 null,
                 450000L,
                 67500L,
@@ -192,7 +192,7 @@ public class DataSeeder {
                 "Hỗ trợ kích sữa & chăm sóc tuyến vú",
                 null,
                 null,
-                60,
+                120,
                 null,
                 390000L,
                 58500L,
@@ -244,7 +244,7 @@ public class DataSeeder {
                 "Tắm bé sơ sinh",
                 null,
                 null,
-                45,
+                60,
                 null,
                 180000L,
                 27000L,
@@ -283,51 +283,12 @@ public class DataSeeder {
                 "Chăm sóc bé + tắm bé",
                 null,
                 null,
-                90,
+                120,
                 null,
                 480000L,
                 72000L,
                 408000L,
                 90);
-        upsertServiceOffering(
-                "PACKAGE_SILVER",
-                ServiceOfferingType.PACKAGE,
-                "Gói dịch vụ",
-                "Silver",
-                "Phục hồi cơ bản sau sinh",
-                "Massage mẹ 5 buổi, kích sữa 3 buổi, tắm bé 10 buổi, chăm sóc bé 10 buổi",
-                null,
-                10,
-                6200000L,
-                930000L,
-                5270000L,
-                110);
-        upsertServiceOffering(
-                "PACKAGE_GOLD",
-                ServiceOfferingType.PACKAGE,
-                "Gói dịch vụ",
-                "Gold",
-                "Phục hồi chuyên sâu",
-                "Massage mẹ 11-12 buổi, kích sữa 5 buổi, tắm bé 20 buổi, chăm sóc bé 20 buổi",
-                null,
-                20,
-                12000000L,
-                1800000L,
-                10200000L,
-                120);
-        upsertServiceOffering(
-                "PACKAGE_DIAMOND",
-                ServiceOfferingType.PACKAGE,
-                "Gói dịch vụ",
-                "Diamond",
-                "Chăm sóc toàn diện tháng đầu",
-                "Massage mẹ 17-18 buổi, kích sữa 7 buổi, tắm bé 30 buổi, chăm sóc bé 30 buổi",
-                null,
-                30,
-                16800000L,
-                2520000L,
-                14280000L,
-                130);
         seedRequiredSkills();
 
         log.info("Service offerings seed completed.");
@@ -370,27 +331,6 @@ public class DataSeeder {
                 NurseSkill.NEWBORN_BASIC_CARE,
                 NurseSkill.NEWBORN_BATHING,
                 NurseSkill.NEWBORN_SKIN_CARE);
-        upsertRequiredSkills("PACKAGE_SILVER",
-                NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
-                NurseSkill.LACTATION_STIMULATION,
-                NurseSkill.NEWBORN_BATHING,
-                NurseSkill.NEWBORN_BASIC_CARE,
-                NurseSkill.SCHEDULE_MANAGEMENT);
-        upsertRequiredSkills("PACKAGE_GOLD",
-                NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
-                NurseSkill.LACTATION_STIMULATION,
-                NurseSkill.NEWBORN_BATHING,
-                NurseSkill.NEWBORN_BASIC_CARE,
-                NurseSkill.NEWBORN_HEALTH_MONITORING,
-                NurseSkill.SCHEDULE_MANAGEMENT);
-        upsertRequiredSkills("PACKAGE_DIAMOND",
-                NurseSkill.POSTPARTUM_RECOVERY_MASSAGE,
-                NurseSkill.LACTATION_STIMULATION,
-                NurseSkill.NEWBORN_BATHING,
-                NurseSkill.NEWBORN_BASIC_CARE,
-                NurseSkill.NEWBORN_HEALTH_MONITORING,
-                NurseSkill.HOME_NEWBORN_CARE_GUIDANCE,
-                NurseSkill.SCHEDULE_MANAGEMENT);
     }
 
     @Transactional

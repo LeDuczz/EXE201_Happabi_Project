@@ -1,6 +1,7 @@
 package com.minduc.happabi.seed;
 
 import com.minduc.happabi.entity.Booking;
+import com.minduc.happabi.entity.BookingSlot;
 import com.minduc.happabi.entity.MotherProfile;
 import com.minduc.happabi.entity.Notification;
 import com.minduc.happabi.entity.NurseContract;
@@ -19,6 +20,8 @@ import com.minduc.happabi.entity.WorkSession;
 import com.minduc.happabi.entity.WorkSessionChecklistItem;
 import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.enums.AvailabilityStatus;
+import com.minduc.happabi.enums.BookingPaymentOption;
+import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.EkycStatus;
 import com.minduc.happabi.enums.NotificationType;
@@ -34,6 +37,7 @@ import com.minduc.happabi.enums.WorkSessionChecklistStatus;
 import com.minduc.happabi.enums.WorkSessionStatus;
 import com.minduc.happabi.integration.cognito.CognitoService;
 import com.minduc.happabi.repository.BookingRepository;
+import com.minduc.happabi.repository.BookingSlotRepository;
 import com.minduc.happabi.repository.MotherProfileRepository;
 import com.minduc.happabi.repository.NotificationRepository;
 import com.minduc.happabi.repository.NurseContractRepository;
@@ -63,6 +67,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -81,6 +86,7 @@ public class TestDataSeeder {
     private final NurseContractRepository nurseContractRepository;
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final BookingRepository bookingRepository;
+    private final BookingSlotRepository bookingSlotRepository;
     private final WorkSessionRepository workSessionRepository;
     private final WorkSessionChecklistItemRepository checklistItemRepository;
     private final NurseReviewRepository nurseReviewRepository;
@@ -134,7 +140,6 @@ public class TestDataSeeder {
 
         ServiceOffering singleCare = requireService("SINGLE_NEWBORN_CARE_1H");
         ServiceOffering bath = requireService("SINGLE_NEWBORN_BATH");
-        ServiceOffering packageGold = requireService("PACKAGE_GOLD");
 
         WorkSession scheduled = ensureBookingFlow("TEST-SCHEDULED-001", mother, nurseActive, singleCare,
                 BookingStatus.ACCEPTED, WorkSessionStatus.SCHEDULED, OffsetDateTime.now().plusDays(1).withHour(9).withMinute(0),
@@ -142,7 +147,7 @@ public class TestDataSeeder {
         WorkSession inProgress = ensureBookingFlow("TEST-IN-PROGRESS-001", mother, nurseActive, bath,
                 BookingStatus.ACCEPTED, WorkSessionStatus.IN_PROGRESS, OffsetDateTime.now().minusMinutes(30),
                 "Nurse dang thuc hien dich vu tam be.", false);
-        WorkSession pendingConfirm = ensureBookingFlow("TEST-PENDING-CONFIRM-001", motherPremium, nurseActive, packageGold,
+        WorkSession pendingConfirm = ensureBookingFlow("TEST-PENDING-CONFIRM-001", motherPremium, nurseActive, singleCare,
                 BookingStatus.ACCEPTED, WorkSessionStatus.PENDING_MOTHER_CONFIRMATION, OffsetDateTime.now().minusDays(1),
                 "Cho me xac nhan hoan thanh buoi cham soc.", false);
         WorkSession completed = ensureBookingFlow("TEST-COMPLETED-001", mother, nurseActive, singleCare,
@@ -362,26 +367,34 @@ public class TestDataSeeder {
                 .orElseThrow(() -> new IllegalStateException("Missing seeded service offering: " + code));
     }
 
-    private WorkSession ensureBookingFlow(String holdKey, User mother, NurseProfile nurse, ServiceOffering service,
+    private WorkSession ensureBookingFlow(String bookingKey, User mother, NurseProfile nurse, ServiceOffering service,
                                           BookingStatus bookingStatus, WorkSessionStatus sessionStatus,
                                           OffsetDateTime startAt, String note, boolean completedChecklist) {
         Booking booking = bookingRepository.findAll().stream()
-                .filter(item -> holdKey.equals(item.getHoldKey()))
+                .filter(item -> bookingKey.equals(item.getBookingKey()))
                 .findFirst()
-                .orElseGet(() -> Booking.builder().holdKey(holdKey).build());
+                .orElseGet(() -> Booking.builder().bookingKey(bookingKey).build());
         booking.setMother(mother);
         booking.setNurseProfile(nurse);
         booking.setServiceOffering(service);
+        BookingSlot slot = ensureSlot(nurse, startAt);
+        booking.setSlot(slot);
         booking.setStatus(bookingStatus);
         booking.setStartAt(startAt);
         booking.setEndAt(startAt.plusMinutes(service.getDurationMinutes() != null ? service.getDurationMinutes() : 90));
-        booking.setHoldExpiresAt(startAt.plusMinutes(15));
+        booking.setPaymentExpiresAt(startAt.plusMinutes(15));
         booking.setGrossAmount(service.getGrossAmount());
         booking.setPlatformFeeAmount(service.getPlatformFeeAmount());
         booking.setNurseEarningAmount(service.getNurseEarningAmount());
+        booking.setPaymentOption(BookingPaymentOption.DEPOSIT_30_PERCENT);
+        booking.setDepositAmount(Math.round(service.getGrossAmount() * 0.3d));
+        booking.setRemainingCashAmount(service.getGrossAmount() - booking.getDepositAmount());
+        booking.setAppPaymentAmount(booking.getDepositAmount());
         booking.setServiceAddress("12 Nguyen Hue, District 1, Ho Chi Minh");
         booking.setMotherNote(note);
         booking = bookingRepository.save(booking);
+        slot.setStatus(BookingSlotStatus.BOOKED);
+        slot.setBooking(booking);
 
         Booking savedBooking = booking;
         var bookingId = savedBooking.getId();
@@ -399,6 +412,12 @@ public class TestDataSeeder {
         ensureChecklist(session, completedChecklist || sessionStatus == WorkSessionStatus.COMPLETED
                 || sessionStatus == WorkSessionStatus.PENDING_MOTHER_CONFIRMATION);
         return session;
+    }
+
+    private BookingSlot ensureSlot(NurseProfile nurse, OffsetDateTime startAt) {
+        bookingSlotRepository.insertIfAbsent(UUID.randomUUID(), nurse.getId(), startAt);
+        return bookingSlotRepository.findByNurseProfileIdAndStartAtForUpdate(nurse.getId(), startAt)
+                .orElseThrow(() -> new IllegalStateException("Unable to create booking slot"));
     }
 
     private void applySessionTimeline(WorkSession session, WorkSessionStatus status) {
