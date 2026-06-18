@@ -1,7 +1,6 @@
 package com.minduc.happabi.controller.payos;
 
 import com.minduc.happabi.common.base.BaseResponse;
-import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.request.nurse.TopUpRequest;
 import com.minduc.happabi.dto.response.payment.BookingPaymentLinkResponse;
 import com.minduc.happabi.service.payment.IPayOsPaymentService;
@@ -33,8 +32,7 @@ public class PayOsController {
     @PostMapping("/create-topup-link")
     @PreAuthorize("hasRole('NURSE') and @nurseAccessGuard.isActive(authentication)")
     public ResponseEntity<BaseResponse<Map<String, String>>> createTopUpLink(@Valid @RequestBody TopUpRequest  topUpRequest) {
-        String nurseId = AuthUtils.getCurrentUserId();
-        String checkoutUrl = payOsPayment.createTopUpPaymentLink(nurseId, topUpRequest);
+        String checkoutUrl = payOsPayment.createTopUpPaymentLink(topUpRequest);
         return ResponseEntity.ok(BaseResponse.ok(Map.of("checkoutUrl", checkoutUrl)));
     }
 

@@ -1,7 +1,6 @@
 package com.minduc.happabi.service.booking.impl;
 
 import com.minduc.happabi.entity.AdminWallet;
-import com.minduc.happabi.entity.AdminWalletTransaction;
 import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.BookingSettlement;
 import com.minduc.happabi.entity.NurseProfile;
@@ -13,11 +12,11 @@ import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.TransactionType;
 import com.minduc.happabi.enums.WorkSessionStatus;
 import com.minduc.happabi.repository.AdminWalletRepository;
-import com.minduc.happabi.repository.AdminWalletTransactionRepository;
 import com.minduc.happabi.repository.BookingSettlementRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.PlatformRevenueRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
+import com.minduc.happabi.service.admin.IAdminWalletLedgerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,10 +50,10 @@ class BookingSettlementServiceImplTest {
     private AdminWalletRepository adminWalletRepository;
 
     @Mock
-    private AdminWalletTransactionRepository adminWalletTransactionRepository;
+    private PlatformRevenueRepository platformRevenueRepository;
 
     @Mock
-    private PlatformRevenueRepository platformRevenueRepository;
+    private IAdminWalletLedgerService adminWalletLedgerService;
 
     private BookingSettlementServiceImpl service;
     private UUID bookingId;
@@ -70,8 +69,8 @@ class BookingSettlementServiceImplTest {
                 nurseWalletRepository,
                 walletTransactionRepository,
                 adminWalletRepository,
-                adminWalletTransactionRepository,
-                platformRevenueRepository
+                platformRevenueRepository,
+                adminWalletLedgerService
         );
         bookingId = UUID.randomUUID();
         workSessionId = UUID.randomUUID();
@@ -99,14 +98,15 @@ class BookingSettlementServiceImplTest {
                 450000L,
                 0L
         );
+        adminWallet.setBalance(BigDecimal.valueOf(450000));
         stubWalletLocks();
 
         service.settleCompletedWorkSession(session);
 
         assertThat(nurseWallet.getBalance()).isEqualByComparingTo("382500");
-        assertThat(adminWallet.getBalance()).isEqualByComparingTo("67500");
+        assertThat(adminWallet.getBalance()).isEqualByComparingTo("450000");
         assertNurseWalletTransaction("382500");
-        assertAdminWalletTransaction("67500");
+        verify(adminWalletLedgerService).recordNursePayout(bookingId, BigDecimal.valueOf(382500));
         assertSettlement("450000", "450000", "0", "382500", "382500", "67500");
         verify(platformRevenueRepository).save(any(PlatformRevenue.class));
     }
@@ -121,14 +121,15 @@ class BookingSettlementServiceImplTest {
                 135000L,
                 315000L
         );
+        adminWallet.setBalance(BigDecimal.valueOf(135000));
         stubWalletLocks();
 
         service.settleCompletedWorkSession(session);
 
         assertThat(nurseWallet.getBalance()).isEqualByComparingTo("67500");
-        assertThat(adminWallet.getBalance()).isEqualByComparingTo("67500");
+        assertThat(adminWallet.getBalance()).isEqualByComparingTo("135000");
         assertNurseWalletTransaction("67500");
-        assertAdminWalletTransaction("67500");
+        verify(adminWalletLedgerService).recordNursePayout(bookingId, BigDecimal.valueOf(67500));
         assertSettlement("450000", "135000", "315000", "382500", "67500", "67500");
     }
 
@@ -149,7 +150,7 @@ class BookingSettlementServiceImplTest {
 
         verify(nurseWalletRepository, never()).findByNurseIdForUpdate(nurseId);
         verify(walletTransactionRepository, never()).save(any());
-        verify(adminWalletTransactionRepository, never()).save(any());
+        verify(adminWalletLedgerService, never()).recordNursePayout(any(), any());
     }
 
     private WorkSession workSession(BookingPaymentOption paymentOption,
@@ -192,14 +193,6 @@ class BookingSettlementServiceImplTest {
         assertThat(transaction.getTransactionType()).isEqualTo(TransactionType.BOOKING_EARNING);
         assertThat(transaction.getAmount()).isEqualByComparingTo(expectedAmount);
         assertThat(transaction.getWalletImpact()).isEqualByComparingTo(expectedAmount);
-    }
-
-    private void assertAdminWalletTransaction(String expectedAmount) {
-        ArgumentCaptor<AdminWalletTransaction> captor = ArgumentCaptor.forClass(AdminWalletTransaction.class);
-        verify(adminWalletTransactionRepository).save(captor.capture());
-        AdminWalletTransaction transaction = captor.getValue();
-        assertThat(transaction.getBookingId()).isEqualTo(bookingId);
-        assertThat(transaction.getAmount()).isEqualByComparingTo(expectedAmount);
     }
 
     private void assertSettlement(String grossAmount,

@@ -2,16 +2,20 @@ package com.minduc.happabi.service.nurse.impl;
 
 import com.minduc.happabi.dto.TransactionDTO;
 import com.minduc.happabi.dto.WalletDTO;
+import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.NurseWallet;
 import com.minduc.happabi.entity.WalletTransaction;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.NurseWalletErrorCode;
+import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.exception.code.WalletTransactionErrorCode;
 import com.minduc.happabi.mapper.WalletTransactionMapper;
+import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.nurse.INurseWalletService;
 import com.minduc.happabi.service.systemconfig.ISystemConfigService;
+import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,17 +31,20 @@ public class NurseWalletService implements INurseWalletService {
     private static final String DEFAULT_PLATFORM_FEE_RATE = "0.15";
 
     private final NurseWalletRepository nurseWalletRepository;
+    private final NurseProfileRepository nurseProfileRepository;
     private final WalletTransactionRepository walletTransactionRepository;
     private final ISystemConfigService systemConfigService;
+    private final UserAccountLookupService userAccountLookupService;
     private final WalletTransactionMapper walletTransactionMapper;
 
   @Override
-  public WalletDTO getMyWalletInfo(String nurseId) {
-    NurseWallet wallet = nurseWalletRepository.findByNurseId(UUID.fromString(nurseId))
+  public WalletDTO getMyWalletInfo() {
+    UUID nurseProfileId = currentNurseProfileId();
+    NurseWallet wallet = nurseWalletRepository.findByNurseId(nurseProfileId)
       .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
 
     List<WalletTransaction> transactions = walletTransactionRepository
-      .findTop20ByNurseIdOrderByCreatedAtDesc(UUID.fromString(nurseId))
+      .findTop20ByNurseIdOrderByCreatedAtDesc(nurseProfileId)
       .orElseThrow(() -> new AppException(WalletTransactionErrorCode.NURSE_ID_NOT_FOUND));
 
     List<TransactionDTO> transactionDTOS = transactions.stream()
@@ -49,6 +56,12 @@ public class NurseWalletService implements INurseWalletService {
       .pledgeAmount(wallet.getDepositBalance())
       .transactions(transactionDTOS)
       .build();
+  }
+
+  private UUID currentNurseProfileId() {
+    NurseProfile nurseProfile = nurseProfileRepository.findByUser(userAccountLookupService.getCurrentUser())
+            .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PROFILE_NOT_FOUND));
+    return nurseProfile.getId();
   }
 
   @Override

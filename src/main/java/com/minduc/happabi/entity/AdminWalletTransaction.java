@@ -1,6 +1,7 @@
 package com.minduc.happabi.entity;
 
 import com.minduc.happabi.enums.TransactionStatus;
+import com.minduc.happabi.enums.AdminWalletTransactionType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,7 +26,10 @@ import java.util.UUID;
 @Table(
         name = "admin_wallet_transaction",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_admin_wallet_transaction_booking", columnNames = "booking_id")
+                @UniqueConstraint(
+                        name = "uk_admin_wallet_transaction_booking_type",
+                        columnNames = {"booking_id", "transaction_type"}
+                )
         }
 )
 @Getter
@@ -46,8 +50,18 @@ public class AdminWalletTransaction {
     @Column(name = "booking_id", nullable = false)
     private UUID bookingId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", length = 40)
+    private AdminWalletTransactionType transactionType;
+
     @Column(name = "amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal amount;
+
+    @Column(name = "wallet_impact", precision = 15, scale = 2)
+    private BigDecimal walletImpact;
+
+    @Column(name = "balance_after", precision = 15, scale = 2)
+    private BigDecimal balanceAfter;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

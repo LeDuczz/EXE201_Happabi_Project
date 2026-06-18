@@ -19,14 +19,15 @@ import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
+import com.minduc.happabi.service.admin.IAdminWalletLedgerService;
 import com.minduc.happabi.service.payment.IPayOsWebhookService;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.worksession.IWorkSessionService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.payos.PayOS;
 import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
@@ -47,6 +48,7 @@ public class PayOsWebHookService implements IPayOsWebhookService {
     private final BookingRepository bookingRepository;
     private final NurseWalletRepository nurseWalletRepository;
     private final IWorkSessionService workSessionService;
+    private final IAdminWalletLedgerService adminWalletLedgerService;
     private final INotificationPublisher notificationPublisher;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -133,6 +135,9 @@ public class PayOsWebHookService implements IPayOsWebhookService {
             if (bookingUpdated == 1) {
                 Booking booking = bookingRepository.findByIdWithPaymentRelations(bookingId)
                         .orElseThrow(() -> new AppException(BookingErrorCode.BOOKING_CREATE_FAILED));
+                adminWalletLedgerService.recordBookingPaymentReceived(
+                        bookingId,
+                        BigDecimal.valueOf(bookingPayment.getAmount()));
                 workSessionService.createFromAcceptedBooking(booking);
                 eventPublisher.publishEvent(new BusinessMetricRequestedEvent(
                         UUID.randomUUID(),

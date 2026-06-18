@@ -4,16 +4,19 @@ import com.minduc.happabi.dto.request.nurse.TopUpRequest;
 import com.minduc.happabi.dto.response.payment.BookingPaymentLinkResponse;
 import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.BookingPaymentTransaction;
+import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.WalletTransaction;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.PaymentErrorCode;
+import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
+import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.payment.IPayOsPaymentService;
 import com.minduc.happabi.service.user.UserAccountLookupService;
@@ -42,6 +45,7 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     private final WalletTransactionRepository walletTransactionRepository;
     private final BookingPaymentTransactionRepository bookingPaymentTransactionRepository;
     private final BookingRepository bookingRepository;
+    private final NurseProfileRepository nurseProfileRepository;
     private final UserAccountLookupService userAccountLookupService;
     private final PayOS payOS;
 
@@ -58,10 +62,11 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     @TimedAction("CREATE_NURSE_TOP_UP_PAYMENT_LINK")
     @Transactional
     @Override
-    public String createTopUpPaymentLink(String nurseId, TopUpRequest request) {
+    public String createTopUpPaymentLink(TopUpRequest request) {
+        UUID nurseProfileId = currentNurseProfileId();
 
         List<WalletTransaction> pendingTransaction = walletTransactionRepository
-                .findByNurseIdAndStatus(UUID.fromString(nurseId), TransactionStatus.PENDING);
+                .findByNurseIdAndStatus(nurseProfileId, TransactionStatus.PENDING);
 
         if (!pendingTransaction.isEmpty()) {
             for (WalletTransaction transaction : pendingTransaction) {
@@ -76,7 +81,7 @@ public class PayOsPaymentService implements IPayOsPaymentService {
         long orderCode = Instant.now().getEpochSecond() % 1000000000L;
 
         WalletTransaction transaction = WalletTransaction.builder()
-                .nurseId(UUID.fromString(nurseId))
+                .nurseId(nurseProfileId)
                 .transactionType(request.getTopUpType())
                 .amount(request.getAmount())
                 .status(TransactionStatus.PENDING)
@@ -94,14 +99,20 @@ public class PayOsPaymentService implements IPayOsPaymentService {
                 .build();
         try {
             CreatePaymentLinkResponse paymentLinkResponse = payOS.paymentRequests().create(paymentLinkRequest);
-            log.info("[PayOSPayment] Created nurse top-up payment link nurseId={} orderCode={} amount={}",
-                    nurseId, orderCode, request.getAmount());
+            log.info("[PayOSPayment] Created nurse top-up payment link nurseProfileId={} orderCode={} amount={}",
+                    nurseProfileId, orderCode, request.getAmount());
             return paymentLinkResponse.getCheckoutUrl();
         } catch (Exception e) {
-            log.warn("[PayOSPayment] Failed to create nurse top-up payment link nurseId={} orderCode={}",
-                    nurseId, orderCode);
+            log.warn("[PayOSPayment] Failed to create nurse top-up payment link nurseProfileId={} orderCode={}",
+                    nurseProfileId, orderCode);
             throw new AppException(PaymentErrorCode.FAIL_TO_CREATE_PAYMENT_LINK_FOR_NURSE, e.getMessage());
         }
+    }
+
+    private UUID currentNurseProfileId() {
+        NurseProfile nurseProfile = nurseProfileRepository.findByUser(userAccountLookupService.getCurrentUser())
+                .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PROFILE_NOT_FOUND));
+        return nurseProfile.getId();
     }
 
     @LogExecution

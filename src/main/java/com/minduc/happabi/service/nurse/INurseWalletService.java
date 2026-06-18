@@ -5,7 +5,7 @@ import com.minduc.happabi.dto.WalletDTO;
 import java.math.BigDecimal;
 
 public interface INurseWalletService {
-    WalletDTO getMyWalletInfo(String nurseId);
+    WalletDTO getMyWalletInfo();
     boolean canAcceptCashBooking(String nurseId, BigDecimal bookingAmount);
 
 }

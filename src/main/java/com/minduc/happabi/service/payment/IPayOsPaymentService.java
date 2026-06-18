@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface IPayOsPaymentService {
 
-    String createTopUpPaymentLink(String nurseId, TopUpRequest request);
+    String createTopUpPaymentLink(TopUpRequest request);
 
     BookingPaymentLinkResponse createBookingPaymentLink(UUID bookingId);
 

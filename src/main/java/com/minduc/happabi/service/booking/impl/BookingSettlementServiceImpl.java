@@ -1,7 +1,6 @@
 package com.minduc.happabi.service.booking.impl;
 
 import com.minduc.happabi.entity.AdminWallet;
-import com.minduc.happabi.entity.AdminWalletTransaction;
 import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.BookingSettlement;
 import com.minduc.happabi.entity.NurseWallet;
@@ -19,11 +18,11 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.AdminWalletRepository;
-import com.minduc.happabi.repository.AdminWalletTransactionRepository;
 import com.minduc.happabi.repository.BookingSettlementRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.PlatformRevenueRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
+import com.minduc.happabi.service.admin.IAdminWalletLedgerService;
 import com.minduc.happabi.service.booking.IBookingSettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,8 +42,8 @@ public class BookingSettlementServiceImpl implements IBookingSettlementService {
     private final NurseWalletRepository nurseWalletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
     private final AdminWalletRepository adminWalletRepository;
-    private final AdminWalletTransactionRepository adminWalletTransactionRepository;
     private final PlatformRevenueRepository platformRevenueRepository;
+    private final IAdminWalletLedgerService adminWalletLedgerService;
 
     @Override
     @LogExecution
@@ -69,11 +68,11 @@ public class BookingSettlementServiceImpl implements IBookingSettlementService {
 
         SettlementAmounts amounts = calculateAmounts(booking);
         NurseWallet nurseWallet = lockNurseWallet(workSession.getNurseProfile().getId());
-        AdminWallet adminWallet = lockAdminWallet();
+        ensureAdminWalletCanFundPayout(amounts.nurseWalletCreditAmount(), bookingId);
 
         recordSettlement(workSession, booking, amounts);
+        adminWalletLedgerService.recordNursePayout(bookingId, amounts.nurseWalletCreditAmount());
         creditNurseWallet(nurseWallet, bookingId, amounts.nurseWalletCreditAmount());
-        creditAdminWallet(adminWallet, bookingId, amounts.platformFeeAmount());
         recordPlatformRevenue(booking, amounts.platformFeeAmount());
         log.info("[BookingSettlement] Settled booking id={} nurseCredit={} platformFee={}",
                 bookingId, amounts.nurseWalletCreditAmount(), amounts.platformFeeAmount());
@@ -88,12 +87,16 @@ public class BookingSettlementServiceImpl implements IBookingSettlementService {
                 .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
     }
 
-    private AdminWallet lockAdminWallet() {
-        return adminWalletRepository.findByIdForUpdate(AdminWallet.PLATFORM_ADMIN_WALLET_ID)
+    private void ensureAdminWalletCanFundPayout(BigDecimal payoutAmount, UUID bookingId) {
+        AdminWallet wallet = adminWalletRepository.findByIdForUpdate(AdminWallet.PLATFORM_ADMIN_WALLET_ID)
                 .orElseGet(() -> adminWalletRepository.save(AdminWallet.builder()
                         .id(AdminWallet.PLATFORM_ADMIN_WALLET_ID)
                         .balance(BigDecimal.ZERO)
                         .build()));
+        if (wallet.getBalance().compareTo(payoutAmount) < 0) {
+            throw new AppException(BookingErrorCode.BOOKING_SETTLEMENT_FAILED,
+                    "Admin wallet balance is not enough to settle booking " + bookingId);
+        }
     }
 
     private SettlementAmounts calculateAmounts(Booking booking) {
@@ -142,21 +145,6 @@ public class BookingSettlementServiceImpl implements IBookingSettlementService {
                 .status(TransactionStatus.SUCCESS)
                 .referenceId(toReferenceId(bookingId))
                 .description("Booking earning for booking " + bookingId)
-                .build());
-    }
-
-    private void creditAdminWallet(AdminWallet wallet, UUID bookingId, BigDecimal amount) {
-        if (amount.signum() == 0) {
-            return;
-        }
-        wallet.setBalance(wallet.getBalance().add(amount));
-        adminWalletRepository.save(wallet);
-        adminWalletTransactionRepository.save(AdminWalletTransaction.builder()
-                .walletId(wallet.getId())
-                .bookingId(bookingId)
-                .amount(amount)
-                .status(TransactionStatus.SUCCESS)
-                .description("Platform fee for booking " + bookingId)
                 .build());
     }
 
