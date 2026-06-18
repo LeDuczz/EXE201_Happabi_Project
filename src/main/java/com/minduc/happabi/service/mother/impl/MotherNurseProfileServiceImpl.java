@@ -2,8 +2,10 @@ package com.minduc.happabi.service.mother.impl;
 
 import com.minduc.happabi.dto.response.nurse.NursePublicProfileResponse;
 import com.minduc.happabi.entity.NurseCertification;
+import com.minduc.happabi.entity.NurseAvailabilityWindow;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.enums.AvailabilityStatus;
+import com.minduc.happabi.enums.NurseAvailabilityWindowStatus;
 import com.minduc.happabi.enums.NurseSpecialty;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.exception.AppException;
@@ -14,12 +16,15 @@ import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NurseCertificationRepository;
+import com.minduc.happabi.repository.NurseAvailabilityWindowRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
 import com.minduc.happabi.service.mother.IMotherNurseProfileService;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +33,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -38,6 +46,7 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
 
     private final NurseProfileRepository nurseProfileRepository;
     private final NurseCertificationRepository certificationRepository;
+    private final NurseAvailabilityWindowRepository availabilityWindowRepository;
     private final NursePublicProfileMapper nursePublicProfileMapper;
     private final IS3Service s3Service;
     private final IServiceEligibilityService serviceEligibilityService;
@@ -50,16 +59,18 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
     public Page<NursePublicProfileResponse> searchActiveNurses(String keyword,
                                                                String city,
                                                                NurseSpecialty specialty,
+                                                               LocalDate availableDate,
                                                                Boolean availableOnly,
                                                                Pageable pageable) {
-        AvailabilityStatus availabilityStatus = Boolean.TRUE.equals(availableOnly)
+        AvailabilityStatus availabilityStatus = Boolean.TRUE.equals(availableOnly) && availableDate == null
                 ? AvailabilityStatus.AVAILABLE
                 : null;
+        AvailabilitySearchRange range = availabilitySearchRange(availableDate);
 
         return nurseProfileRepository.findAll(
-                        publicProfileSpec(availabilityStatus, specialty, normalize(city), normalize(keyword)),
+                        publicProfileSpec(availabilityStatus, specialty, normalize(city), normalize(keyword), range),
                         pageable)
-                .map(profile -> toPublicResponse(profile, false));
+                .map(profile -> toPublicResponse(profile, false, range));
     }
 
     @Override
@@ -70,26 +81,37 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
     public NursePublicProfileResponse getActiveNurse(UUID profileId) {
         NurseProfile profile = nurseProfileRepository.findByIdAndNurseStatus(profileId, NurseStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PUBLIC_PROFILE_NOT_FOUND));
-        return toPublicResponse(profile, true);
+        return toPublicResponse(profile, true, availabilitySearchRange(null));
     }
 
-    private NursePublicProfileResponse toPublicResponse(NurseProfile profile, boolean includeCertifications) {
+    private NursePublicProfileResponse toPublicResponse(NurseProfile profile,
+                                                        boolean includeCertifications,
+                                                        AvailabilitySearchRange range) {
         List<NurseCertification> certifications = includeCertifications
                 ? certificationRepository.findByNurseAndIsVerifiedTrueOrderByIdDesc(profile)
                 : List.of();
         String avatarUrl = s3Service.presign(profile.getUser().getAvatarS3Key());
-        return nursePublicProfileMapper.toResponse(
+        NursePublicProfileResponse response = nursePublicProfileMapper.toResponse(
                 profile,
                 certifications,
                 avatarUrl,
                 serviceEligibilityService.getNurseSkills(profile, true),
                 serviceEligibilityService.getEligibleServices(profile, null));
+        NurseAvailabilityWindow window = firstMatchingWindow(profile, range);
+        if (window == null) {
+            return response;
+        }
+        return response.toBuilder()
+                .availabilityWindowStartAt(window.getStartAt())
+                .availabilityWindowEndAt(window.getEndAt())
+                .build();
     }
 
     private Specification<NurseProfile> publicProfileSpec(AvailabilityStatus availabilityStatus,
                                                           NurseSpecialty specialty,
                                                           String city,
-                                                          String keyword) {
+                                                          String keyword,
+                                                          AvailabilitySearchRange range) {
         return (root, query, cb) -> {
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("user", JoinType.INNER);
@@ -98,6 +120,7 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
             List<Predicate> predicates = new ArrayList<>();
 
             predicates.add(cb.equal(root.get("nurseStatus"), NurseStatus.ACTIVE));
+            predicates.add(hasAvailabilityWindow(root, query.subquery(Long.class), cb, range));
 
             if (availabilityStatus != null) {
                 predicates.add(cb.equal(root.get("availabilityStatus"), availabilityStatus));
@@ -121,6 +144,41 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
         };
     }
 
+    private Predicate hasAvailabilityWindow(Root<NurseProfile> root,
+                                            Subquery<Long> subquery,
+                                            jakarta.persistence.criteria.CriteriaBuilder cb,
+                                            AvailabilitySearchRange range) {
+        Root<NurseAvailabilityWindow> window = subquery.from(NurseAvailabilityWindow.class);
+        subquery.select(cb.literal(1L));
+        subquery.where(
+                cb.equal(window.get("nurseProfile").get("id"), root.get("id")),
+                cb.equal(window.get("status"), NurseAvailabilityWindowStatus.ACTIVE),
+                cb.lessThan(window.get("startAt"), range.endAt()),
+                cb.greaterThan(window.get("endAt"), range.startAt())
+        );
+        return cb.exists(subquery);
+    }
+
+    private NurseAvailabilityWindow firstMatchingWindow(NurseProfile profile, AvailabilitySearchRange range) {
+        return availabilityWindowRepository.findOverlapping(
+                        profile.getId(),
+                        range.startAt(),
+                        range.endAt(),
+                        NurseAvailabilityWindowStatus.ACTIVE)
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    private AvailabilitySearchRange availabilitySearchRange(LocalDate availableDate) {
+        if (availableDate == null) {
+            OffsetDateTime now = OffsetDateTime.now();
+            return new AvailabilitySearchRange(now, now.plusSeconds(1));
+        }
+        OffsetDateTime startAt = availableDate.atStartOfDay().atOffset(ZoneOffset.UTC);
+        return new AvailabilitySearchRange(startAt, startAt.plusDays(1));
+    }
+
     private String normalize(String value) {
         if (value == null) {
             return null;
@@ -131,5 +189,8 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
 
     private String likePattern(String value) {
         return "%" + value.toLowerCase() + "%";
+    }
+
+    private record AvailabilitySearchRange(OffsetDateTime startAt, OffsetDateTime endAt) {
     }
 }

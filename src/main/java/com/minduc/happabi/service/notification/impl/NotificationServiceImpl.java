@@ -6,7 +6,6 @@ import com.minduc.happabi.dto.response.notification.NotificationResponse;
 import com.minduc.happabi.entity.Notification;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.NotificationType;
-import com.minduc.happabi.dto.event.NotificationCreatedEvent;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.observability.annotation.LogExecution;
@@ -14,10 +13,13 @@ import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.NotificationRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.notification.INotificationService;
+import com.minduc.happabi.service.notification.NotificationRealtimeDispatcher;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -28,10 +30,10 @@ public class NotificationServiceImpl implements INotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final NotificationRealtimeDispatcher realtimeDispatcher;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @LogExecution
     @TimedAction("CREATE_NOTIFICATION")
     public Notification create(User targetUser, NotificationType type, String title, String message,
@@ -45,9 +47,23 @@ public class NotificationServiceImpl implements INotificationService {
                 .resourceId(resourceId)
                 .build();
 
-        Notification saved = notificationRepository.save(notification);
-        eventPublisher.publishEvent(new NotificationCreatedEvent(saved.getId()));
+        Notification saved = notificationRepository.saveAndFlush(notification);
+        dispatchRealtimeAfterCommit(saved.getId());
         return saved;
+    }
+
+    private void dispatchRealtimeAfterCommit(UUID notificationId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            realtimeDispatcher.dispatch(notificationId);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                realtimeDispatcher.dispatch(notificationId);
+            }
+        });
     }
 
     @Override

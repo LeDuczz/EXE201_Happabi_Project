@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -43,10 +44,11 @@ public class MotherNurseController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) NurseSpecialty specialty,
+            @RequestParam(required = false) LocalDate availableDate,
             @RequestParam(defaultValue = "false") Boolean availableOnly,
             @PageableDefault(size = 12, sort = "ratingAvg", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<NursePublicProfileResponse> response = motherNurseProfileService.searchActiveNurses(
-                keyword, city, specialty, availableOnly, pageable);
+                keyword, city, specialty, availableDate, availableOnly, pageable);
         return ResponseEntity.ok(BaseResponse.ok(response));
     }
 

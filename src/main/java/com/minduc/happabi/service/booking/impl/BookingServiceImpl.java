@@ -11,6 +11,7 @@ import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
+import com.minduc.happabi.enums.NurseAvailabilityWindowStatus;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.enums.NotificationType;
 import com.minduc.happabi.enums.ServiceOfferingType;
@@ -22,6 +23,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.BookingSlotRepository;
+import com.minduc.happabi.repository.NurseAvailabilityWindowRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IBookingService;
@@ -55,6 +57,7 @@ public class BookingServiceImpl implements IBookingService {
 
     private final BookingRepository bookingRepository;
     private final BookingSlotRepository bookingSlotRepository;
+    private final NurseAvailabilityWindowRepository availabilityWindowRepository;
     private final NurseProfileRepository nurseProfileRepository;
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final UserAccountLookupService userAccountLookupService;
@@ -79,6 +82,7 @@ public class BookingServiceImpl implements IBookingService {
         }
         OffsetDateTime startAt = validateSlotStart(request.getStartAt());
         OffsetDateTime endAt = calculateEndAt(startAt, serviceOffering);
+        ensureNurseAvailableForWindow(nurseProfile, startAt, endAt);
 
         boolean alreadyBooked = bookingRepository.existsByNurseProfile_IdAndStartAtAndStatusIn(
                 nurseProfile.getId(), startAt, BLOCKING_STATUSES);
@@ -161,6 +165,20 @@ public class BookingServiceImpl implements IBookingService {
             throw new AppException(BookingErrorCode.NURSE_NOT_AVAILABLE);
         }
         return nurseProfile;
+    }
+
+    private void ensureNurseAvailableForWindow(NurseProfile nurseProfile,
+                                               OffsetDateTime startAt,
+                                               OffsetDateTime endAt) {
+        boolean hasAvailabilityWindow = availabilityWindowRepository.existsCovering(
+                nurseProfile.getId(),
+                startAt,
+                endAt,
+                NurseAvailabilityWindowStatus.ACTIVE);
+        if (!hasAvailabilityWindow) {
+            throw new AppException(BookingErrorCode.NURSE_NOT_AVAILABLE,
+                    "Selected nurse is not active during the requested booking time.");
+        }
     }
 
     private ServiceOffering getActiveService(CreateBookingRequest request) {

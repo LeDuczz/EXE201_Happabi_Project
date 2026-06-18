@@ -75,10 +75,6 @@ public class NurseProfileService {
         if (request.getServiceArea() != null) {
             profile.setServiceArea(normalizeText(request.getServiceArea()));
         }
-        if (request.getAvailabilityStatus() != null) {
-            profile.setAvailabilityStatus(request.getAvailabilityStatus());
-        }
-
         NurseProfile saved = nurseProfileRepository.save(profile);
         userCacheService.evictProfiles(cognitoSub);
 

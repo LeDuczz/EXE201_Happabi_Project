@@ -209,7 +209,7 @@ rate-limit:
 
 realtime:
   socket:
-    enabled: ${REALTIME_SOCKET_ENABLED:false}
+    enabled: ${REALTIME_SOCKET_ENABLED:true}
     host: ${REALTIME_SOCKET_HOST:0.0.0.0}
     port: ${REALTIME_SOCKET_PORT:9093}
 

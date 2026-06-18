@@ -1,32 +1,38 @@
-package com.minduc.happabi.listener;
+package com.minduc.happabi.service.notification;
 
 import com.minduc.happabi.dto.response.notification.RealtimeNotificationPayload;
 import com.minduc.happabi.entity.Notification;
-import com.minduc.happabi.dto.event.NotificationCreatedEvent;
 import com.minduc.happabi.repository.NotificationRepository;
-import com.minduc.happabi.service.notification.RealtimeNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Slf4j
-@Component
+@Service
 @RequiredArgsConstructor
-public class NotificationRealtimeEventListener {
+public class NotificationRealtimeDispatcher {
 
     private final NotificationRepository notificationRepository;
     private final ObjectProvider<RealtimeNotificationService> realtimeNotificationService;
 
-    @Async("appTaskExecutor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onNotificationCreated(NotificationCreatedEvent event) {
-        Notification notification = notificationRepository.findByIdWithUser(event.notificationId())
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public void dispatch(UUID notificationId) {
+        Notification notification = notificationRepository.findByIdWithUser(notificationId)
                 .orElse(null);
         if (notification == null) {
+            log.warn("[Notification] Skip realtime push because notification was not found: notificationId={}",
+                    notificationId);
+            return;
+        }
+
+        RealtimeNotificationService realtime = realtimeNotificationService.getIfAvailable();
+        if (realtime == null) {
+            log.warn("[Notification] Realtime socket is disabled. notificationId={}", notificationId);
             return;
         }
 
@@ -40,14 +46,8 @@ public class NotificationRealtimeEventListener {
                 .resourceType(notification.getResourceType())
                 .resourceId(notification.getResourceId())
                 .unreadCount(unreadCount)
-                .createdAt(notification.getCreatedAt())
+                .createdAt(notification.getCreatedAt().toString())
                 .build();
-
-        RealtimeNotificationService realtime = realtimeNotificationService.getIfAvailable();
-        if (realtime == null) {
-            log.debug("[Notification] Realtime socket is disabled. notificationId={}", notification.getId());
-            return;
-        }
 
         realtime.pushToUser(notification.getUser().getId(), payload);
         log.info("[Notification] Realtime notification pushed: notificationId={} userId={}",

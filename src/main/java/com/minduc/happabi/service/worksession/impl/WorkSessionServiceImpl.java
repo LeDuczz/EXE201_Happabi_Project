@@ -31,6 +31,7 @@ import com.minduc.happabi.repository.WorkSessionChecklistItemRepository;
 import com.minduc.happabi.repository.WorkSessionEvidenceRepository;
 import com.minduc.happabi.repository.WorkSessionRepository;
 import com.minduc.happabi.service.booking.IBookingSettlementService;
+import com.minduc.happabi.service.nurse.NurseAvailabilityStatusSyncService;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import com.minduc.happabi.service.worksession.IWorkSessionService;
@@ -74,6 +75,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private final IBookingSettlementService bookingSettlementService;
     private final ApplicationEventPublisher eventPublisher;
     private final IFileCleanupPublisher fileCleanupPublisher;
+    private final NurseAvailabilityStatusSyncService availabilityStatusSyncService;
 
     @Value("${app.work-session.check-in-open-minutes:10}")
     private long checkInOpenMinutes;
@@ -200,6 +202,9 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
                     session.getLateMinutes() > 0
                             ? "Your nurse checked in " + session.getLateMinutes() + " minute(s) late."
                             : "Your nurse has checked in for the work session.");
+            notifyNurse(session,
+                    "Check-in successful",
+                    "You have checked in for this work session. Please complete the service checklist before checkout.");
             return toResponse(saved);
         } catch (RuntimeException e) {
             cleanupUploadedKeys(uploadedKeys, "WORK_SESSION_CHECK_IN_ROLLBACK");
@@ -286,7 +291,6 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         session.setCheckedOutAt(now);
         session.setAutoConfirmAt(now.plusHours(autoConfirmHours));
         session.setStatus(WorkSessionStatus.PENDING_MOTHER_CONFIRMATION);
-        nurseProfile.setAvailabilityStatus(AvailabilityStatus.AVAILABLE);
 
         List<WorkSessionEvidence> activeEvidences = evidenceRepository
                 .findByWorkSession_IdAndStatusOrderByCreatedAtAsc(session.getId(), WorkSessionEvidenceStatus.ACTIVE);
@@ -294,9 +298,13 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         evidenceRepository.saveAll(activeEvidences);
 
         WorkSession saved = workSessionRepository.save(session);
+        availabilityStatusSyncService.syncStatus(nurseProfile);
         notifyMother(session,
                 "Work session completed",
                 "Your nurse has checked out. Please confirm completion or report an issue.");
+        notifyNurse(session,
+                "Checkout successful",
+                "You have checked out. The session is waiting for mother confirmation.");
         return toResponse(saved);
     }
 
@@ -332,6 +340,9 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         session.setConfirmedAt(OffsetDateTime.now());
         WorkSession saved = workSessionRepository.save(session);
         bookingSettlementService.settleCompletedWorkSession(saved);
+        notifyNurse(session,
+                "Work session confirmed",
+                "The mother has confirmed this work session. Your earning has been processed according to the payment policy.");
         return toResponse(saved);
     }
 
@@ -347,7 +358,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         session.setReportReason(request.getReason().trim());
         notifyNurse(session,
                 "Work session reported",
-                "The mother reported an issue with this work session.");
+                "The mother reported an issue with this work session. Please review the details and wait for system handling.");
         return toResponse(workSessionRepository.save(session));
     }
 
