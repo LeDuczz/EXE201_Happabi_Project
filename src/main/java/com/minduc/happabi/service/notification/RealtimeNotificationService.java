@@ -60,10 +60,11 @@ public class RealtimeNotificationService {
             log.info("[Socket] Socket.IO notification server started.");
         } catch (RuntimeException e) {
             if (hasCause(e, BindException.class)) {
-                log.warn("[Socket] Socket.IO notification server was not started because the configured port is already in use.");
+                log.warn("[Socket] Socket.IO notification server was not started because the configured port is already in use. Realtime notifications are disabled for this application instance.");
                 return;
             }
-            throw e;
+            log.warn("[Socket] Socket.IO notification server was not started. Realtime notifications are disabled for this application instance. cause={}",
+                    e.getMessage(), e);
         }
     }
 

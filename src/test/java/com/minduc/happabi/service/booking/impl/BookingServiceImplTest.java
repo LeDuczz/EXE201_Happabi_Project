@@ -11,6 +11,7 @@ import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
+import com.minduc.happabi.enums.NurseAvailabilityWindowStatus;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.enums.NotificationType;
 import com.minduc.happabi.enums.ServiceOfferingType;
@@ -19,6 +20,7 @@ import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.BookingSlotRepository;
+import com.minduc.happabi.repository.NurseAvailabilityWindowRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
@@ -55,6 +57,9 @@ class BookingServiceImplTest {
     private BookingSlotRepository bookingSlotRepository;
 
     @Mock
+    private NurseAvailabilityWindowRepository availabilityWindowRepository;
+
+    @Mock
     private NurseProfileRepository nurseProfileRepository;
 
     @Mock
@@ -81,6 +86,7 @@ class BookingServiceImplTest {
         service = new BookingServiceImpl(
                 bookingRepository,
                 bookingSlotRepository,
+                availabilityWindowRepository,
                 nurseProfileRepository,
                 serviceOfferingRepository,
                 userAccountLookupService,
@@ -217,6 +223,26 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void createBookingRejectsNurseOutsideAvailabilityWindow() {
+        when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
+        when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
+        when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
+        when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(true);
+        when(availabilityWindowRepository.existsCovering(
+                eq(nurse.getId()),
+                eq(request.getStartAt()),
+                eq(request.getStartAt().plusMinutes(offering.getDurationMinutes())),
+                eq(NurseAvailabilityWindowStatus.ACTIVE)))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.createBooking(request))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(BookingErrorCode.NURSE_NOT_AVAILABLE);
+        verify(bookingSlotRepository, never()).insertIfAbsent(any(), any(), any());
+    }
+
+    @Test
     void createBookingRejectsAlreadyBookedSlot() {
         mockHappyPath();
         slot.setStatus(BookingSlotStatus.BOOKED);
@@ -252,6 +278,12 @@ class BookingServiceImplTest {
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
         when(serviceOfferingRepository.findById(offering.getId())).thenReturn(Optional.of(offering));
         when(serviceEligibilityService.isEligibleForService(nurse, offering)).thenReturn(true);
+        when(availabilityWindowRepository.existsCovering(
+                eq(nurse.getId()),
+                eq(request.getStartAt()),
+                eq(request.getStartAt().plusMinutes(offering.getDurationMinutes())),
+                eq(NurseAvailabilityWindowStatus.ACTIVE)))
+                .thenReturn(true);
         when(bookingRepository.existsByNurseProfile_IdAndStartAtAndStatusIn(eq(nurse.getId()), eq(request.getStartAt()), anyCollection()))
                 .thenReturn(false);
         when(bookingSlotRepository.findByNurseProfileIdAndStartAtForUpdate(nurse.getId(), request.getStartAt()))

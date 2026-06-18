@@ -14,6 +14,8 @@ public enum UserErrorCode implements ServiceErrorCode {
     MOTHER_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Mother profile not found for the current user."),
     NURSE_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Nurse profile not found for the current user."),
     NURSE_PUBLIC_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Nurse profile was not found or is not available for booking."),
+    NURSE_AVAILABILITY_WINDOW_NOT_FOUND(HttpStatus.NOT_FOUND, "Nurse availability window was not found."),
+    NURSE_AVAILABILITY_WINDOW_INVALID(HttpStatus.UNPROCESSABLE_ENTITY, "Nurse availability window is invalid."),
     NURSE_COMPARISON_INVALID(HttpStatus.BAD_REQUEST, "Nurse comparison request is invalid."),
     PHONE_ALREADY_SET(HttpStatus.BAD_REQUEST, "Phone cannot be changed after it has been set."),
     EMAIL_ALREADY_SET(HttpStatus.BAD_REQUEST, "Email cannot be changed after it has been set.");

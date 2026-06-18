@@ -5,6 +5,7 @@ import com.minduc.happabi.enums.NurseSpecialty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 public interface IMotherNurseProfileService {
@@ -12,6 +13,7 @@ public interface IMotherNurseProfileService {
     Page<NursePublicProfileResponse> searchActiveNurses(String keyword,
                                                         String city,
                                                         NurseSpecialty specialty,
+                                                        LocalDate availableDate,
                                                         Boolean availableOnly,
                                                         Pageable pageable);
 

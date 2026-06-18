@@ -8,11 +8,12 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class NursePublicProfileResponse {
     private UUID profileId;
@@ -29,6 +30,8 @@ public class NursePublicProfileResponse {
     private Integer totalCompletedJobs;
     private Boolean backgroundChecked;
     private Boolean featured;
+    private OffsetDateTime availabilityWindowStartAt;
+    private OffsetDateTime availabilityWindowEndAt;
     private Long certificationCount;
     private List<NursePublicCertificationResponse> certifications;
     private List<NurseSkillResponse> skills;

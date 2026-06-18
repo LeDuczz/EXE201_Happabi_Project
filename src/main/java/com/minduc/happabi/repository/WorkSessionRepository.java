@@ -86,4 +86,10 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, UUID> 
                     @Param("confirmedAt") OffsetDateTime confirmedAt);
 
     long countByStatusInAndNurseProfile_Id(Collection<WorkSessionStatus> statuses, UUID nurseProfileId);
+
+    boolean existsByNurseProfile_IdAndStatusInAndScheduledStartAtLessThanEqualAndScheduledEndAtGreaterThan(
+            UUID nurseProfileId,
+            Collection<WorkSessionStatus> statuses,
+            OffsetDateTime startAt,
+            OffsetDateTime endAt);
 }

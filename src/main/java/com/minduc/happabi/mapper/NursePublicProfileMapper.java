@@ -22,6 +22,8 @@ public interface NursePublicProfileMapper {
     @Mapping(target = "certifications", source = "certifications")
     @Mapping(target = "skills", source = "skills")
     @Mapping(target = "eligibleServiceOfferings", source = "eligibleServiceOfferings")
+    @Mapping(target = "availabilityWindowStartAt", ignore = true)
+    @Mapping(target = "availabilityWindowEndAt", ignore = true)
     NursePublicProfileResponse toResponse(NurseProfile profile,
                                           List<NurseCertification> certifications,
                                           String avatarUrl,
