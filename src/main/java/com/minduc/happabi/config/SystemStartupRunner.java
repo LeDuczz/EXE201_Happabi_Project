@@ -21,13 +21,10 @@ public class SystemStartupRunner implements ApplicationRunner {
 
     private final DataSeeder dataSeeder;
     private final TestDataSeeder testDataSeeder;
-    private final DatabaseEnumConstraintSynchronizer enumConstraintSynchronizer;
 
     @Override
     public void run(ApplicationArguments args) {
         log.info("System startup initialization");
-
-        enumConstraintSynchronizer.syncCodeFirstEnumChecks();
 
         dataSeeder.seedRolesAndPermissions();
         dataSeeder.seedServiceOfferings();

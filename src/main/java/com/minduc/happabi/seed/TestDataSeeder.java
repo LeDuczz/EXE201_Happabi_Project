@@ -333,11 +333,12 @@ public class TestDataSeeder {
     }
 
     private void ensureWallet(NurseProfile nurse, long balance, long depositBalance) {
-        NurseWallet wallet = nurseWalletRepository.findByNurseId(nurse.getId())
-                .orElseGet(() -> NurseWallet.builder().nurseId(nurse.getId()).build());
-        wallet.setBalance(BigDecimal.valueOf(balance));
-        wallet.setDepositBalance(BigDecimal.valueOf(depositBalance));
-        nurseWalletRepository.save(wallet);
+        nurseWalletRepository.findByNurseId(nurse.getId())
+                .orElseGet(() -> nurseWalletRepository.save(NurseWallet.builder()
+                        .nurseId(nurse.getId())
+                        .balance(BigDecimal.valueOf(balance))
+                        .depositBalance(BigDecimal.valueOf(depositBalance))
+                        .build()));
 
         ensureWalletTransaction(nurse, "Top up seed wallet", TransactionType.TOPUP_WALLET, balance, balance, 0, 920000000001L + Math.abs(nurse.getLicenseNumber().hashCode() % 1000));
         if (depositBalance > 0) {

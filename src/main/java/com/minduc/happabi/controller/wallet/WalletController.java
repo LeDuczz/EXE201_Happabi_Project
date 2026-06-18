@@ -1,7 +1,6 @@
 package com.minduc.happabi.controller.wallet;
 
 import com.minduc.happabi.common.base.BaseResponse;
-import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.WalletDTO;
 import com.minduc.happabi.service.nurse.INurseWalletService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,8 +23,7 @@ public class WalletController {
     @GetMapping("/me")
     @PreAuthorize("hasRole('NURSE') and @nurseAccessGuard.isActive(authentication)")
     public ResponseEntity<BaseResponse<WalletDTO>> getMyWallet() {
-        String nurseId = AuthUtils.getCurrentUserId();
-        WalletDTO walletDTO = nurseWalletService.getMyWalletInfo(nurseId);
+        WalletDTO walletDTO = nurseWalletService.getMyWalletInfo();
         return ResponseEntity.ok(BaseResponse.ok(walletDTO));
     }
 
