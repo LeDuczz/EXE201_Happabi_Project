@@ -18,30 +18,25 @@ public class WalletTransactionMapper {
       return null;
     }
 
-    String description = "Giao dich khac";
-    String typeStr = "";
+    String description = "Other wallet transaction";
+    String typeStr = walletTransaction.getTransactionType() != null ? walletTransaction.getTransactionType().name() : "";
 
     if (walletTransaction.getTransactionType() != null) {
       switch (walletTransaction.getTransactionType()) {
         case TOPUP_WALLET -> {
-          description = "Nap tien vao vi";
-          typeStr = "TOPUP";
+          description = "Wallet top-up";
         }
         case TOPUP_DEPOSIT -> {
-          description = "Nap tien ky quy";
-          typeStr = "TOPUP";
+          description = "Deposit top-up";
         }
         case BOOKING_EARNING -> {
-          description = "Thu nhap tu don booking";
-          typeStr = "BOOKING_EARNING";
+          description = "Booking earning";
         }
         case FEE_DEDUCTION -> {
-          description = "Chiet khau hoa hong don hang";
-          typeStr = "COMMISSION";
+          description = "Commission deduction";
         }
         case PAYOUT -> {
-          description = "Rut tien ve ngan hang";
-          typeStr = "WITHDRAW";
+          description = "Bank payout";
         }
       }
     }
@@ -54,7 +49,9 @@ public class WalletTransactionMapper {
       .createdAt(walletTransaction.getCreatedAt() != null
         ? DATE_TIME_FORMATTER.format(walletTransaction.getCreatedAt())
         : null)
-      .description(description)
+      .description(walletTransaction.getDescription() != null && !walletTransaction.getDescription().isBlank()
+        ? walletTransaction.getDescription()
+        : description)
       .build();
   }
 }

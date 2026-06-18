@@ -54,6 +54,7 @@ public class NurseWalletService implements INurseWalletService {
     return WalletDTO.builder()
       .balance(wallet.getBalance())
       .pledgeAmount(wallet.getDepositBalance())
+      .lockedWithdrawalAmount(wallet.getLockedWithdrawalAmount() == null ? BigDecimal.ZERO : wallet.getLockedWithdrawalAmount())
       .transactions(transactionDTOS)
       .build();
   }
