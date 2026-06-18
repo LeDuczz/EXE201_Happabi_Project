@@ -11,5 +11,6 @@ import java.util.List;
 public class WalletDTO {
   private BigDecimal balance;
   private BigDecimal pledgeAmount;
+  private BigDecimal lockedWithdrawalAmount;
   private List<TransactionDTO> transactions;
 }

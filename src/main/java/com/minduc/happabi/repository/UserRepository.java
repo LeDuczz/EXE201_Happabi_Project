@@ -61,6 +61,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT COUNT(u) FROM User u JOIN u.roleAssignments ra WHERE ra.role.roleName = :roleName")
     long countByRoleName(@Param("roleName") UserRole roleName);
 
+    @Query("SELECT u FROM User u JOIN u.roleAssignments ra WHERE ra.role.roleName = :roleName AND u.isActive = true")
+    List<User> findActiveUsersByRoleName(@Param("roleName") UserRole roleName);
+
     Page<User> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContaining(
             String fullName, String email, String phone, org.springframework.data.domain.Pageable pageable);
 }
