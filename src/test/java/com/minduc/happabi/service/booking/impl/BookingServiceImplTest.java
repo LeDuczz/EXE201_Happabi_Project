@@ -184,6 +184,19 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void createBookingRejectsTemporarilySuspendedNurse() {
+        nurse.setBookingSuspendedUntil(OffsetDateTime.now().plusDays(1));
+        when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
+        when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.of(nurse));
+
+        assertThatThrownBy(() -> service.createBooking(request))
+                .isInstanceOf(AppException.class)
+                .extracting("errorCode")
+                .isEqualTo(BookingErrorCode.NURSE_NOT_AVAILABLE);
+        verify(bookingSlotRepository, never()).insertIfAbsent(any(), any(), any());
+    }
+
+    @Test
     void createBookingRejectsUnknownActiveNurse() {
         when(userAccountLookupService.getCurrentUser()).thenReturn(mother);
         when(nurseProfileRepository.findByIdAndNurseStatus(nurse.getId(), NurseStatus.ACTIVE)).thenReturn(Optional.empty());

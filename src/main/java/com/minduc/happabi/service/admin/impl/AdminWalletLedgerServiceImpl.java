@@ -68,6 +68,25 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
     }
 
     @Override
+    @LogExecution
+    @TimedAction("ADMIN_WALLET_RECORD_BOOKING_REFUND")
+    @AuditAction(action = "ADMIN_WALLET_RECORD_BOOKING_REFUND", resourceType = "ADMIN_WALLET")
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordBookingRefund(UUID bookingId, BigDecimal amount) {
+        BigDecimal refundAmount = positive(amount);
+        if (refundAmount.signum() == 0) {
+            return;
+        }
+        recordTransaction(
+                bookingId,
+                AdminWalletTransactionType.BOOKING_REFUND,
+                refundAmount,
+                refundAmount.negate(),
+                "Booking refund for booking " + bookingId
+        );
+    }
+
+    @Override
     @Transactional(readOnly = true)
     @LogExecution
     @TimedAction("ADMIN_GET_PLATFORM_WALLET")

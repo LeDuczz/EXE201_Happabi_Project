@@ -2,7 +2,10 @@ package com.minduc.happabi.controller.worksession;
 
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.request.worksession.CompleteChecklistItemRequest;
+import com.minduc.happabi.dto.request.worksession.ReportWorkSessionIncidentRequest;
+import com.minduc.happabi.dto.response.worksession.WorkSessionIncidentResponse;
 import com.minduc.happabi.dto.response.worksession.WorkSessionResponse;
+import com.minduc.happabi.service.worksession.IWorkSessionIncidentService;
 import com.minduc.happabi.service.worksession.IWorkSessionService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +34,7 @@ import java.util.UUID;
 public class NurseWorkSessionController {
 
     private final IWorkSessionService workSessionService;
+    private final IWorkSessionIncidentService incidentService;
 
     @GetMapping
     @PreAuthorize("hasRole('NURSE')")
@@ -81,5 +85,14 @@ public class NurseWorkSessionController {
             @PathVariable UUID workSessionId) {
         return ResponseEntity.ok(BaseResponse.ok("Work session checked out.",
                 workSessionService.checkout(workSessionId)));
+    }
+
+    @PostMapping(value = "/{workSessionId}/incidents/mother-unreachable", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BaseResponse<WorkSessionIncidentResponse>> reportMotherUnreachable(
+            @PathVariable UUID workSessionId,
+            @Valid @ModelAttribute ReportWorkSessionIncidentRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        return ResponseEntity.ok(BaseResponse.ok("Incident reported.",
+                incidentService.reportMotherUnreachable(workSessionId, request, images)));
     }
 }

@@ -18,7 +18,10 @@ public enum WorkSessionErrorCode implements ServiceErrorCode {
     WORK_SESSION_CHECKLIST_INCOMPLETE(HttpStatus.CONFLICT, "All checklist items must be completed before checkout."),
     WORK_SESSION_EVIDENCE_REQUIRED(HttpStatus.UNPROCESSABLE_ENTITY, "At least one evidence image is required."),
     WORK_SESSION_EVIDENCE_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "Failed to upload work session evidence."),
-    WORK_SESSION_ALREADY_EXISTS(HttpStatus.CONFLICT, "Work session already exists for this booking.");
+    WORK_SESSION_ALREADY_EXISTS(HttpStatus.CONFLICT, "Work session already exists for this booking."),
+    WORK_SESSION_INCIDENT_TOO_EARLY(HttpStatus.CONFLICT, "Incident reporting is not open yet."),
+    WORK_SESSION_INCIDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Work session incident was not found."),
+    WORK_SESSION_INCIDENT_NOT_PENDING(HttpStatus.CONFLICT, "Work session incident is not pending review.");
 
     HttpStatus httpStatus;
     String message;

@@ -30,6 +30,19 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, UUID> 
             join fetch ws.nurseProfile np
             join fetch np.user nu
             join fetch ws.serviceOffering so
+            where b.id = :bookingId
+            """)
+    Optional<WorkSession> findByBookingIdForUpdate(@Param("bookingId") UUID bookingId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select ws
+            from WorkSession ws
+            join fetch ws.booking b
+            join fetch ws.mother m
+            join fetch ws.nurseProfile np
+            join fetch np.user nu
+            join fetch ws.serviceOffering so
             where ws.id = :id
             """)
     Optional<WorkSession> findByIdForUpdate(@Param("id") UUID id);

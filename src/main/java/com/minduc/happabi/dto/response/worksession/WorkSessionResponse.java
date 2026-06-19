@@ -17,8 +17,10 @@ public class WorkSessionResponse {
     private String nurseName;
     private UUID motherId;
     private String motherName;
+    private String motherPhone;
     private UUID serviceOfferingId;
     private String serviceName;
+    private String serviceAddress;
     private WorkSessionStatus status;
     private OffsetDateTime scheduledStartAt;
     private OffsetDateTime scheduledEndAt;

@@ -1,8 +1,11 @@
 package com.minduc.happabi.controller.booking;
 
 import com.minduc.happabi.common.base.BaseResponse;
+import com.minduc.happabi.dto.request.booking.CancelBookingRequest;
 import com.minduc.happabi.dto.request.booking.CreateBookingRequest;
+import com.minduc.happabi.dto.response.booking.BookingCancellationResponse;
 import com.minduc.happabi.dto.response.booking.BookingResponse;
+import com.minduc.happabi.service.booking.IBookingCancellationService;
 import com.minduc.happabi.service.booking.IBookingService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +31,7 @@ import java.util.List;
 public class BookingController {
 
     private final IBookingService bookingService;
+    private final IBookingCancellationService bookingCancellationService;
 
     @PostMapping
     @PreAuthorize("hasRole('MOTHER')")
@@ -40,6 +45,24 @@ public class BookingController {
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<BaseResponse<List<BookingResponse>>> getMyPendingPayments() {
         return ResponseEntity.ok(BaseResponse.ok(bookingService.getMyPendingPayments()));
+    }
+
+    @PostMapping("/{bookingId}/cancel-by-mother")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<BaseResponse<BookingCancellationResponse>> cancelByMother(
+            @PathVariable java.util.UUID bookingId,
+            @Valid @RequestBody CancelBookingRequest request) {
+        return ResponseEntity.ok(BaseResponse.ok("Booking cancelled.",
+                bookingCancellationService.cancelByMother(bookingId, request)));
+    }
+
+    @PostMapping("/{bookingId}/cancel-by-nurse")
+    @PreAuthorize("hasRole('NURSE') and @nurseAccessGuard.isActive(authentication)")
+    public ResponseEntity<BaseResponse<BookingCancellationResponse>> cancelByNurse(
+            @PathVariable java.util.UUID bookingId,
+            @Valid @RequestBody CancelBookingRequest request) {
+        return ResponseEntity.ok(BaseResponse.ok("Booking cancelled.",
+                bookingCancellationService.cancelByNurse(bookingId, request)));
     }
 }
 

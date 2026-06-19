@@ -19,8 +19,10 @@ public interface WorkSessionMapper {
     @Mapping(target = "nurseName", source = "session.nurseProfile.user.fullName")
     @Mapping(target = "motherId", source = "session.mother.id")
     @Mapping(target = "motherName", source = "session.mother.fullName")
+    @Mapping(target = "motherPhone", source = "session.mother.phone")
     @Mapping(target = "serviceOfferingId", source = "session.serviceOffering.id")
     @Mapping(target = "serviceName", source = "session.serviceOffering.serviceName")
+    @Mapping(target = "serviceAddress", source = "session.booking.serviceAddress")
     @Mapping(target = "checkInEvidences", source = "checkInEvidences")
     @Mapping(target = "checklistItems", source = "checklistItems")
     WorkSessionResponse toResponse(WorkSession session,

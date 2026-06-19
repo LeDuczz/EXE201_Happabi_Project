@@ -120,6 +120,10 @@ public class MotherNurseProfileServiceImpl implements IMotherNurseProfileService
             List<Predicate> predicates = new ArrayList<>();
 
             predicates.add(cb.equal(root.get("nurseStatus"), NurseStatus.ACTIVE));
+            predicates.add(cb.or(
+                    cb.isNull(root.get("bookingSuspendedUntil")),
+                    cb.lessThanOrEqualTo(root.get("bookingSuspendedUntil"), OffsetDateTime.now())
+            ));
             predicates.add(hasAvailabilityWindow(root, query.subquery(Long.class), cb, range));
 
             if (availabilityStatus != null) {

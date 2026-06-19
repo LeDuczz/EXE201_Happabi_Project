@@ -67,6 +67,7 @@ public class NurseAvailabilityWindowServiceImpl implements INurseAvailabilityWin
     public NurseAvailabilityWindowResponse createMyWindow(CreateNurseAvailabilityWindowRequest request) {
         validateWindow(request.getStartAt(), request.getEndAt());
         NurseProfile nurseProfile = currentNurseProfile();
+        validateNotBookingSuspended(nurseProfile);
         validateNoActiveOverlap(nurseProfile, request.getStartAt(), request.getEndAt());
 
         NurseAvailabilityWindow saved = availabilityWindowRepository.save(NurseAvailabilityWindow.builder()
@@ -115,6 +116,13 @@ public class NurseAvailabilityWindowServiceImpl implements INurseAvailabilityWin
         if (endAt.isBefore(OffsetDateTime.now())) {
             throw new AppException(UserErrorCode.NURSE_AVAILABILITY_WINDOW_INVALID,
                     "Availability window must not end in the past.");
+        }
+    }
+
+    private void validateNotBookingSuspended(NurseProfile nurseProfile) {
+        if (nurseProfile.getBookingSuspendedUntil() != null && nurseProfile.getBookingSuspendedUntil().isAfter(OffsetDateTime.now())) {
+            throw new AppException(UserErrorCode.NURSE_AVAILABILITY_WINDOW_INVALID,
+                    "Nurse is suspended from receiving bookings until " + nurseProfile.getBookingSuspendedUntil());
         }
     }
 
