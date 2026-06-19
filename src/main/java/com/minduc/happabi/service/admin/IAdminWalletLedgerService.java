@@ -14,5 +14,7 @@ public interface IAdminWalletLedgerService {
 
     void recordBookingRefund(UUID bookingId, BigDecimal amount);
 
+    void recordWithdrawalPayout(UUID withdrawalRequestId, BigDecimal amount);
+
     AdminWalletResponse getPlatformWallet(Pageable pageable);
 }

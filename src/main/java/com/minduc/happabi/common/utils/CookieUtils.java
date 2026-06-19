@@ -15,7 +15,7 @@ public class CookieUtils {
     public void addRefreshTokenCookie(HttpServletResponse res, String token) {
         ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/api/v1/auth")
                 .maxAge(TTL_SECONDS)
                 .sameSite("Lax")
@@ -26,7 +26,7 @@ public class CookieUtils {
     public void clearRefreshTokenCookie(HttpServletResponse res) {
         ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/api/v1/auth")
                 .maxAge(0)
                 .sameSite("Lax")
