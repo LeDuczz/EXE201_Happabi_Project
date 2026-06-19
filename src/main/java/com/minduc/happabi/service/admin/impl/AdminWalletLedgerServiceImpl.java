@@ -87,6 +87,22 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
     }
 
     @Override
+    @LogExecution
+    @TimedAction("ADMIN_WALLET_RECORD_WITHDRAWAL_PAYOUT")
+    @AuditAction(action = "ADMIN_WALLET_RECORD_WITHDRAWAL_PAYOUT", resourceType = "ADMIN_WALLET")
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordWithdrawalPayout(UUID withdrawalRequestId, BigDecimal amount) {
+        BigDecimal payoutAmount = positive(amount);
+        recordTransaction(
+                withdrawalRequestId,
+                AdminWalletTransactionType.WITHDRAWAL_PAYOUT,
+                payoutAmount,
+                payoutAmount.negate(),
+                "Manual withdrawal payout for request " + withdrawalRequestId
+        );
+    }
+
+    @Override
     @Transactional(readOnly = true)
     @LogExecution
     @TimedAction("ADMIN_GET_PLATFORM_WALLET")
@@ -151,8 +167,8 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
     }
 
     private BigDecimal positive(BigDecimal amount) {
-        if (amount == null || amount.signum() < 0) {
-            throw new AppException(BookingErrorCode.BOOKING_SETTLEMENT_FAILED, "Amount must be positive.");
+        if (amount == null || amount.signum() <= 0) {
+            throw new AppException(BookingErrorCode.BOOKING_SETTLEMENT_FAILED, "Amount must be greater than zero.");
         }
         return amount;
     }

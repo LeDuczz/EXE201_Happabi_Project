@@ -29,6 +29,7 @@ import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.NurseWithdrawalRequestRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
+import com.minduc.happabi.service.admin.IAdminWalletLedgerService;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.nurse.INurseWithdrawalService;
 import com.minduc.happabi.service.user.UserAccountLookupService;
@@ -60,6 +61,7 @@ public class NurseWithdrawalServiceImpl implements INurseWithdrawalService {
     private final UserRepository userRepository;
     private final UserAccountLookupService userAccountLookupService;
     private final INotificationPublisher notificationPublisher;
+    private final IAdminWalletLedgerService adminWalletLedgerService;
     private final IS3Service s3Service;
 
     @Override
@@ -176,6 +178,7 @@ public class NurseWithdrawalServiceImpl implements INurseWithdrawalService {
             wallet.setLockedWithdrawalAmount(wallet.getLockedWithdrawalAmount().subtract(withdrawal.getAmount()));
             nurseWalletRepository.save(wallet);
 
+            adminWalletLedgerService.recordWithdrawalPayout(withdrawal.getId(), withdrawal.getAmount());
             User admin = userAccountLookupService.getCurrentUser();
             withdrawal.setStatus(NurseWithdrawalStatus.APPROVED);
             withdrawal.setProcessedByAdmin(admin);
