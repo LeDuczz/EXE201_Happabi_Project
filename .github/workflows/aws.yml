@@ -1,0 +1,43 @@
+name: Deploy Happabi to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            cd ${{ secrets.APP_DIR }}
+
+            echo "Pull latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "Check compose config..."
+            docker compose -f docker-compose.prod.yml --env-file .env.prod config
+
+            echo "Build containers..."
+            docker compose -f docker-compose.prod.yml --env-file .env.prod build
+
+            echo "Restart services..."
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+            echo "Clean unused images..."
+            docker image prune -f
+
+            echo "Show running containers..."
+            docker ps
