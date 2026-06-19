@@ -12,5 +12,7 @@ public interface IAdminWalletLedgerService {
 
     void recordNursePayout(UUID bookingId, BigDecimal amount);
 
+    void recordBookingRefund(UUID bookingId, BigDecimal amount);
+
     AdminWalletResponse getPlatformWallet(Pageable pageable);
 }

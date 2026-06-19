@@ -3,7 +3,9 @@ package com.minduc.happabi.repository;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.NurseStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -33,4 +35,8 @@ public interface NurseProfileRepository extends JpaRepository<NurseProfile, UUID
     @EntityGraph(attributePaths = {"user"})
     List<NurseProfile> findByIdInAndNurseStatus(List<UUID> ids, NurseStatus nurseStatus);
 
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select np from NurseProfile np join fetch np.user where np.id = :id")
+    Optional<NurseProfile> findByIdForUpdate(@Param("id") UUID id);
 }

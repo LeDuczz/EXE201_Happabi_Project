@@ -28,6 +28,9 @@ public class NursePublicProfileResponse {
     private BigDecimal ratingAvg;
     private Integer totalReviews;
     private Integer totalCompletedJobs;
+    private Integer noShowViolationCount;
+    private OffsetDateTime bookingSuspendedUntil;
+    private String bookingSuspensionReason;
     private Boolean backgroundChecked;
     private Boolean featured;
     private OffsetDateTime availabilityWindowStartAt;

@@ -45,6 +45,19 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             """)
     Optional<Booking> findByIdWithPaymentRelations(@Param("bookingId") UUID bookingId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select booking
+            from Booking booking
+            join fetch booking.mother mother
+            join fetch booking.nurseProfile nurseProfile
+            join fetch nurseProfile.user nurseUser
+            join fetch booking.serviceOffering serviceOffering
+            join fetch booking.slot slot
+            where booking.id = :bookingId
+            """)
+    Optional<Booking> findByIdForCancellationUpdate(@Param("bookingId") UUID bookingId);
+
     @Query("""
             select booking
             from Booking booking

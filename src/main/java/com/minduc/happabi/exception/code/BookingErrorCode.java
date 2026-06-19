@@ -16,7 +16,15 @@ public enum BookingErrorCode implements ServiceErrorCode {
     NURSE_SKILL_NOT_ELIGIBLE(HttpStatus.CONFLICT, "Selected nurse does not have verified skills required for this service."),
     BOOKING_SLOT_ALREADY_BOOKED(HttpStatus.CONFLICT, "Selected booking slot was already booked."),
     BOOKING_CREATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create booking."),
-    BOOKING_SETTLEMENT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to settle booking.");
+    BOOKING_SETTLEMENT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to settle booking."),
+    BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND, "Booking was not found."),
+    BOOKING_ACCESS_DENIED(HttpStatus.FORBIDDEN, "Current user cannot access this booking."),
+    BOOKING_CANCELLATION_NOT_ALLOWED(HttpStatus.CONFLICT, "Booking cannot be cancelled in its current state."),
+    BOOKING_CANCELLATION_TOO_LATE(HttpStatus.CONFLICT, "Booking cancellation is no longer allowed by policy."),
+    BOOKING_ALREADY_CANCELLED(HttpStatus.CONFLICT, "Booking has already been cancelled."),
+    MOTHER_REFUND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Mother refund request was not found."),
+    MOTHER_REFUND_REQUEST_NOT_PENDING(HttpStatus.CONFLICT, "Mother refund request is not pending."),
+    MOTHER_REFUND_EVIDENCE_REQUIRED(HttpStatus.BAD_REQUEST, "Refund transfer evidence is required.");
 
     HttpStatus httpStatus;
     String message;

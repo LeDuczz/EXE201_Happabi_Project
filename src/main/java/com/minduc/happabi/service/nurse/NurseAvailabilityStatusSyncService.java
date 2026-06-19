@@ -53,6 +53,9 @@ public class NurseAvailabilityStatusSyncService {
     }
 
     public AvailabilityStatus resolveStatus(UUID nurseProfileId, OffsetDateTime now) {
+        if (isBookingSuspended(nurseProfileId, now)) {
+            return AvailabilityStatus.OFFLINE;
+        }
         if (isInCurrentBooking(nurseProfileId, now)) {
             return AvailabilityStatus.BUSY;
         }
@@ -75,6 +78,12 @@ public class NurseAvailabilityStatusSyncService {
                     nurseProfile.getId(), previous, nextStatus);
         }
         return nextStatus;
+    }
+
+    private boolean isBookingSuspended(UUID nurseProfileId, OffsetDateTime now) {
+        return nurseProfileRepository.findById(nurseProfileId)
+                .map(profile -> profile.getBookingSuspendedUntil() != null && profile.getBookingSuspendedUntil().isAfter(now))
+                .orElse(false);
     }
 
     private boolean isInCurrentBooking(UUID nurseProfileId, OffsetDateTime now) {

@@ -81,6 +81,19 @@ public class NurseProfile {
     @Builder.Default
     private BigDecimal responseRate = BigDecimal.ZERO;
 
+    @Column(name = "no_show_violation_count")
+    @Builder.Default
+    private Integer noShowViolationCount = 0;
+
+    @Column(name = "booking_suspended_until")
+    private OffsetDateTime bookingSuspendedUntil;
+
+    @Column(name = "booking_suspension_reason", length = 500)
+    private String bookingSuspensionReason;
+
+    @Column(name = "permanently_suspended_at")
+    private OffsetDateTime permanentlySuspendedAt;
+
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 

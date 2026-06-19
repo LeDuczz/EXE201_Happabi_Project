@@ -161,6 +161,10 @@ public class BookingServiceImpl implements IBookingService {
         NurseProfile nurseProfile = nurseProfileRepository.findByIdAndNurseStatus(
                         request.getNurseProfileId(), NurseStatus.ACTIVE)
                 .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PUBLIC_PROFILE_NOT_FOUND));
+        if (nurseProfile.getBookingSuspendedUntil() != null && nurseProfile.getBookingSuspendedUntil().isAfter(OffsetDateTime.now())) {
+            throw new AppException(BookingErrorCode.NURSE_NOT_AVAILABLE,
+                    "Selected nurse is temporarily suspended from receiving bookings until " + nurseProfile.getBookingSuspendedUntil());
+        }
         if (nurseProfile.getAvailabilityStatus() != AvailabilityStatus.AVAILABLE) {
             throw new AppException(BookingErrorCode.NURSE_NOT_AVAILABLE);
         }
