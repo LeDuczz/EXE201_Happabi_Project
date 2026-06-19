@@ -1,0 +1,8 @@
+﻿target
+logs
+.git
+.github
+.idea
+*.iml
+HELP.md
+README.md
