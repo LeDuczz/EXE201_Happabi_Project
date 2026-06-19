@@ -1,12 +1,14 @@
 package com.minduc.happabi.dto.request.nurse;
 
 import com.minduc.happabi.enums.NurseSpecialty;
+import com.minduc.happabi.enums.NurseSkill;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 public class UpdateNurseProfileRequest {
@@ -25,4 +27,5 @@ public class UpdateNurseProfileRequest {
     private String address;
     @Size(max = 50)
     private String city;
+    private Set<NurseSkill> skills;
 }

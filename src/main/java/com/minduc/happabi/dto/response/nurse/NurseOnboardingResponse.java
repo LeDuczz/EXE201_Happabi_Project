@@ -35,7 +35,11 @@ public class NurseOnboardingResponse {
     private Boolean kycCompleted;
     private Boolean certificationsCompleted;
     private Boolean contractSigned;
+    private Integer noShowViolationCount;
+    private OffsetDateTime bookingSuspendedUntil;
+    private String bookingSuspensionReason;
     private NurseKycResponse kyc;
     private List<NurseCertificationResponse> certifications;
+    private List<NurseSkillResponse> skills;
     private NurseContractResponse latestContract;
 }

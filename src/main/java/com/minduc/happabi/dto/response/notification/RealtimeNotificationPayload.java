@@ -5,7 +5,6 @@ import com.minduc.happabi.enums.NotificationType;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Getter
@@ -20,5 +19,5 @@ public class RealtimeNotificationPayload {
     private String resourceType;
     private String resourceId;
     private long unreadCount;
-    private OffsetDateTime createdAt;
+    private String createdAt;
 }

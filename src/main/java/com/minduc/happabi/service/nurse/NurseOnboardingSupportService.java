@@ -19,6 +19,7 @@ import com.minduc.happabi.repository.NurseKycRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.NurseReviewEventRepository;
 import com.minduc.happabi.repository.UserRepository;
+import com.minduc.happabi.service.booking.IServiceEligibilityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,8 @@ public class NurseOnboardingSupportService {
     private final NurseContractRepository contractRepository;
     private final NurseReviewEventRepository reviewEventRepository;
     private final NurseOnboardingMapper nurseOnboardingMapper;
+    private final NurseAccessCacheService nurseAccessCacheService;
+    private final IServiceEligibilityService serviceEligibilityService;
 
     public User currentUser() {
         String sub = AuthUtils.getCurrentSub()
@@ -82,13 +85,19 @@ public class NurseOnboardingSupportService {
                 .actor(actor)
                 .note(note)
                 .build());
+        nurseAccessCacheService.evict(profile.getUser().getId());
     }
 
     public NurseOnboardingResponse toResponse(NurseProfile profile) {
         NurseKyc kyc = nurseKycRepository.findByNurse(profile).orElse(null);
         List<NurseCertification> certifications = certificationRepository.findByNurseOrderByIdDesc(profile);
         NurseContract latestContract = contractRepository.findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
-        return nurseOnboardingMapper.toResponse(profile, kyc, certifications, latestContract);
+        return nurseOnboardingMapper.toResponse(
+                profile,
+                kyc,
+                certifications,
+                serviceEligibilityService.getNurseSkills(profile, false),
+                latestContract);
     }
 
     private boolean isCertificationsCompleted(NurseProfile profile) {

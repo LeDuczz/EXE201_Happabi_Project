@@ -34,6 +34,10 @@ public class NurseWallet {
     @Builder.Default
     private BigDecimal depositBalance = BigDecimal.ZERO;
 
+    @Column(name = "locked_withdrawal_amount", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal lockedWithdrawalAmount = BigDecimal.ZERO;
+
     @Version
     @Column(name = "version")
     private Long version;

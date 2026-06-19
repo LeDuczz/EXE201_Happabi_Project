@@ -8,6 +8,7 @@ import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.observability.metrics.MetricsRecorder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -53,8 +55,19 @@ public class UserCacheService {
         put("nurse", cacheKey("nurse", cognitoSub), response);
     }
 
+    public Optional<UUID> getUserId(String cognitoSub) {
+        return get("identity", cacheKey("identity", cognitoSub), UUID.class);
+    }
+
+    public void putUserId(String cognitoSub, UUID userId) {
+        put("identity", cacheKey("identity", cognitoSub), userId);
+    }
+
+
+    @Async("appTaskExecutor")
     public void evictProfiles(String cognitoSub) {
         List<String> keys = List.of(
+                cacheKey("identity", cognitoSub),
                 cacheKey("me", cognitoSub),
                 cacheKey("mother", cognitoSub),
                 cacheKey("nurse", cognitoSub)

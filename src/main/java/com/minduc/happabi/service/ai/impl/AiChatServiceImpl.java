@@ -45,6 +45,7 @@ public class AiChatServiceImpl implements IAiChatService {
     private final IRagRetrievalService ragRetrievalService;
     private final PromptBuilder promptBuilder;
     private final IAiChatModelClient aiChatModelClient;
+    private final AiOutputSanitizer aiOutputSanitizer;
     private final IKnowledgeBaseService knowledgeBaseService;
     private final KnowledgeItemRepository knowledgeItemRepository;
 
@@ -121,11 +122,16 @@ public class AiChatServiceImpl implements IAiChatService {
                 List<RagDocument> promptContext = bestMatch == null ? List.of() : ragDocuments;
                 String systemPrompt = promptBuilder.buildSystemPrompt(intent, promptContext);
                 String userPrompt = promptBuilder.buildUserPrompt(userText, recentMessages);
-                assistantText = aiChatModelClient.generate(model, systemPrompt, userPrompt);
+                String rawAssistantText = aiChatModelClient.generate(model, systemPrompt, userPrompt);
+                AiOutputSanitizer.SanitizedAiOutput sanitizedOutput = aiOutputSanitizer.sanitize(rawAssistantText);
+                assistantText = sanitizedOutput.content();
                 resolutionSource = promptContext.isEmpty()
                         ? providerResolutionSource("NO_MATCH")
                         : providerResolutionSource("WITH_RAG");
-                if (promptContext.isEmpty()) {
+                if (sanitizedOutput.leakageDetected()) {
+                    resolutionSource = resolutionSource + "_SANITIZED";
+                }
+                if (promptContext.isEmpty() && !sanitizedOutput.blocked()) {
                     knowledgeBaseService.createPendingReview(user.getId(), conversationId, userText, assistantText, null);
                     pendingReviewCreated = true;
                 }

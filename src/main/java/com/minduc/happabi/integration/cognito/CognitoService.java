@@ -92,6 +92,7 @@ public class CognitoService {
                 .authFlow(AuthFlowType.REFRESH_TOKEN_AUTH)
                 .clientId(clientId)
                 .authParameters(Map.of(
+                        "USERNAME", username,
                         "REFRESH_TOKEN", refreshToken,
                         "SECRET_HASH", secretHash(username)
                 ))
@@ -121,6 +122,13 @@ public class CognitoService {
                 .userPoolId(userPoolId)
                 .username(username)
                 .groupName(roleName)
+                .build());
+    }
+
+    public void adminDeleteUser(String username) {
+        cognitoClient.adminDeleteUser(AdminDeleteUserRequest.builder()
+                .userPoolId(userPoolId)
+                .username(username)
                 .build());
     }
 

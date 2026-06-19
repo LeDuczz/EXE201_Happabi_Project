@@ -19,7 +19,6 @@ spring:
         jdbc:
           time_zone: ${SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE}
         format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL}
-
   # ========================
   # SECURITY / OAuth2
   # ========================
@@ -40,7 +39,13 @@ spring:
     elasticsearch:
       repositories:
               enabled: true
-
+  # ========================
+  # CACHE
+  # ========================
+  cache:
+    type: redis
+    redis:
+      time-to-live:
 
   # ========================
   # ELASTICSEARCH
@@ -88,6 +93,7 @@ logging:
   file:
     path: ${LOG_PATH:logs}
 
+
 # ========================
 # ACTUATOR (PROMETHEUS)
 # ========================
@@ -110,6 +116,8 @@ management:
 # ========================
 app:
   env: ${APP_ENV:local}
+  booking:
+    payment-ttl-minutes: ${APP_BOOKING_PAYMENT_TTL_MINUTES:15}
   seed:
     admin:
       phone: ${APP_SEED_ADMIN_PHONE:}
@@ -117,6 +125,12 @@ app:
       full-name: ${APP_SEED_ADMIN_FULL_NAME:}
       email: ${APP_SEED_ADMIN_EMAIL:}
       enabled: ${APP_SEED_ADMIN_ENABLED:true}
+  work-session:
+    check-in-open-minutes: ${APP_WORK_SESSION_CHECK_IN_OPEN_MINUTES:10}
+    auto-confirm-hours: ${APP_WORK_SESSION_AUTO_CONFIRM_HOURS:48}
+    auto-confirm-fixed-delay-ms: ${APP_WORK_SESSION_AUTO_CONFIRM_FIXED_DELAY_MS:300000}
+    evidence-retention-days: ${APP_WORK_SESSION_EVIDENCE_RETENTION_DAYS:60}
+    evidence-cleanup-fixed-delay-ms: ${APP_WORK_SESSION_EVIDENCE_CLEANUP_FIXED_DELAY_MS:3600000}
 
 # ========================
 # Khi chưa có ELK, để host=localhost, logback sẽ fail-safe (async, neverBlock=true)
@@ -136,6 +150,9 @@ aws:
     file-cleanup-queue-url: ${AWS_SQS_FILE_CLEANUP_QUEUE_URL:}
     file-cleanup-worker-enabled: ${AWS_SQS_FILE_CLEANUP_WORKER_ENABLED:false}
     file-cleanup-poll-delay-ms: ${AWS_SQS_FILE_CLEANUP_POLL_DELAY_MS:5000}
+    nurse-review-aggregation-queue-url: ${AWS_SQS_NURSE_REVIEW_AGGREGATION_QUEUE_URL:}
+    nurse-review-aggregation-worker-enabled: ${AWS_SQS_NURSE_REVIEW_AGGREGATION_WORKER_ENABLED:false}
+    nurse-review-aggregation-poll-delay-ms: ${AWS_SQS_NURSE_REVIEW_AGGREGATION_POLL_DELAY_MS:5000}
 
   cognito:
     user-pool-id: ${AWS_USER_POOL_ID}
@@ -148,8 +165,8 @@ aws:
 # ========================
 rate-limit:
   global:
-    capacity: 100
-    refill-tokens: 100
+    capacity: 300
+    refill-tokens: 200
     refill-seconds: 60
 
   endpoints:
@@ -192,7 +209,7 @@ rate-limit:
 
 realtime:
   socket:
-    enabled: ${REALTIME_SOCKET_ENABLED:false}
+    enabled: ${REALTIME_SOCKET_ENABLED:true}
     host: ${REALTIME_SOCKET_HOST:0.0.0.0}
     port: ${REALTIME_SOCKET_PORT:9093}
 
@@ -247,5 +264,5 @@ payos:
   api-key: ${PAYOS_API_KEY}
   checksum-key: ${PAYOS_CHECKSUM_KEY}
   return-url-success: ${RETURN_URL_SUCCESS}
-  return-url-fail: ${RETURN_URL_FAIL}
+  return-url-cancel: ${RETURN_URL_CANCEL}
 

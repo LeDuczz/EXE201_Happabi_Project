@@ -14,6 +14,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.integration.s3.IS3Service;
+import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -50,12 +51,8 @@ public class LoginService {
             User user = userRepository.findByPhoneWithRolesAndProviders(request.getPhone())
                     .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
 
-            String cognitoUsername = user.getCognitoUsername() != null
-                    ? user.getCognitoUsername()
-                    : request.getPhone();
-
             AdminInitiateAuthResponse authResponse = cognitoService.adminInitiateAuth(
-                    cognitoUsername, request.getPassword());
+                    request.getPhone(), request.getPassword());
 
             AuthenticationResultType result = authResponse.authenticationResult();
 
@@ -73,7 +70,11 @@ public class LoginService {
             user.setLastLoginAt(OffsetDateTime.now());
             userRepository.save(user);
 
-            CookieUtils.addRefreshTokenCookie(response, result.refreshToken() + "::" + cognitoUsername);
+            String fallbackUsername = user.getCognitoUsername() != null
+                    ? user.getCognitoUsername()
+                    : request.getPhone();
+            String refreshUsername = extractCognitoTokenUsername(result.accessToken(), fallbackUsername);
+            CookieUtils.addRefreshTokenCookie(response, result.refreshToken() + "::" + refreshUsername);
 
             String avatarUrl = s3ServiceImpl.presign(user.getAvatarS3Key());
             UserProfileResponse profile = userMapper.toProfileResponse(user, avatarUrl);
@@ -97,6 +98,20 @@ public class LoginService {
                     e.statusCode(), e.awsErrorDetails().errorCode());
             throw new AppException(AuthErrorCode.INVALID_CREDENTIALS, e.awsErrorDetails().errorMessage());
         }
+    }
+
+    private String extractCognitoTokenUsername(String accessToken, String fallbackUsername) {
+        try {
+            String tokenUsername = SignedJWT.parse(accessToken)
+                    .getJWTClaimsSet()
+                    .getStringClaim("username");
+            if (tokenUsername != null && !tokenUsername.isBlank()) {
+                return tokenUsername;
+            }
+        } catch (Exception e) {
+            log.warn("[Auth] Cannot extract Cognito token username, using fallback username");
+        }
+        return fallbackUsername;
     }
 
     @TimedAction("REFRESH_TOKEN")
@@ -144,28 +159,22 @@ public class LoginService {
 
         if (cookieValue != null && cookieValue.contains("::")) {
             String refreshToken = cookieValue.split("::")[0];
-            String identifier = cookieValue.split("::")[1];
 
-            boolean isSocial = identifier.startsWith("google_")
-                    || identifier.startsWith("facebook_");
-
-            if (isSocial) {
-                try {
-                    cognitoService.revokeToken(refreshToken);
-                    log.info("[Auth] Social refresh token revoked");
-                } catch (Exception e) {
-                    log.warn("[Auth] revokeToken failed (may already be invalid): {}", e.getMessage());
-                }
-
-            } else {
-                try {
-                    cognitoService.globalSignOut(accessToken);
-                    log.info("[Auth] GlobalSignOut ok");
-                } catch (CognitoIdentityProviderException e) {
-                    log.warn("[Auth] GlobalSignOut failed (may already be invalid): {}",
-                            e.awsErrorDetails().errorMessage());
-                }
+            try {
+                cognitoService.globalSignOut(accessToken);
+                log.info("[Auth] GlobalSignOut ok");
+            } catch (CognitoIdentityProviderException e) {
+                log.warn("[Auth] GlobalSignOut failed (may already be invalid): {}",
+                        e.awsErrorDetails().errorMessage());
             }
+
+            try {
+                cognitoService.revokeToken(refreshToken);
+                log.info("[Auth] Refresh token revoked");
+            } catch (Exception e) {
+                log.warn("[Auth] revokeToken failed (may already be invalid): {}", e.getMessage());
+            }
+
             tokenBlacklistService.blacklist(accessToken);
         }
 

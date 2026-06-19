@@ -5,6 +5,7 @@ import com.minduc.happabi.dto.request.nurse.*;
 import com.minduc.happabi.dto.response.nurse.NurseCertificationResponse;
 import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
 import com.minduc.happabi.service.nurse.INurseOnboardingService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/nurses/me/onboarding")
 @RequiredArgsConstructor
+@Tag(name = "Nurse Onboarding", description = "APIs for nurses to manage their onboarding process")
 public class NurseController {
 
     private final INurseOnboardingService nurseOnboardingService;

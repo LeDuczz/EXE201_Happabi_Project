@@ -4,6 +4,7 @@ import com.minduc.happabi.dto.response.nurse.NurseCertificationResponse;
 import com.minduc.happabi.dto.response.nurse.NurseContractResponse;
 import com.minduc.happabi.dto.response.nurse.NurseKycResponse;
 import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
+import com.minduc.happabi.dto.response.nurse.NurseSkillResponse;
 import com.minduc.happabi.entity.NurseCertification;
 import com.minduc.happabi.entity.NurseContract;
 import com.minduc.happabi.entity.NurseKyc;
@@ -39,13 +40,15 @@ public interface NurseOnboardingMapper {
     @Mapping(target = "contractSigned", expression = "java(isContractSigned(latestContract))")
     @Mapping(target = "kyc", source = "kyc")
     @Mapping(target = "certifications", source = "certifications")
+    @Mapping(target = "skills", source = "skills")
     @Mapping(target = "latestContract", source = "latestContract")
     NurseOnboardingResponse toResponse(NurseProfile profile,
                                        NurseKyc kyc,
                                        List<NurseCertification> certifications,
+                                       List<NurseSkillResponse> skills,
                                        NurseContract latestContract);
 
-    @Mapping(target = "cccdNumberMasked", expression = "java(maskId(kyc.getCccdNumber()))")
+    @Mapping(target = "cccdNumber", source = "cccdNumber")
     @Mapping(target = "hasFrontImage", expression = "java(hasText(kyc.getCccdFrontS3Key()))")
     @Mapping(target = "hasBackImage", expression = "java(hasText(kyc.getCccdBackS3Key()))")
     NurseKycResponse toKycResponse(NurseKyc kyc);
@@ -82,10 +85,4 @@ public interface NurseOnboardingMapper {
         return value != null && !value.isBlank();
     }
 
-    default String maskId(String value) {
-        if (value == null || value.length() < 6) {
-            return "***";
-        }
-        return value.substring(0, 3) + "********" + value.substring(value.length() - 3);
-    }
 }

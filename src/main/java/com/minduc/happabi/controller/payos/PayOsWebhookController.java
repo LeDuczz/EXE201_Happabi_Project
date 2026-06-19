@@ -2,6 +2,7 @@ package com.minduc.happabi.controller.payos;
 
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.service.payment.IPayOsWebhookService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,16 +12,16 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.payos.model.webhooks.Webhook;
 
 @RestController
-@RequestMapping("/api/webhook/payos")
+@RequestMapping("/api/v1/webhook/payos")
 @RequiredArgsConstructor
+@Tag(name = "PayOs Webhooks", description = "Endpoint for handling PayOs webhook events")
 public class PayOsWebhookController {
 
-    private final IPayOsWebhookService payOsWebhook;
+    private final IPayOsWebhookService payOsWebhookService;
 
     @PostMapping
     public ResponseEntity<BaseResponse<String>> handlePayOsWebhook(@RequestBody Webhook webhookBody) {
-        String response = payOsWebhook.handlePayOsWebhook(webhookBody);
+        String response = payOsWebhookService.handlePayOsWebhook(webhookBody);
         return ResponseEntity.ok(BaseResponse.ok(response));
     }
-
 }
