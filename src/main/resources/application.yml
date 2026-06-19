@@ -116,6 +116,8 @@ management:
 # ========================
 app:
   env: ${APP_ENV:local}
+  auth:
+    auto-confirm-signup: ${AUTH_AUTO_CONFIRM_SIGNUP:false}
   booking:
     payment-ttl-minutes: ${APP_BOOKING_PAYMENT_TTL_MINUTES:15}
   seed:

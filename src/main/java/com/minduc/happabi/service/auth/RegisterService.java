@@ -5,6 +5,7 @@ import com.minduc.happabi.dto.request.auth.CreateLocalPasswordRequest;
 import com.minduc.happabi.dto.request.auth.RegisterRequest;
 import com.minduc.happabi.dto.request.auth.ResendOtpRequest;
 import com.minduc.happabi.dto.request.auth.VerifyOtpRequest;
+import com.minduc.happabi.dto.response.auth.RegisterResponse;
 import com.minduc.happabi.entity.Role;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.AuthProvider;
@@ -21,6 +22,7 @@ import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.user.UserCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.CodeMismatchException;
@@ -48,11 +50,14 @@ public class RegisterService {
     private final UserProviderService userProviderService;
     private final UserCacheService userCacheService;
 
+    @Value("${app.auth.auto-confirm-signup:false}")
+    private boolean autoConfirmSignup;
+
     @TimedAction("REGISTER")
     @AuditAction(action = "REGISTER", resourceType = "USER")
     @LogExecution
     @Transactional
-    public void register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request) {
         if (!LOCAL_ALLOWED_ROLES.contains(request.getRole())) {
             throw new AppException(AuthErrorCode.INVALID_ROLE_FOR_REGISTRATION);
         }
@@ -69,16 +74,21 @@ public class RegisterService {
 
             if (existing.hasProvider(AuthProvider.LOCAL)) {
                 handleExistingLocalUser(request, existing, hasRequestedRole, userRole);
-                return;
+                return registrationConfirmed();
             }
             handleExistingSocialUserAsLocalRegistration();
-            return;
+            return registrationRequiresOtp();
         }
 
         String cognitoSub = signUpToCognito(request);
-        createNewLocalUser(request, userRole, cognitoSub);
+        User newUser = createNewLocalUser(request, userRole, cognitoSub);
+        RegisterResponse response = autoConfirmSignup
+                ? autoConfirmRegisteredUser(request, newUser)
+                : registrationRequiresOtp();
 
-        log.info("[Auth] User registered: phone={} role={}", request.getPhone(), request.getRole());
+        log.info("[Auth] User registered: phone={} role={} autoConfirmed={}",
+                request.getPhone(), request.getRole(), response.isAutoConfirmed());
+        return response;
     }
 
     private void handleExistingSocialUserAsLocalRegistration() {
@@ -127,7 +137,7 @@ public class RegisterService {
         }
     }
 
-    private void createNewLocalUser(RegisterRequest request, Role userRole, String cognitoSub) {
+    private User createNewLocalUser(RegisterRequest request, Role userRole, String cognitoSub) {
         User newUser = User.builder()
                 .fullName(request.getFullName())
                 .cognitoUsername(cognitoSub)
@@ -141,6 +151,37 @@ public class RegisterService {
         userProviderService.saveRoleAssignment(newUser, userRole);
         assignCognitoGroup(request.getPhone(), request.getRole().name());
         userProviderService.createProfileForRole(newUser, request.getRole());
+        return newUser;
+    }
+
+    private RegisterResponse autoConfirmRegisteredUser(RegisterRequest request, User user) {
+        try {
+            cognitoService.adminConfirmSignUp(request.getPhone());
+            cognitoService.adminUpdatePhoneNumber(request.getPhone(), request.getPhone(), true);
+            user.setPhoneVerified(true);
+            userRepository.save(user);
+            evictUserCache(user);
+            log.warn("[Auth] Auto-confirmed signup for demo mode: phone={} role={}",
+                    request.getPhone(), request.getRole());
+            return registrationConfirmed();
+        } catch (CognitoIdentityProviderException e) {
+            log.error("[Auth] adminConfirmSignUp error: {}", e.awsErrorDetails().errorMessage(), e);
+            throw new AppException(AuthErrorCode.AUTH_FAILED, e.awsErrorDetails().errorMessage());
+        }
+    }
+
+    private RegisterResponse registrationConfirmed() {
+        return RegisterResponse.builder()
+                .autoConfirmed(true)
+                .otpRequired(false)
+                .build();
+    }
+
+    private RegisterResponse registrationRequiresOtp() {
+        return RegisterResponse.builder()
+                .autoConfirmed(false)
+                .otpRequired(true)
+                .build();
     }
 
     @TimedAction("VERIFY_OTP")

@@ -3,12 +3,13 @@ package com.minduc.happabi.service.auth;
 import com.minduc.happabi.dto.request.auth.SocialSyncRequest;
 import com.minduc.happabi.dto.request.auth.*;
 import com.minduc.happabi.dto.response.auth.AuthResponse;
+import com.minduc.happabi.dto.response.auth.RegisterResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface IAuthService {
 
-    void register(RegisterRequest request);
+    RegisterResponse register(RegisterRequest request);
 
     void verifyOtp(VerifyOtpRequest request);
 
