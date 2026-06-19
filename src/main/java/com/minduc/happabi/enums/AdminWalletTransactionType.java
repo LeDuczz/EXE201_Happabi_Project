@@ -3,5 +3,6 @@ package com.minduc.happabi.enums;
 public enum AdminWalletTransactionType {
     BOOKING_PAYMENT_RECEIVED,
     NURSE_PAYOUT,
-    BOOKING_REFUND
+    BOOKING_REFUND,
+    WITHDRAWAL_PAYOUT
 }

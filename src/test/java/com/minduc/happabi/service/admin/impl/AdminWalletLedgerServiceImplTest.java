@@ -3,6 +3,7 @@ package com.minduc.happabi.service.admin.impl;
 import com.minduc.happabi.entity.AdminWallet;
 import com.minduc.happabi.entity.AdminWalletTransaction;
 import com.minduc.happabi.enums.AdminWalletTransactionType;
+import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.repository.AdminWalletRepository;
 import com.minduc.happabi.repository.AdminWalletTransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -79,6 +81,32 @@ class AdminWalletLedgerServiceImplTest {
         assertThat(transaction.getAmount()).isEqualByComparingTo("67500");
         assertThat(transaction.getWalletImpact()).isEqualByComparingTo("-67500");
         assertThat(transaction.getBalanceAfter()).isEqualByComparingTo("67500");
+    }
+
+    @Test
+    void recordWithdrawalPayoutDebitsAdminWallet() {
+        wallet.setBalance(BigDecimal.valueOf(1000000));
+        when(adminWalletTransactionRepository.findByBookingIdAndTransactionType(
+                bookingId, AdminWalletTransactionType.WITHDRAWAL_PAYOUT)).thenReturn(Optional.empty());
+        when(adminWalletRepository.findByIdForUpdate(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
+
+        service.recordWithdrawalPayout(bookingId, BigDecimal.valueOf(250000));
+
+        assertThat(wallet.getBalance()).isEqualByComparingTo("750000");
+        AdminWalletTransaction transaction = captureTransaction();
+        assertThat(transaction.getTransactionType()).isEqualTo(AdminWalletTransactionType.WITHDRAWAL_PAYOUT);
+        assertThat(transaction.getAmount()).isEqualByComparingTo("250000");
+        assertThat(transaction.getWalletImpact()).isEqualByComparingTo("-250000");
+        assertThat(transaction.getBalanceAfter()).isEqualByComparingTo("750000");
+    }
+
+    @Test
+    void recordBookingPaymentReceivedRejectsZeroAmount() {
+        assertThatThrownBy(() -> service.recordBookingPaymentReceived(bookingId, BigDecimal.ZERO))
+                .isInstanceOf(AppException.class);
+
+        verify(adminWalletRepository, never()).findByIdForUpdate(any());
+        verify(adminWalletTransactionRepository, never()).save(any());
     }
 
     @Test
