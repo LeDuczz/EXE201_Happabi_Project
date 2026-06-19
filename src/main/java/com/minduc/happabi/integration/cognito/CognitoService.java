@@ -66,6 +66,13 @@ public class CognitoService {
                 .build());
     }
 
+    public void adminConfirmSignUp(String username) {
+        cognitoClient.adminConfirmSignUp(AdminConfirmSignUpRequest.builder()
+                .userPoolId(userPoolId)
+                .username(username)
+                .build());
+    }
+
     public void resendConfirmationCode(String phone) {
         cognitoClient.resendConfirmationCode(ResendConfirmationCodeRequest.builder()
                 .clientId(clientId)

@@ -10,6 +10,7 @@ import com.minduc.happabi.dto.request.auth.ResetPasswordRequest;
 import com.minduc.happabi.dto.request.auth.SocialSyncRequest;
 import com.minduc.happabi.dto.request.auth.VerifyOtpRequest;
 import com.minduc.happabi.dto.response.auth.AuthResponse;
+import com.minduc.happabi.dto.response.auth.RegisterResponse;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.service.auth.IAuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,12 +37,12 @@ public class AuthController {
 
     @AuditAction(action = "AUTH_REGISTER", resourceType = "USER")
     @PostMapping("/register")
-    public ResponseEntity<BaseResponse<Void>> register(
+    public ResponseEntity<BaseResponse<RegisterResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
+        RegisterResponse registerResponse = authService.register(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(BaseResponse.created("Registration successful.", null));
+                .body(BaseResponse.created("Registration successful.", registerResponse));
     }
 
     @PostMapping("/verify-otp")
