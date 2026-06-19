@@ -28,13 +28,13 @@ jobs:
             git reset --hard origin/main
 
             echo "Check compose config..."
-            docker compose -f docker-compose.prod.yml --env-file .env.prod config
+            docker compose -f docker-compose.yml --env-file .env.prod config
 
             echo "Build containers..."
-            docker compose -f docker-compose.prod.yml --env-file .env.prod build
+            docker compose -f docker-compose.yml --env-file .env.prod build
 
             echo "Restart services..."
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+            docker compose -f docker-compose.yml --env-file .env.prod up -d
 
             echo "Clean unused images..."
             docker image prune -f
