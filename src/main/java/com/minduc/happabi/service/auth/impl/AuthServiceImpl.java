@@ -9,6 +9,7 @@ import com.minduc.happabi.dto.request.auth.ResetPasswordRequest;
 import com.minduc.happabi.dto.request.auth.SocialSyncRequest;
 import com.minduc.happabi.dto.request.auth.VerifyOtpRequest;
 import com.minduc.happabi.dto.response.auth.AuthResponse;
+import com.minduc.happabi.dto.response.auth.RegisterResponse;
 import com.minduc.happabi.service.auth.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,8 +28,8 @@ public class AuthServiceImpl implements IAuthService {
     private final PasswordService passwordService;
 
     @Override
-    public void register(RegisterRequest request) {
-        registerService.register(request);
+    public RegisterResponse register(RegisterRequest request) {
+        return registerService.register(request);
     }
 
     @Override
