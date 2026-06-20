@@ -7,6 +7,7 @@ import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
 import com.minduc.happabi.dto.request.user.UpdateNurseProfileDisplayRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
+import com.minduc.happabi.dto.response.user.UserAttributeChangeResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.service.user.*;
 import jakarta.transaction.Transactional;
@@ -55,8 +56,8 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
-    public void requestPhoneChange(RequestPhoneChangeRequest request) {
-        userAttributeChangeService.requestPhoneChange(request);
+    public UserAttributeChangeResponse requestPhoneChange(RequestPhoneChangeRequest request) {
+        return userAttributeChangeService.requestPhoneChange(request);
     }
 
     @Override

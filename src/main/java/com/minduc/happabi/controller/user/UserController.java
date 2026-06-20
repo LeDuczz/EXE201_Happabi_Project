@@ -8,6 +8,7 @@ import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
 import com.minduc.happabi.dto.request.user.UpdateNurseProfileDisplayRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
+import com.minduc.happabi.dto.response.user.UserAttributeChangeResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.service.user.IUserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -74,10 +75,13 @@ public class UserController {
 
     @PostMapping("/me/phone/change")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<Void>> requestPhoneChange(
+    public ResponseEntity<BaseResponse<UserAttributeChangeResponse>> requestPhoneChange(
             @Valid @RequestBody RequestPhoneChangeRequest request) {
-        userService.requestPhoneChange(request);
-        return ResponseEntity.ok(BaseResponse.ok("Verification code sent to phone."));
+        UserAttributeChangeResponse response = userService.requestPhoneChange(request);
+        String message = response.isAutoConfirmed()
+                ? "Phone number verified successfully."
+                : "Verification code sent to phone.";
+        return ResponseEntity.ok(BaseResponse.ok(message, response));
     }
 
     @PostMapping("/me/phone/confirm")

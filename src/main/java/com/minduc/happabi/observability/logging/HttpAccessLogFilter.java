@@ -8,6 +8,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.core.annotation.Order;
@@ -55,8 +57,9 @@ public class HttpAccessLogFilter extends OncePerRequestFilter {
         Map<String, String> tags = new LinkedHashMap<>();
         tags.put("method", request.getMethod());
         tags.put("path", pattern);
-        tags.put("status", String.valueOf(response.getStatus()));
-        tags.put("outcome", failure == null && response.getStatus() < 500 ? "success" : "failure");
+        int status = effectiveStatus(response, failure);
+        tags.put("status", String.valueOf(status));
+        tags.put("outcome", failure == null && status < 500 ? "success" : "failure");
         if (failure != null) {
             tags.put("reason", failure.getClass().getSimpleName());
         }
@@ -68,19 +71,20 @@ public class HttpAccessLogFilter extends OncePerRequestFilter {
         MDC.put("eventType", "HTTP_ACCESS");
         MDC.put("method", request.getMethod());
         MDC.put("path", pattern);
-        MDC.put("status", String.valueOf(response.getStatus()));
+        int status = effectiveStatus(response, failure);
+        MDC.put("status", String.valueOf(status));
         MDC.put("durationMs", String.valueOf(Duration.ofNanos(durationNanos).toMillis()));
         MDC.put("ip", NetworkUtils.resolveClientIp(request));
         MDC.put("userAgent", String.valueOf(request.getHeader("User-Agent")));
         MDC.put("correlationId", ObservationUtils.correlationId(request));
         try {
-            if (failure == null && response.getStatus() < 500) {
+            if (failure == null && status < 500) {
                 log.info("[HTTP] {} {} status={} durationMs={}",
-                        request.getMethod(), pattern, response.getStatus(), Duration.ofNanos(durationNanos).toMillis());
+                        request.getMethod(), pattern, status, Duration.ofNanos(durationNanos).toMillis());
             } else {
                 log.warn("[HTTP] {} {} status={} durationMs={} reason={}",
-                        request.getMethod(), pattern, response.getStatus(), Duration.ofNanos(durationNanos).toMillis(),
-                        failure != null ? failure.getClass().getSimpleName() : "HTTP_" + response.getStatus());
+                        request.getMethod(), pattern, status, Duration.ofNanos(durationNanos).toMillis(),
+                        failure != null ? failure.getClass().getSimpleName() : "HTTP_" + status);
             }
         } finally {
             MDC.remove("eventType");
@@ -94,6 +98,30 @@ public class HttpAccessLogFilter extends OncePerRequestFilter {
         }
     }
 
+    private int effectiveStatus(HttpServletResponse response, Throwable failure) {
+        int status = response.getStatus();
+        if (failure == null || status >= 400) {
+            return status;
+        }
+        if (hasCause(failure, AccessDeniedException.class)) {
+            return HttpServletResponse.SC_FORBIDDEN;
+        }
+        if (hasCause(failure, AuthenticationException.class)) {
+            return HttpServletResponse.SC_UNAUTHORIZED;
+        }
+        return HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+    }
+
+    private boolean hasCause(Throwable throwable, Class<? extends Throwable> causeType) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (causeType.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
     private boolean shouldWriteAccessLog(HttpServletRequest request, String pattern,
                                          HttpServletResponse response, Throwable failure) {
         if (failure != null || response.getStatus() >= 500) {

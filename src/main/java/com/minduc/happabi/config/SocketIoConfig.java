@@ -19,7 +19,7 @@ public class SocketIoConfig {
     @Value("${management.endpoints.web.cors.allowed-origins}")
     private String allowedOrigin;
 
-    @Bean(destroyMethod = "stop")
+    @Bean
     public SocketIOServer socketIoServer() {
         com.corundumstudio.socketio.Configuration config = new com.corundumstudio.socketio.Configuration();
         config.setHostname(host);
