@@ -3,9 +3,11 @@ package com.minduc.happabi.service.user;
 import com.minduc.happabi.dto.request.user.ConfirmUserAttributeRequest;
 import com.minduc.happabi.dto.request.user.RequestEmailChangeRequest;
 import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
+import com.minduc.happabi.dto.response.user.UserAttributeChangeResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.exception.AppException;
+import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.mapper.UserMapper;
 import com.minduc.happabi.observability.annotation.AuditAction;
@@ -16,9 +18,13 @@ import com.minduc.happabi.integration.cognito.CognitoService;
 import com.minduc.happabi.integration.s3.IS3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.CodeMismatchException;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.CognitoIdentityProviderException;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ExpiredCodeException;
 
 import java.time.OffsetDateTime;
 
@@ -33,6 +39,9 @@ public class UserAttributeChangeService {
     private final UserMapper userMapper;
     private final IS3Service s3Service;
     private final CognitoService cognitoService;
+
+    @Value("${app.auth.auto-confirm-phone-change:false}")
+    private boolean autoConfirmPhoneChange;
 
     @Transactional
     @PreAuthorize("isAuthenticated()")
@@ -60,7 +69,7 @@ public class UserAttributeChangeService {
     @TimedAction("CONFIRM_EMAIL_CHANGE")
     public UserProfileResponse confirmEmailChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = userAccountLookupService.getCurrentSubOrThrow();
-        cognitoService.verifyUserAttribute(userAccountLookupService.requireAccessToken(), "email", request.getCode());
+        verifyUserAttribute("email", request.getCode());
 
         User user = userAccountLookupService.findBySub(cognitoSub);
         String verifiedEmail = cognitoService.getCurrentUserAttribute(userAccountLookupService.requireAccessToken(), "email");
@@ -78,7 +87,7 @@ public class UserAttributeChangeService {
     @LogExecution
     @TimedAction("REQUEST_PHONE_CHANGE")
     @AuditAction(action = "REQUEST_PHONE_CHANGE", resourceType = "USER_PROFILE")
-    public void requestPhoneChange(RequestPhoneChangeRequest request) {
+    public UserAttributeChangeResponse requestPhoneChange(RequestPhoneChangeRequest request) {
         User user = userAccountLookupService.getCurrentUser();
         if (Boolean.TRUE.equals(user.getPhoneVerified())) {
             throw new AppException(UserErrorCode.PHONE_ALREADY_SET,
@@ -88,8 +97,13 @@ public class UserAttributeChangeService {
             throw new AppException(UserErrorCode.PHONE_ALREADY_SET);
         }
         userAccountLookupService.ensurePhoneAvailableForUser(request.getPhone(), user);
+        if (autoConfirmPhoneChange) {
+            autoConfirmPhoneChange(user, request.getPhone());
+            return phoneAutoConfirmed();
+        }
         cognitoService.updatePhoneWithVerification(userAccountLookupService.requireAccessToken(), request.getPhone());
         cognitoService.resendAttributeVerificationCode(userAccountLookupService.requireAccessToken(), "phone_number");
+        return phoneVerificationRequired();
     }
 
     @Transactional
@@ -98,7 +112,7 @@ public class UserAttributeChangeService {
     @TimedAction("CONFIRM_PHONE_CHANGE")
     public UserProfileResponse confirmPhoneChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = userAccountLookupService.getCurrentSubOrThrow();
-        cognitoService.verifyUserAttribute(userAccountLookupService.requireAccessToken(), "phone_number", request.getCode());
+        verifyUserAttribute("phone_number", request.getCode());
 
         User user = userAccountLookupService.findBySub(cognitoSub);
         String verifiedPhone = cognitoService.getCurrentUserAttribute(userAccountLookupService.requireAccessToken(), "phone_number");
@@ -109,5 +123,63 @@ public class UserAttributeChangeService {
         userRepository.save(user);
         userCacheService.evictProfiles(cognitoSub);
         return userMapper.toProfileResponse(user, s3Service.presign(user.getAvatarS3Key()));
+    }
+    private UserAttributeChangeResponse phoneAutoConfirmed() {
+        return UserAttributeChangeResponse.builder()
+                .autoConfirmed(true)
+                .verificationRequired(false)
+                .build();
+    }
+
+    private UserAttributeChangeResponse phoneVerificationRequired() {
+        return UserAttributeChangeResponse.builder()
+                .autoConfirmed(false)
+                .verificationRequired(true)
+                .build();
+    }
+
+    private void autoConfirmPhoneChange(User user, String phone) {
+        String username = resolveCognitoAdminUsername(user);
+        try {
+            cognitoService.adminUpdatePhoneNumber(username, phone, true);
+            user.setPhone(phone);
+            user.setPhoneVerified(true);
+            user.setUpdatedAt(OffsetDateTime.now());
+            userRepository.save(user);
+            if (user.getCognitoSub() != null && !user.getCognitoSub().isBlank()) {
+                userCacheService.evictProfiles(user.getCognitoSub());
+            }
+            log.warn("[UserAttribute] Auto-confirmed phone change for demo mode: userId={} phone={}",
+                    user.getId(), phone);
+        } catch (CognitoIdentityProviderException e) {
+            log.error("[UserAttribute] adminUpdatePhoneNumber error: {}", e.awsErrorDetails().errorMessage(), e);
+            throw new AppException(AuthErrorCode.AUTH_FAILED, e.awsErrorDetails().errorMessage());
+        }
+    }
+
+    private String resolveCognitoAdminUsername(User user) {
+        if (user.getPhone() != null && !user.getPhone().isBlank()) {
+            return user.getPhone();
+        }
+        if (user.getCognitoUsername() != null && !user.getCognitoUsername().isBlank()) {
+            return user.getCognitoUsername();
+        }
+        if (user.getCognitoSub() != null && !user.getCognitoSub().isBlank()) {
+            return user.getCognitoSub();
+        }
+        throw new AppException(AuthErrorCode.AUTH_FAILED, "Missing Cognito username for user " + user.getId());
+    }
+    private void verifyUserAttribute(String attributeName, String code) {
+        try {
+            cognitoService.verifyUserAttribute(userAccountLookupService.requireAccessToken(), attributeName, code);
+        } catch (CodeMismatchException e) {
+            throw new AppException(AuthErrorCode.OTP_INVALID);
+        } catch (ExpiredCodeException e) {
+            throw new AppException(AuthErrorCode.OTP_EXPIRED);
+        } catch (CognitoIdentityProviderException e) {
+            log.warn("[UserAttribute] Cognito rejected {} verification: code={} message={}",
+                    attributeName, e.awsErrorDetails().errorCode(), e.awsErrorDetails().errorMessage());
+            throw new AppException(AuthErrorCode.OTP_INVALID, e.awsErrorDetails().errorMessage());
+        }
     }
 }

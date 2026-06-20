@@ -7,6 +7,7 @@ import com.minduc.happabi.dto.request.user.RequestPhoneChangeRequest;
 import com.minduc.happabi.dto.request.user.UpdateNurseProfileDisplayRequest;
 import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
+import com.minduc.happabi.dto.response.user.UserAttributeChangeResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +27,7 @@ public interface IUserService {
 
     UserProfileResponse confirmEmailChange(ConfirmUserAttributeRequest request);
 
-    void requestPhoneChange(RequestPhoneChangeRequest request);
+    UserAttributeChangeResponse requestPhoneChange(RequestPhoneChangeRequest request);
 
     UserProfileResponse confirmPhoneChange(ConfirmUserAttributeRequest request);
 
