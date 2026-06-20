@@ -118,6 +118,7 @@ app:
   env: ${APP_ENV:local}
   auth:
     auto-confirm-signup: ${AUTH_AUTO_CONFIRM_SIGNUP:false}
+    auto-confirm-phone-change: ${AUTH_AUTO_CONFIRM_PHONE_CHANGE:false}
   booking:
     payment-ttl-minutes: ${APP_BOOKING_PAYMENT_TTL_MINUTES:15}
   seed:
