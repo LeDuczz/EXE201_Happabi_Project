@@ -21,6 +21,26 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
                                                          OffsetDateTime startAt,
                                                          Collection<BookingStatus> statuses);
 
+    long countByStatus(BookingStatus status);
+
+    long countByStatusAndCreatedAtBetween(BookingStatus status, OffsetDateTime startAt, OffsetDateTime endAt);
+
+    long countByStatusAndUpdatedAtBetween(BookingStatus status, OffsetDateTime startAt, OffsetDateTime endAt);
+
+    long countByStartAtBetween(OffsetDateTime startAt, OffsetDateTime endAt);
+
+    @Query("""
+            select coalesce(sum(booking.appPaymentAmount), 0)
+            from Booking booking
+            where booking.status in :statuses
+              and booking.createdAt between :startAt and :endAt
+            """)
+    Long sumAppPaymentAmountByStatusInAndCreatedAtBetween(@Param("statuses") Collection<BookingStatus> statuses,
+                                                          @Param("startAt") OffsetDateTime startAt,
+                                                          @Param("endAt") OffsetDateTime endAt);
+
+    List<Booking> findByCreatedAtGreaterThanEqualOrderByCreatedAtAsc(OffsetDateTime startAt);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select booking

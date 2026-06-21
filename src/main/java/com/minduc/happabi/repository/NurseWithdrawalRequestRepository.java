@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +25,11 @@ public interface NurseWithdrawalRequestRepository extends JpaRepository<NurseWit
 
     @EntityGraph(attributePaths = {"nurseProfile", "nurseProfile.user", "processedByAdmin"})
     Page<NurseWithdrawalRequest> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    long countByStatus(NurseWithdrawalStatus status);
+
+    @Query("select coalesce(sum(request.amount), 0) from NurseWithdrawalRequest request where request.status = :status")
+    BigDecimal sumAmountByStatus(@Param("status") NurseWithdrawalStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select request from NurseWithdrawalRequest request where request.id = :id")

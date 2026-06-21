@@ -117,6 +117,20 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    @LogExecution
+    @AuditAction(action = "GET_KNOWLEDGE_ITEMS", resourceType = "KNOWLEDGE_ITEM")
+    @TimedAction("GET_KNOWLEDGE_ITEMS")
+    public List<KnowledgeItemResponse> getKnowledgeItems(KnowledgeStatus status) {
+        List<KnowledgeItem> items = status == null
+                ? knowledgeItemRepository.findAllByOrderByCreatedAtDesc()
+                : knowledgeItemRepository.findByStatusOrderByCreatedAtDesc(status);
+        return items.stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     @LogExecution
     @AuditAction(action = "REVIEW_KNOWLEDGE_ITEM", resourceType = "KNOWLEDGE_ITEM")

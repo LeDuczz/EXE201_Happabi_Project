@@ -23,6 +23,11 @@ public interface MotherRefundRequestRepository extends JpaRepository<MotherRefun
 
     Page<MotherRefundRequest> findByStatusOrderByCreatedAtDesc(MotherRefundStatus status, Pageable pageable);
 
+    long countByStatus(MotherRefundStatus status);
+
+    @Query("select coalesce(sum(refund.amount), 0) from MotherRefundRequest refund where refund.status = :status")
+    Long sumAmountByStatus(@Param("status") MotherRefundStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select refund

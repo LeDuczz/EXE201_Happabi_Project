@@ -19,6 +19,12 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, UUID> 
 
     boolean existsByBooking_Id(UUID bookingId);
 
+    long countByStatus(WorkSessionStatus status);
+
+    long countByStatusIn(Collection<WorkSessionStatus> statuses);
+
+    long countByScheduledStartAtBetween(OffsetDateTime startAt, OffsetDateTime endAt);
+
     Optional<WorkSession> findByBooking_Id(UUID bookingId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
