@@ -14,6 +14,10 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
 
     List<KnowledgeItem> findByStatusOrderByCreatedAtDesc(KnowledgeStatus status);
 
+    List<KnowledgeItem> findAllByOrderByCreatedAtDesc();
+
+    long countByStatus(KnowledgeStatus status);
+
     Optional<KnowledgeItem> findFirstByQuestionIgnoreCaseAndStatusOrderByUpdatedAtDesc(String question,
                                                                                       KnowledgeStatus status);
 

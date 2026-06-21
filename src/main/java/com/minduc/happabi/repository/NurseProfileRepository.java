@@ -2,6 +2,7 @@ package com.minduc.happabi.repository;
 
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.User;
+import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.NurseStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -12,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import org.springframework.data.domain.Pageable;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +25,19 @@ public interface NurseProfileRepository extends JpaRepository<NurseProfile, UUID
 
     @EntityGraph(attributePaths = {"user"})
     List<NurseProfile> findByNurseStatusOrderByUpdatedAtAsc(NurseStatus nurseStatus);
+
+    long countByNurseStatus(NurseStatus nurseStatus);
+
+    long countByAvailabilityStatus(AvailabilityStatus availabilityStatus);
+
+    @Query("""
+            select count(np)
+            from NurseProfile np
+            where np.noShowViolationCount > 0
+               or np.permanentlySuspendedAt is not null
+               or np.bookingSuspendedUntil > :now
+            """)
+    long countPenalizedProfiles(@Param("now") OffsetDateTime now);
 
     @Query("SELECT np.nurseStatus FROM NurseProfile np WHERE np.user.id = :userId")
     Optional<NurseStatus> findNurseStatusByUserId(@Param("userId") UUID userId);
