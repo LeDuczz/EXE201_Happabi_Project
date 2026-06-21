@@ -7,6 +7,7 @@ import com.minduc.happabi.dto.request.ai.UpsertKnowledgeChunkRequest;
 import com.minduc.happabi.dto.response.ai.KnowledgeChunkResponse;
 import com.minduc.happabi.dto.response.ai.KnowledgeItemResponse;
 import com.minduc.happabi.entity.User;
+import com.minduc.happabi.enums.KnowledgeStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.repository.UserIdentityProviderRepository;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -48,6 +50,13 @@ public class AiKnowledgeController {
         KnowledgeChunkResponse response = knowledgeBaseService.upsertKnowledgeChunk(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(BaseResponse.created(response));
+    }
+
+    @GetMapping({"", "/items"})
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BaseResponse<List<KnowledgeItemResponse>>> getKnowledgeItems(
+            @RequestParam(required = false) KnowledgeStatus status) {
+        return ResponseEntity.ok(BaseResponse.ok(knowledgeBaseService.getKnowledgeItems(status)));
     }
 
     @GetMapping("/pending")

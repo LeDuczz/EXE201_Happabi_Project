@@ -22,6 +22,8 @@ public interface WorkSessionIncidentRepository extends JpaRepository<WorkSession
 
     Page<WorkSessionIncident> findByStatusOrderByCreatedAtDesc(WorkSessionIncidentStatus status, Pageable pageable);
 
+    long countByStatus(WorkSessionIncidentStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select incident
