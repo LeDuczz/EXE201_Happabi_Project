@@ -24,6 +24,9 @@ public interface NurseReviewRepository extends JpaRepository<NurseReview, UUID> 
             """)
     NurseRatingAggregate calculateAggregate(@Param("nurseProfileId") UUID nurseProfileId);
 
+    @Query("select avg(nr.rating) from NurseReview nr where nr.mother.id = :motherId")
+    Double averageRatingGivenByMother(@Param("motherId") UUID motherId);
+
     interface NurseRatingAggregate {
         Double getAverageRating();
         Long getTotalReviews();
