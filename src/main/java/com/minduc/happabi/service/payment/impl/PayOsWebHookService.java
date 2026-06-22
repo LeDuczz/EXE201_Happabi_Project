@@ -20,6 +20,7 @@ import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.admin.IAdminWalletLedgerService;
+import com.minduc.happabi.service.nurse.NurseDepositActivationService;
 import com.minduc.happabi.service.payment.IPayOsWebhookService;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.worksession.IWorkSessionService;
@@ -50,6 +51,7 @@ public class PayOsWebHookService implements IPayOsWebhookService {
     private final IWorkSessionService workSessionService;
     private final IAdminWalletLedgerService adminWalletLedgerService;
     private final INotificationPublisher notificationPublisher;
+    private final NurseDepositActivationService nurseDepositActivationService;
     private final ApplicationEventPublisher eventPublisher;
 
     @LogExecution
@@ -68,21 +70,32 @@ public class PayOsWebHookService implements IPayOsWebhookService {
             }
 
             WalletTransaction transaction = walletTransactionRepository
-                    .findByReferenceIdAndStatus(data.getOrderCode(), TransactionStatus.PENDING)
+                    .findByReferenceIdForUpdate(data.getOrderCode())
                     .orElse(null);
             if (transaction != null) {
+                if (transaction.getStatus() != TransactionStatus.PENDING) {
+                    log.info("[PayOSWebhook] Duplicate nurse wallet webhook orderCode={} status={}",
+                            data.getOrderCode(), transaction.getStatus());
+                    return "Nurse wallet webhook already processed";
+                }
                 if ("00".equals(data.getCode())) {
                     transaction.setStatus(TransactionStatus.SUCCESS);
-                    walletTransactionRepository.save(transaction);
-                    NurseWallet nurseWallet = nurseWalletRepository.findByNurseId(transaction.getNurseId())
+                    NurseWallet nurseWallet = nurseWalletRepository.findByNurseIdForUpdate(transaction.getNurseId())
                             .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
 
                     if (transaction.getTransactionType() == TransactionType.TOPUP_WALLET) {
                         nurseWallet.setBalance(nurseWallet.getBalance().add(transaction.getAmount()));
+                        transaction.setWalletImpact(transaction.getAmount());
                     } else if (transaction.getTransactionType() == TransactionType.TOPUP_DEPOSIT) {
                         nurseWallet.setDepositBalance(nurseWallet.getDepositBalance().add(transaction.getAmount()));
+                        transaction.setDepositImpact(transaction.getAmount());
                     }
+                    nurseWalletRepository.save(nurseWallet);
                     walletTransactionRepository.save(transaction);
+
+                    if (transaction.getTransactionType() == TransactionType.TOPUP_DEPOSIT) {
+                        nurseDepositActivationService.activateIfDepositRequirementMet(transaction.getNurseId());
+                    }
 
                     eventPublisher.publishEvent(new BusinessMetricRequestedEvent(
                             UUID.randomUUID(),

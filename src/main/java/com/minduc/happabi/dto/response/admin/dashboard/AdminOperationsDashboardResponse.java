@@ -76,6 +76,7 @@ public class AdminOperationsDashboardResponse {
         private final long suspendedNurses;
         private final long pendingReviewNurses;
         private final long pendingContractNurses;
+        private final long pendingDepositNurses;
         private final long penalizedNurses;
     }
 

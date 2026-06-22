@@ -9,6 +9,8 @@ public interface IPayOsPaymentService {
 
     String createTopUpPaymentLink(TopUpRequest request);
 
+    String createNurseDepositPaymentLink();
+
     BookingPaymentLinkResponse createBookingPaymentLink(UUID bookingId);
 
 }

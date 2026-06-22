@@ -36,6 +36,13 @@ public class PayOsController {
         return ResponseEntity.ok(BaseResponse.ok(Map.of("checkoutUrl", checkoutUrl)));
     }
 
+    @PostMapping("/nurse-deposit-link")
+    @PreAuthorize("hasRole('NURSE')")
+    public ResponseEntity<BaseResponse<Map<String, String>>> createNurseDepositPaymentLink() {
+        String checkoutUrl = payOsPayment.createNurseDepositPaymentLink();
+        return ResponseEntity.ok(BaseResponse.ok(Map.of("checkoutUrl", checkoutUrl)));
+    }
+
     @PostMapping("/bookings/{bookingId}/payos-link")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<BaseResponse<BookingPaymentLinkResponse>> createBookingPaymentLink(

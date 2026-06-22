@@ -7,6 +7,10 @@ public interface INurseNotificationService {
 
     void notifyApprovedPendingContract(NurseProfile profile);
 
+    void notifyDepositRequired(NurseProfile profile);
+
+    void notifyDepositConfirmed(NurseProfile profile);
+
     void notifyActive(NurseProfile profile);
 
     void notifySuspended(NurseProfile profile, String reason);
