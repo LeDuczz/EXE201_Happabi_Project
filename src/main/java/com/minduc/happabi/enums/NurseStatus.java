@@ -5,6 +5,7 @@ public enum NurseStatus {
     PENDING_REVIEW,
     REJECTED,
     APPROVED_PENDING_CONTRACT,
+    PENDING_DEPOSIT,
     ACTIVE,
     SUSPENDED
 }

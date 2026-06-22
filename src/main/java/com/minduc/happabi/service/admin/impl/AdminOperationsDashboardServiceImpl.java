@@ -140,6 +140,7 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 .suspendedNurses(nurseProfileRepository.countByNurseStatus(NurseStatus.SUSPENDED))
                 .pendingReviewNurses(pendingNurseProfiles)
                 .pendingContractNurses(nurseProfileRepository.countByNurseStatus(NurseStatus.APPROVED_PENDING_CONTRACT))
+                .pendingDepositNurses(nurseProfileRepository.countByNurseStatus(NurseStatus.PENDING_DEPOSIT))
                 .penalizedNurses(nurseProfileRepository.countPenalizedProfiles(now))
                 .build();
 

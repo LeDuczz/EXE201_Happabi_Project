@@ -42,6 +42,30 @@ public class NurseNotificationService implements INurseNotificationService {
     }
 
     @Override
+    public void notifyDepositRequired(NurseProfile profile) {
+        publish(
+                profile,
+                NotificationType.NURSE_DEPOSIT_REQUIRED,
+                "Nurse deposit required",
+                "Please pay the required nurse deposit to activate your account.",
+                RESOURCE_TYPE,
+                profile.getId().toString()
+        );
+    }
+
+    @Override
+    public void notifyDepositConfirmed(NurseProfile profile) {
+        publish(
+                profile,
+                NotificationType.NURSE_DEPOSIT_CONFIRMED,
+                "Nurse deposit confirmed and account activated",
+                "Your nurse deposit was received and your account is now active.",
+                RESOURCE_TYPE,
+                profile.getId().toString()
+        );
+    }
+
+    @Override
     public void notifyActive(NurseProfile profile) {
         publish(
                 profile,
