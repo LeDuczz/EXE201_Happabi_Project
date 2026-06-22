@@ -7,6 +7,7 @@ import com.minduc.happabi.entity.NurseContract;
 import com.minduc.happabi.entity.NurseKyc;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.User;
+import com.minduc.happabi.enums.WorkSessionStatus;
 import com.minduc.happabi.mapper.NurseProfileMapper;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.UserErrorCode;
@@ -16,6 +17,7 @@ import com.minduc.happabi.repository.NurseCertificationRepository;
 import com.minduc.happabi.repository.NurseContractRepository;
 import com.minduc.happabi.repository.NurseKycRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
+import com.minduc.happabi.repository.WorkSessionRepository;
 import com.minduc.happabi.integration.s3.IS3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -31,6 +34,7 @@ import java.util.List;
 public class NurseProfileService {
 
     private final NurseProfileRepository nurseProfileRepository;
+    private final WorkSessionRepository workSessionRepository;
     private final NurseKycRepository nurseKycRepository;
     private final NurseCertificationRepository certificationRepository;
     private final NurseContractRepository contractRepository;
@@ -86,7 +90,10 @@ public class NurseProfileService {
         NurseContract latestContract = contractRepository.findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
         List<NurseCertification> certifications = certificationRepository.findByNurseOrderByIdDesc(profile);
 
-        return nurseProfileMapper.toResponse(profile, kyc, certifications, latestContract, avatarUrl);
+        NurseProfileResponse response = nurseProfileMapper.toResponse(profile, kyc, certifications, latestContract, avatarUrl);
+        response.setTotalCompletedJobs((int) workSessionRepository.countByStatusInAndNurseProfile_Id(
+                Set.of(WorkSessionStatus.COMPLETED, WorkSessionStatus.AUTO_CONFIRMED), profile.getId()));
+        return response;
     }
 
     private String normalizeText(String value) {
