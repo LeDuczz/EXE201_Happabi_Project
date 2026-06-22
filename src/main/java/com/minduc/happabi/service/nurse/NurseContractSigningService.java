@@ -34,6 +34,7 @@ public class NurseContractSigningService {
 
     private final NurseProfileRepository nurseProfileRepository;
     private final NurseContractRepository contractRepository;
+    private final NurseWalletProvisioningService nurseWalletProvisioningService;
     private final INurseNotificationService nurseNotificationService;
     private final NurseOnboardingSupportService supportService;
     private final UserCacheService userCacheService;
@@ -62,10 +63,11 @@ public class NurseContractSigningService {
         contract.setStatus(NurseContractStatus.SIGNED);
         contractRepository.save(contract);
 
-        supportService.transition(profile, NurseStatus.ACTIVE,
+        supportService.transition(profile, NurseStatus.PENDING_DEPOSIT,
                 NurseReviewAction.CONTRACT_SIGNED, supportService.currentUser(), "Contract signed");
         nurseProfileRepository.save(profile);
-        nurseNotificationService.notifyActive(profile);
+        nurseWalletProvisioningService.ensureWallet(profile.getId());
+        nurseNotificationService.notifyDepositRequired(profile);
         userCacheService.evictProfiles(profile.getUser().getCognitoSub());
         return supportService.toResponse(profile);
     }

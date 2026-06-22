@@ -46,7 +46,7 @@ public class WalletTransaction {
     @Column(name = "status", nullable = false, length = 20)
     private TransactionStatus status;
 
-    @Column(name = "reference_id", length = 100)
+    @Column(name = "reference_id", nullable = false, unique = true)
     private long referenceId;
 
     @CreationTimestamp

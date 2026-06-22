@@ -5,6 +5,7 @@ public enum NurseReviewAction {
     APPROVED,
     REJECTED,
     CONTRACT_SIGNED,
+    DEPOSIT_PAID,
     SUSPENDED,
     REACTIVATED
 }

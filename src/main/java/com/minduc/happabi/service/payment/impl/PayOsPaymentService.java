@@ -7,7 +7,9 @@ import com.minduc.happabi.entity.BookingPaymentTransaction;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.WalletTransaction;
 import com.minduc.happabi.enums.BookingStatus;
+import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.enums.TransactionStatus;
+import com.minduc.happabi.enums.TransactionType;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.PaymentErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
@@ -19,6 +21,8 @@ import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.payment.IPayOsPaymentService;
+import com.minduc.happabi.service.nurse.NurseDepositPolicy;
+import com.minduc.happabi.service.nurse.NurseWalletProvisioningService;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +51,7 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     private final BookingRepository bookingRepository;
     private final NurseProfileRepository nurseProfileRepository;
     private final UserAccountLookupService userAccountLookupService;
+    private final NurseWalletProvisioningService nurseWalletProvisioningService;
     private final PayOS payOS;
 
     @Value("${payos.return-url-success}")
@@ -63,36 +68,78 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     @Transactional
     @Override
     public String createTopUpPaymentLink(TopUpRequest request) {
-        UUID nurseProfileId = currentNurseProfileId();
+        if (request.getTopUpType() != TransactionType.TOPUP_WALLET
+                && request.getTopUpType() != TransactionType.TOPUP_DEPOSIT) {
+            throw new AppException(PaymentErrorCode.FAIL_TO_CREATE_PAYMENT_LINK_FOR_NURSE,
+                    "Unsupported nurse top-up transaction type.");
+        }
+        NurseProfile nurseProfile = currentNurseProfile();
+        UUID nurseProfileId = nurseProfile.getId();
+        nurseWalletProvisioningService.ensureWallet(nurseProfileId);
 
         List<WalletTransaction> pendingTransaction = walletTransactionRepository
                 .findByNurseIdAndStatus(nurseProfileId, TransactionStatus.PENDING);
 
-        if (!pendingTransaction.isEmpty()) {
-            for (WalletTransaction transaction : pendingTransaction) {
+        pendingTransaction.stream()
+                .filter(transaction -> transaction.getTransactionType() == request.getTopUpType())
+                .forEach(transaction -> {
                 transaction.setStatus(TransactionStatus.CANCELED);
                 transaction.setDescription(CANCEL_TRANSACTION_FOR_CREATING_NEW_TRANSACTION_MESSAGE);
-            }
-            walletTransactionRepository.saveAll(pendingTransaction);
-
-        }
-
-
-        long orderCode = Instant.now().getEpochSecond() % 1000000000L;
+                });
+        walletTransactionRepository.saveAll(pendingTransaction);
 
         WalletTransaction transaction = WalletTransaction.builder()
                 .nurseId(nurseProfileId)
                 .transactionType(request.getTopUpType())
                 .amount(request.getAmount())
                 .status(TransactionStatus.PENDING)
-                .referenceId(orderCode)
+                .referenceId(nextWalletReferenceId())
                 .build();
         walletTransactionRepository.save(transaction);
 
+        return createWalletPaymentLink(transaction);
+    }
+
+    @LogExecution
+    @AuditAction(action = "CREATE_NURSE_DEPOSIT_PAYMENT_LINK", resourceType = "NURSE_DEPOSIT")
+    @TimedAction("CREATE_NURSE_DEPOSIT_PAYMENT_LINK")
+    @Transactional
+    @Override
+    public String createNurseDepositPaymentLink() {
+        NurseProfile nurseProfile = currentNurseProfile();
+        if (nurseProfile.getNurseStatus() != NurseStatus.PENDING_DEPOSIT) {
+            throw new AppException(PaymentErrorCode.BOOKING_PAYMENT_NOT_PAYABLE,
+                    "Nurse deposit payment is not available for the current nurse status.");
+        }
+        nurseWalletProvisioningService.ensureWallet(nurseProfile.getId());
+
+        List<WalletTransaction> pendingTransactions = walletTransactionRepository
+                .findByNurseIdAndStatus(nurseProfile.getId(), TransactionStatus.PENDING);
+        pendingTransactions.stream()
+                .filter(transaction -> transaction.getTransactionType() == TransactionType.TOPUP_DEPOSIT)
+                .forEach(transaction -> {
+                    transaction.setStatus(TransactionStatus.CANCELED);
+                    transaction.setDescription(CANCEL_TRANSACTION_FOR_CREATING_NEW_TRANSACTION_MESSAGE);
+                });
+        walletTransactionRepository.saveAll(pendingTransactions);
+
+        WalletTransaction transaction = walletTransactionRepository.save(WalletTransaction.builder()
+                .nurseId(nurseProfile.getId())
+                .transactionType(TransactionType.TOPUP_DEPOSIT)
+                .amount(NurseDepositPolicy.MINIMUM_DEPOSIT_AMOUNT)
+                .status(TransactionStatus.PENDING)
+                .referenceId(nextWalletReferenceId())
+                .description("Required nurse deposit payment")
+                .build());
+
+        return createWalletPaymentLink(transaction);
+    }
+
+    private String createWalletPaymentLink(WalletTransaction transaction) {
         CreatePaymentLinkRequest paymentLinkRequest = CreatePaymentLinkRequest.builder()
-                .orderCode(orderCode)
-                .amount(request.getAmount().longValue())
-                .description("HAPPABI" + orderCode)
+                .orderCode(transaction.getReferenceId())
+                .amount(transaction.getAmount().longValue())
+                .description("HAPPABI" + transaction.getReferenceId())
                 .returnUrl(returnUrlSuccess)
                 .cancelUrl(returnUrlCancel)
                 .expiredAt(Instant.now().getEpochSecond() + (30 * 60)) //expire at 30 minute
@@ -100,19 +147,33 @@ public class PayOsPaymentService implements IPayOsPaymentService {
         try {
             CreatePaymentLinkResponse paymentLinkResponse = payOS.paymentRequests().create(paymentLinkRequest);
             log.info("[PayOSPayment] Created nurse top-up payment link nurseProfileId={} orderCode={} amount={}",
-                    nurseProfileId, orderCode, request.getAmount());
+                    transaction.getNurseId(), transaction.getReferenceId(), transaction.getAmount());
             return paymentLinkResponse.getCheckoutUrl();
         } catch (Exception e) {
             log.warn("[PayOSPayment] Failed to create nurse top-up payment link nurseProfileId={} orderCode={}",
-                    nurseProfileId, orderCode);
+                    transaction.getNurseId(), transaction.getReferenceId());
+            transaction.setStatus(TransactionStatus.FAILED);
+            transaction.setDescription("Failed to create PayOS link: " + e.getMessage());
+            walletTransactionRepository.save(transaction);
             throw new AppException(PaymentErrorCode.FAIL_TO_CREATE_PAYMENT_LINK_FOR_NURSE, e.getMessage());
         }
     }
 
-    private UUID currentNurseProfileId() {
-        NurseProfile nurseProfile = nurseProfileRepository.findByUser(userAccountLookupService.getCurrentUser())
+    private NurseProfile currentNurseProfile() {
+        return nurseProfileRepository.findByUser(userAccountLookupService.getCurrentUser())
                 .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PROFILE_NOT_FOUND));
-        return nurseProfile.getId();
+    }
+
+    private long nextWalletReferenceId() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            long referenceId = (Instant.now().toEpochMilli() % 1_000_000_000_000L) * 100
+                    + ThreadLocalRandom.current().nextLong(100);
+            if (!walletTransactionRepository.existsByReferenceId(referenceId)) {
+                return referenceId;
+            }
+        }
+        throw new AppException(PaymentErrorCode.FAIL_TO_CREATE_PAYMENT_LINK_FOR_NURSE,
+                "Could not allocate unique PayOS transaction id.");
     }
 
     @LogExecution

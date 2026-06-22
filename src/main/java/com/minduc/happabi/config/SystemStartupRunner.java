@@ -5,9 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.core.exception.SdkClientException;
 
 import com.minduc.happabi.seed.DataSeeder;
-import software.amazon.awssdk.core.exception.SdkClientException;
 
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -25,13 +25,12 @@ public class SystemStartupRunner implements ApplicationRunner {
 
         dataSeeder.seedRolesAndPermissions();
         dataSeeder.seedServiceOfferings();
-        dataSeeder.seedDemoNurses();
 
         try {
             dataSeeder.seedAdminAccount();
         } catch (SdkClientException e) {
             if (isNetworkAwsError(e)) {
-                log.warn("[Startup] AWS unavailable. Skip Cognito-backed account seed.", e);
+                log.warn("[Startup] AWS unavailable. Skip Cognito-backed admin bootstrap.", e);
             } else {
                 throw e;
             }
@@ -40,9 +39,8 @@ public class SystemStartupRunner implements ApplicationRunner {
         log.info("System startup completed");
     }
 
-    private boolean isNetworkAwsError(Throwable ex) {
-        Throwable current = ex;
-
+    private boolean isNetworkAwsError(Throwable exception) {
+        Throwable current = exception;
         while (current != null) {
             if (current instanceof UnknownHostException
                     || current instanceof SocketTimeoutException
@@ -51,7 +49,6 @@ public class SystemStartupRunner implements ApplicationRunner {
             }
             current = current.getCause();
         }
-
         return false;
     }
 }

@@ -7,17 +7,17 @@ import com.minduc.happabi.entity.NurseWallet;
 import com.minduc.happabi.entity.WalletTransaction;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.NurseWalletErrorCode;
-import com.minduc.happabi.exception.code.UserErrorCode;
-import com.minduc.happabi.exception.code.WalletTransactionErrorCode;
 import com.minduc.happabi.mapper.WalletTransactionMapper;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.nurse.INurseWalletService;
+import com.minduc.happabi.service.nurse.NurseWalletProvisioningService;
 import com.minduc.happabi.service.systemconfig.ISystemConfigService;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -36,34 +36,32 @@ public class NurseWalletService implements INurseWalletService {
     private final ISystemConfigService systemConfigService;
     private final UserAccountLookupService userAccountLookupService;
     private final WalletTransactionMapper walletTransactionMapper;
+    private final NurseWalletProvisioningService nurseWalletProvisioningService;
 
-  @Override
-  public WalletDTO getMyWalletInfo() {
-    UUID nurseProfileId = currentNurseProfileId();
-    NurseWallet wallet = nurseWalletRepository.findByNurseId(nurseProfileId)
-      .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
+    @Override
+    @Transactional
+    public WalletDTO getMyWalletInfo() {
+        NurseProfile nurseProfile = nurseProfileRepository.findByUser(userAccountLookupService.getCurrentUser())
+                .orElseThrow(() -> new AppException(NurseWalletErrorCode.NURSE_WALLET_NOT_FOUND));
+        UUID nurseProfileId = nurseProfile.getId();
+        NurseWallet wallet = nurseWalletProvisioningService.ensureWallet(nurseProfileId);
 
-    List<WalletTransaction> transactions = walletTransactionRepository
-      .findTop20ByNurseIdOrderByCreatedAtDesc(nurseProfileId)
-      .orElseThrow(() -> new AppException(WalletTransactionErrorCode.NURSE_ID_NOT_FOUND));
+        List<WalletTransaction> transactions = walletTransactionRepository
+                .findTop20ByNurseIdOrderByCreatedAtDesc(nurseProfileId)
+                .orElse(List.of());
 
-    List<TransactionDTO> transactionDTOS = transactions.stream()
-      .map(walletTransactionMapper::toTransactionDTO).toList();
+        List<TransactionDTO> transactionDTOS = transactions.stream()
+                .map(walletTransactionMapper::toTransactionDTO)
+                .toList();
 
 
-    return WalletDTO.builder()
-      .balance(wallet.getBalance())
-      .pledgeAmount(wallet.getDepositBalance())
-      .lockedWithdrawalAmount(wallet.getLockedWithdrawalAmount() == null ? BigDecimal.ZERO : wallet.getLockedWithdrawalAmount())
-      .transactions(transactionDTOS)
-      .build();
-  }
-
-  private UUID currentNurseProfileId() {
-    NurseProfile nurseProfile = nurseProfileRepository.findByUser(userAccountLookupService.getCurrentUser())
-            .orElseThrow(() -> new AppException(UserErrorCode.NURSE_PROFILE_NOT_FOUND));
-    return nurseProfile.getId();
-  }
+        return WalletDTO.builder()
+                .balance(wallet.getBalance())
+                .pledgeAmount(wallet.getDepositBalance())
+                .lockedWithdrawalAmount(wallet.getLockedWithdrawalAmount() == null ? BigDecimal.ZERO : wallet.getLockedWithdrawalAmount())
+                .transactions(transactionDTOS)
+                .build();
+    }
 
   @Override
     public boolean canAcceptCashBooking(String nurseId, BigDecimal bookingAmount) {
