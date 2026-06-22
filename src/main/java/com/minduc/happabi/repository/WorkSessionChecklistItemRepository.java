@@ -16,6 +16,8 @@ public interface WorkSessionChecklistItemRepository extends JpaRepository<WorkSe
 
     List<WorkSessionChecklistItem> findByWorkSession_IdOrderBySortOrderAsc(UUID workSessionId);
 
+    List<WorkSessionChecklistItem> findByWorkSession_IdInOrderByWorkSession_IdAscSortOrderAsc(List<UUID> workSessionIds);
+
     long countByWorkSession_IdAndStatus(UUID workSessionId, WorkSessionChecklistStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
