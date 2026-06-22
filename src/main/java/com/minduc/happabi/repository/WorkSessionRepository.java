@@ -69,6 +69,23 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, UUID> 
     @Query("""
             select ws
             from WorkSession ws
+            join fetch ws.booking booking
+            join fetch ws.mother mother
+            join fetch ws.serviceOffering serviceOffering
+            where ws.nurseProfile.id = :nurseProfileId
+              and ws.scheduledStartAt >= :startAt
+              and ws.scheduledStartAt < :endAt
+              and ws.status <> :cancelledStatus
+            order by ws.scheduledStartAt asc
+            """)
+    List<WorkSession> findDashboardSessionsForNurse(@Param("nurseProfileId") UUID nurseProfileId,
+                                                     @Param("startAt") OffsetDateTime startAt,
+                                                     @Param("endAt") OffsetDateTime endAt,
+                                                     @Param("cancelledStatus") WorkSessionStatus cancelledStatus);
+
+    @Query("""
+            select ws
+            from WorkSession ws
             join fetch ws.booking b
             join fetch ws.mother m
             join fetch ws.nurseProfile np
