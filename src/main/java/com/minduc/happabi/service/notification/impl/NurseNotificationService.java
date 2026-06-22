@@ -20,9 +20,9 @@ public class NurseNotificationService implements INurseNotificationService {
         publish(
                 profile,
                 NotificationType.NURSE_PROFILE_REJECTED,
-                "Ho so dieu duong can cap nhat",
+                "Nurse profile needs updates",
                 reason == null || reason.isBlank()
-                        ? "Ho so cua ban chua duoc duyet. Vui long kiem tra va nop lai."
+                        ? "Your nurse profile was not approved. Please review the requirements and submit it again."
                         : reason,
                 RESOURCE_TYPE,
                 profile.getId().toString()
@@ -34,8 +34,8 @@ public class NurseNotificationService implements INurseNotificationService {
         publish(
                 profile,
                 NotificationType.NURSE_PROFILE_APPROVED_PENDING_CONTRACT,
-                "Ho so dieu duong da duoc duyet",
-                "Vui long xem va xac nhan hop dong de kich hoat tai khoan nurse.",
+                "Nurse profile approved",
+                "Please review and sign your contract to activate your nurse account.",
                 RESOURCE_TYPE,
                 profile.getId().toString()
         );
@@ -46,8 +46,8 @@ public class NurseNotificationService implements INurseNotificationService {
         publish(
                 profile,
                 NotificationType.NURSE_PROFILE_ACTIVE,
-                "Tai khoan nurse da duoc kich hoat",
-                "Ban da co the nhan lich va hoat dong tren Happabi.",
+                "Nurse account activated",
+                "You can now accept bookings and use Happabi.",
                 RESOURCE_TYPE,
                 profile.getId().toString()
         );
@@ -58,9 +58,9 @@ public class NurseNotificationService implements INurseNotificationService {
         publish(
                 profile,
                 NotificationType.NURSE_SUSPENDED,
-                "Tai khoan nurse dang bi tam khoa",
+                "Nurse account temporarily suspended",
                 reason == null || reason.isBlank()
-                        ? "Tai khoan nurse cua ban dang bi tam khoa hoat dong."
+                        ? "Your nurse account has been temporarily suspended."
                         : reason,
                 RESOURCE_TYPE,
                 profile.getId().toString()
@@ -72,8 +72,8 @@ public class NurseNotificationService implements INurseNotificationService {
         publish(
                 profile,
                 NotificationType.NURSE_REACTIVATED,
-                "Tai khoan nurse da duoc mo lai",
-                "Ban co the tiep tuc nhan lich tren Happabi.",
+                "Nurse account reactivated",
+                "You can resume accepting bookings on Happabi.",
                 RESOURCE_TYPE,
                 profile.getId().toString()
         );
