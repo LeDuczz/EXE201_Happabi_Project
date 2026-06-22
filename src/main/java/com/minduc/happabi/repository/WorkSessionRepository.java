@@ -80,6 +80,28 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, UUID> 
     List<WorkSession> findByMotherId(@Param("motherId") UUID motherId);
 
     @Query("""
+            select ws
+            from WorkSession ws
+            join fetch ws.nurseProfile nurseProfile
+            join fetch nurseProfile.user nurseUser
+            join fetch ws.serviceOffering serviceOffering
+            where ws.mother.id = :motherId
+              and ws.status in :statuses
+              and ws.scheduledStartAt >= :now
+            order by ws.scheduledStartAt asc
+            """)
+    List<WorkSession> findUpcomingByMotherId(@Param("motherId") UUID motherId,
+                                             @Param("statuses") Collection<WorkSessionStatus> statuses,
+                                             @Param("now") OffsetDateTime now,
+                                             org.springframework.data.domain.Pageable pageable);
+
+    long countByMother_IdAndStatusInAndScheduledStartAtGreaterThanEqual(UUID motherId,
+                                                                         Collection<WorkSessionStatus> statuses,
+                                                                         OffsetDateTime scheduledStartAt);
+
+    long countByMother_IdAndStatusIn(UUID motherId, Collection<WorkSessionStatus> statuses);
+
+    @Query("""
             select ws.id
             from WorkSession ws
             where ws.status = :status

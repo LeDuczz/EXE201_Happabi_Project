@@ -27,6 +27,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     long countByStatusAndUpdatedAtBetween(BookingStatus status, OffsetDateTime startAt, OffsetDateTime endAt);
 
+    long countByMother_IdAndStatusIn(UUID motherId, Collection<BookingStatus> statuses);
+
     long countByStartAtBetween(OffsetDateTime startAt, OffsetDateTime endAt);
 
     @Query("""
