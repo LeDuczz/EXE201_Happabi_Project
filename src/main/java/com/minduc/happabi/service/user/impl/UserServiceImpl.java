@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
@@ -87,6 +88,7 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     @Transactional
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('USER:MANAGE')")
     public void toggleUserStatus(java.util.UUID userId) {
         userAccountLookupService.toggleUserStatus(userId);
     }

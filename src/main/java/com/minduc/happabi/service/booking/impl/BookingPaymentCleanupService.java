@@ -8,9 +8,11 @@ import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.BookingSlotRepository;
-import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
+import com.minduc.happabi.observability.audit.AuditEvent;
+import com.minduc.happabi.observability.audit.AuditRecorder;
+import com.minduc.happabi.observability.audit.AuditStatus;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -34,11 +37,11 @@ public class BookingPaymentCleanupService {
     private final BookingSlotRepository bookingSlotRepository;
     private final BookingPaymentTransactionRepository bookingPaymentTransactionRepository;
     private final INotificationPublisher notificationPublisher;
+    private final AuditRecorder auditRecorder;
 
     @Scheduled(fixedDelayString = "${app.booking.payment-cleanup-fixed-delay-ms:60000}")
     @LogExecution
     @TimedAction("CLEANUP_EXPIRED_BOOKING_PAYMENTS")
-    @AuditAction(action = "CLEANUP_EXPIRED_BOOKING_PAYMENTS", resourceType = "BOOKING_PAYMENT")
     @Transactional
     public void cleanupExpiredPendingPayments() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -68,6 +71,10 @@ public class BookingPaymentCleanupService {
                 "Booking payment expired",
                 now);
         notifyMotherPaymentExpired(bookingId);
+        auditRecorder.record(new AuditEvent(
+                "BOOKING_PAYMENT_EXPIRED", "SYSTEM", "SYSTEM", "BOOKING", bookingId.toString(),
+                AuditStatus.SUCCESS.name(), "Payment window expired", null, null, null,
+                Map.of("releasedSlots", String.valueOf(releasedSlots), "cancelledTransactions", String.valueOf(cancelledTransactions))));
         log.info("[BookingPaymentCleanup] Cancelled expired booking id={}, releasedSlots={}, cancelledTransactions={}",
                 bookingId, releasedSlots, cancelledTransactions);
     }

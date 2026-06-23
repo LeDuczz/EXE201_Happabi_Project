@@ -10,6 +10,7 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.integration.cognito.CognitoService;
 import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.RoleRepository;
 import com.minduc.happabi.repository.UserRepository;
@@ -40,6 +41,7 @@ public class AdminDoctorAccountServiceImpl implements IAdminDoctorAccountService
     @Transactional
     @PreAuthorize("hasRole('ADMIN') or hasAuthority('DOCTOR:CREATE')")
     @TimedAction("ADMIN_CREATE_DOCTOR_ACCOUNT")
+    @LogExecution
     @AuditAction(action = "ADMIN_CREATE_DOCTOR_ACCOUNT", resourceType = "DOCTOR_ACCOUNT")
     public DoctorAccountResponse createDoctorAccount(CreateDoctorAccountRequest request) {
         String fullName = request.getFullName().trim();

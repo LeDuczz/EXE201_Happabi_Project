@@ -7,6 +7,7 @@ import com.minduc.happabi.service.systemconfig.ISystemConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class SystemConfigService implements ISystemConfigService {
     }
 
     @LogExecution
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @CacheEvict(value = "app_config", key = "#key")
     public void updateConfig(String key, String newValue, String adminId) {
         SystemConfig config = systemConfigRepository.findById(key).orElse(new SystemConfig());
@@ -36,6 +38,7 @@ public class SystemConfigService implements ISystemConfigService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     public List<SystemConfig> getAllConfigs() {
         return systemConfigRepository.findAll();
     }
