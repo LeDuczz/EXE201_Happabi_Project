@@ -55,19 +55,9 @@ public class UserCacheService {
         put("nurse", cacheKey("nurse", cognitoSub), response);
     }
 
-    public Optional<UUID> getUserId(String cognitoSub) {
-        return get("identity", cacheKey("identity", cognitoSub), UUID.class);
-    }
-
-    public void putUserId(String cognitoSub, UUID userId) {
-        put("identity", cacheKey("identity", cognitoSub), userId);
-    }
-
-
     @Async("appTaskExecutor")
     public void evictProfiles(String cognitoSub) {
         List<String> keys = List.of(
-                cacheKey("identity", cognitoSub),
                 cacheKey("me", cognitoSub),
                 cacheKey("mother", cognitoSub),
                 cacheKey("nurse", cognitoSub)

@@ -53,10 +53,10 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     private final IServiceEligibilityService serviceEligibilityService;
 
     @Override
+    @PreAuthorize("hasRole('DOCTOR') and hasAuthority('NURSE:READ')")
     @LogExecution
     @Transactional(readOnly = true)
     @TimedAction("GET_PENDING_NURSE_REVIEWS")
-    @AuditAction(action = "GET_PENDING_NURSE_REVIEWS", resourceType = "NURSE_PROFILE")
     public List<NurseReviewSummaryResponse> getPendingReviews() {
         return reviewCacheService.getPendingReviews().orElseGet(() -> {
             List<NurseReviewSummaryResponse> response = nurseProfileRepository
@@ -69,9 +69,9 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     }
 
     @Override
+    @PreAuthorize("hasRole('DOCTOR') and hasAuthority('NURSE:READ')")
     @Transactional(readOnly = true)
     @LogExecution
-    @AuditAction(action = "GET_NURSE_PROFILE_FOR_REVIEW", resourceType = "NURSE_PROFILE")
     @TimedAction("GET_NURSE_PROFILE_FOR_REVIEW")
     public NurseOnboardingResponse getForDoctor(UUID profileId) {
         return reviewCacheService.getDetail(profileId).orElseGet(() -> {
@@ -83,7 +83,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasRole('DOCTOR') and hasAuthority('NURSE:READ')")
     @LogExecution
     @TimedAction("DOWNLOAD_NURSE_KYC_DOCUMENT")
     @AuditAction(action = "DOWNLOAD_NURSE_KYC_DOCUMENT", resourceType = "NURSE_PROFILE")
@@ -96,7 +96,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasRole('DOCTOR') and hasAuthority('NURSE:READ')")
     @LogExecution
     @TimedAction("DOWNLOAD_NURSE_CERTIFICATION_DOCUMENT")
     @AuditAction(action = "DOWNLOAD_NURSE_CERTIFICATION_DOCUMENT", resourceType = "NURSE_CERTIFICATION")
@@ -108,6 +108,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     }
 
     @Override
+    @PreAuthorize("hasRole('DOCTOR') and hasAuthority('NURSE:APPROVE')")
     @Transactional
     @LogExecution
     @TimedAction("APPROVE_NURSE_PROFILE")
@@ -149,6 +150,7 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     }
 
     @Override
+    @PreAuthorize("hasRole('DOCTOR') and hasAuthority('NURSE:APPROVE')")
     @Transactional
     @LogExecution
     @TimedAction("REJECT_NURSE_PROFILE")

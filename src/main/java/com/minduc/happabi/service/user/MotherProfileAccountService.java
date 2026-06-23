@@ -9,6 +9,7 @@ import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.mapper.UserMapper;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
+import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.repository.MotherProfileRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.integration.s3.IS3Service;
@@ -56,6 +57,7 @@ public class MotherProfileAccountService {
     @PreAuthorize("hasAuthority('USER:UPDATE')")
     @LogExecution
     @TimedAction("UPDATE_MOTHER_PROFILE")
+    @AuditAction(action = "UPDATE_MOTHER_PROFILE", resourceType = "MOTHER_PROFILE")
     public MotherProfileResponse updateMotherProfile(UpdateMotherProfileRequest request) {
         String cognitoSub = userAccountLookupService.getCurrentSubOrThrow();
         User user = userAccountLookupService.findBySub(cognitoSub);

@@ -7,6 +7,7 @@ import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.BookingSlotRepository;
+import com.minduc.happabi.observability.audit.AuditRecorder;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +43,9 @@ class BookingPaymentCleanupServiceTest {
 
     @Mock
     private INotificationPublisher notificationPublisher;
+
+    @Mock
+    private AuditRecorder auditRecorder;
 
     @InjectMocks
     private BookingPaymentCleanupService service;

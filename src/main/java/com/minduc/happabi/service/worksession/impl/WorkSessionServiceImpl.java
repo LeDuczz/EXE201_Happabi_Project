@@ -26,6 +26,9 @@ import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import com.minduc.happabi.mapper.WorkSessionMapper;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
+import com.minduc.happabi.observability.audit.AuditEvent;
+import com.minduc.happabi.observability.audit.AuditRecorder;
+import com.minduc.happabi.observability.audit.AuditStatus;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.WorkSessionChecklistItemRepository;
 import com.minduc.happabi.repository.WorkSessionEvidenceRepository;
@@ -52,6 +55,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -73,6 +77,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private final WorkSessionMapper workSessionMapper;
     private final INotificationPublisher notificationPublisher;
     private final IBookingSettlementService bookingSettlementService;
+    private final AuditRecorder auditRecorder;
     private final ApplicationEventPublisher eventPublisher;
     private final IFileCleanupPublisher fileCleanupPublisher;
     private final NurseAvailabilityStatusSyncService availabilityStatusSyncService;
@@ -88,7 +93,6 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
 
     @Scheduled(fixedDelayString = "${app.work-session.auto-confirm-fixed-delay-ms:300000}")
     @TimedAction("AUTO_CONFIRM_WORK_SESSIONS")
-    @AuditAction(action = "AUTO_CONFIRM_WORK_SESSIONS", resourceType = "WORK_SESSION")
     @Transactional
     public void autoConfirmExpiredSessions() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -103,6 +107,10 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
             if (updated == 1) {
                 WorkSession session = getSessionForUpdate(id);
                 bookingSettlementService.settleCompletedWorkSession(session);
+                auditRecorder.record(new AuditEvent(
+                        "WORK_SESSION_AUTO_CONFIRMED", "SYSTEM", "SYSTEM", "WORK_SESSION", id.toString(),
+                        AuditStatus.SUCCESS.name(), "Mother confirmation deadline reached", null, null, null,
+                        Map.of("bookingId", session.getBooking().getId().toString())));
                 log.info("[WorkSession] Auto-confirmed session id={}", id);
             }
         }
