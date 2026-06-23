@@ -15,6 +15,7 @@ import com.minduc.happabi.service.ai.IKnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     private final KnowledgeItemRepository knowledgeItemRepository;
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @Transactional
     @LogExecution
     @AuditAction(action = "UPSERT_KNOWLEDGE_CHUNK", resourceType = "KNOWLEDGE_ITEM")
@@ -105,6 +107,7 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @Transactional(readOnly = true)
     @LogExecution
     @AuditAction(action = "GET_PENDING_REVIEW_KNOWLEDGE_ITEMS", resourceType = "KNOWLEDGE_ITEM")
@@ -117,6 +120,7 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @Transactional(readOnly = true)
     @LogExecution
     @AuditAction(action = "GET_KNOWLEDGE_ITEMS", resourceType = "KNOWLEDGE_ITEM")
@@ -131,6 +135,7 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @Transactional
     @LogExecution
     @AuditAction(action = "REVIEW_KNOWLEDGE_ITEM", resourceType = "KNOWLEDGE_ITEM")
@@ -150,6 +155,7 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @Transactional
     @LogExecution
     @AuditAction(action = "REINDEX_KNOWLEDGE_ITEM", resourceType = "KNOWLEDGE_ITEM")
@@ -165,6 +171,7 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @Transactional
     @LogExecution
     @AuditAction(action = "REINDEX_VERIFIED_KNOWLEDGE_ITEMS", resourceType = "KNOWLEDGE_ITEM")

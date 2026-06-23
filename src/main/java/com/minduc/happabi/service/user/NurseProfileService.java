@@ -13,6 +13,7 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
+import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.repository.NurseCertificationRepository;
 import com.minduc.happabi.repository.NurseContractRepository;
 import com.minduc.happabi.repository.NurseKycRepository;
@@ -67,6 +68,7 @@ public class NurseProfileService {
     @PreAuthorize("hasRole('NURSE')")
     @LogExecution
     @TimedAction("UPDATE_NURSE_PROFILE_DISPLAY")
+    @AuditAction(action = "UPDATE_NURSE_PROFILE_DISPLAY", resourceType = "NURSE_PROFILE")
     public NurseProfileResponse updateDisplayProfile(UpdateNurseProfileDisplayRequest request) {
         String cognitoSub = userAccountLookupService.getCurrentSubOrThrow();
         User user = userAccountLookupService.findBySub(cognitoSub);

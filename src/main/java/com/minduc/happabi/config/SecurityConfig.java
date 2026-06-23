@@ -1,12 +1,13 @@
 package com.minduc.happabi.config;
 
-import com.minduc.happabi.enums.UserRole;
+import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.CustomAccessDeniedHandler;
 import com.minduc.happabi.exception.CustomAuthenticationEntryPoint;
 import com.minduc.happabi.filter.GlobalIpRateLimitFilter;
 import com.minduc.happabi.filter.RateLimitFilter;
 import com.minduc.happabi.filter.TokenBlacklistFilter;
 import com.minduc.happabi.service.permission.PermissionCacheService;
+import com.minduc.happabi.service.user.AuthenticatedUserIdentity;
 import com.minduc.happabi.service.user.IUserIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -26,10 +27,13 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import com.minduc.happabi.config.security.UserContext;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -98,40 +102,35 @@ public class SecurityConfig {
         return new Converter<Jwt, AbstractAuthenticationToken>() {
             @Override
             public AbstractAuthenticationToken convert(Jwt jwt) {
-                Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
                 String sub = jwt.getClaimAsString("sub");
-
-                UUID userId = userIdentityService.getUserIdByCognitoSub(sub);
-
-                UserContext principal = new UserContext(userId, jwt);
+                AuthenticatedUserIdentity identity = resolveIdentity(sub);
+                Collection<GrantedAuthority> authorities = extractAuthorities(identity);
+                UserContext principal = new UserContext(identity.userId(), jwt);
 
                 return new UsernamePasswordAuthenticationToken(principal, null, authorities);
             }
         };
     }
 
-    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+    private AuthenticatedUserIdentity resolveIdentity(String cognitoSub) {
+        if (cognitoSub == null || cognitoSub.isBlank()) {
+            throw invalidToken("Missing subject claim.");
+        }
+        try {
+            return userIdentityService.getActiveUserIdentity(cognitoSub);
+        } catch (AppException exception) {
+            throw invalidToken(exception.getMessage());
+        }
+    }
+
+    private OAuth2AuthenticationException invalidToken(String description) {
+        return new OAuth2AuthenticationException(new OAuth2Error("invalid_token"), description);
+    }
+
+    private Collection<GrantedAuthority> extractAuthorities(AuthenticatedUserIdentity identity) {
         Collection<GrantedAuthority> authorities = new ArrayList<>();
-
-        List<String> groups = jwt.getClaimAsStringList("cognito:groups");
-
-        Set<String> validRoles = Arrays.stream(UserRole.values())
-                .map(Enum::name)
-                .collect(Collectors.toSet());
-
-        Set<String> assignedRoles = new HashSet<>();
-        if (groups != null && !groups.isEmpty()) {
-            assignedRoles = groups.stream()
-                    .map(String::toUpperCase)
-                    .filter(validRoles::contains)
-                    .collect(Collectors.toSet());
-        }
-
-        if (assignedRoles.isEmpty()) {
-            assignedRoles.add("MOTHER");
-        }
-
-        for (String roleName : assignedRoles) {
+        for (var role : identity.roles()) {
+            String roleName = role.name();
             authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName));
 
             List<String> permissions = permissionCacheService.getPermissions(roleName);

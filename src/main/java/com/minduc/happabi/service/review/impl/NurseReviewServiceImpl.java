@@ -9,6 +9,9 @@ import com.minduc.happabi.enums.NurseReviewTag;
 import com.minduc.happabi.enums.WorkSessionStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.NurseReviewErrorCode;
+import com.minduc.happabi.observability.annotation.AuditAction;
+import com.minduc.happabi.observability.annotation.LogExecution;
+import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.exception.code.WorkSessionErrorCode;
 import com.minduc.happabi.integration.sqs.INurseReviewAggregationPublisher;
 import com.minduc.happabi.mapper.NurseReviewMapper;
@@ -48,6 +51,9 @@ public class NurseReviewServiceImpl implements INurseReviewService {
     private final INurseReviewAggregationPublisher aggregationPublisher;
 
     @Override
+    @LogExecution
+    @TimedAction("CREATE_NURSE_REVIEW")
+    @AuditAction(action = "CREATE_NURSE_REVIEW", resourceType = "NURSE_REVIEW")
     @Transactional
     @PreAuthorize("hasRole('MOTHER')")
     public NurseReviewResponse createMyReview(UUID workSessionId, CreateNurseReviewRequest request) {

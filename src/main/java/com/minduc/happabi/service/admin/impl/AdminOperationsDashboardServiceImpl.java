@@ -41,6 +41,7 @@ import com.minduc.happabi.repository.WorkSessionRepository;
 import com.minduc.happabi.service.admin.IAdminOperationsDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -80,6 +81,7 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
     private final KnowledgeItemRepository knowledgeItemRepository;
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
     @Transactional(readOnly = true)
     @LogExecution
     @TimedAction("ADMIN_OPERATIONS_DASHBOARD_OVERVIEW")

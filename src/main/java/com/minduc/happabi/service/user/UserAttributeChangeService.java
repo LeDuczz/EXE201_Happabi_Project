@@ -67,6 +67,7 @@ public class UserAttributeChangeService {
     @PreAuthorize("isAuthenticated()")
     @LogExecution
     @TimedAction("CONFIRM_EMAIL_CHANGE")
+    @AuditAction(action = "CONFIRM_EMAIL_CHANGE", resourceType = "USER_PROFILE")
     public UserProfileResponse confirmEmailChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = userAccountLookupService.getCurrentSubOrThrow();
         verifyUserAttribute("email", request.getCode());
@@ -110,6 +111,7 @@ public class UserAttributeChangeService {
     @PreAuthorize("isAuthenticated()")
     @LogExecution
     @TimedAction("CONFIRM_PHONE_CHANGE")
+    @AuditAction(action = "CONFIRM_PHONE_CHANGE", resourceType = "USER_PROFILE")
     public UserProfileResponse confirmPhoneChange(ConfirmUserAttributeRequest request) {
         String cognitoSub = userAccountLookupService.getCurrentSubOrThrow();
         verifyUserAttribute("phone_number", request.getCode());
