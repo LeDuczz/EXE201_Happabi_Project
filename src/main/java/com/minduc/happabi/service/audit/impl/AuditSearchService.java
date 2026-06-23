@@ -5,7 +5,7 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.minduc.happabi.exception.AppException;
-import com.minduc.happabi.exception.code.BusinessMetricsErrorCode;
+import com.minduc.happabi.exception.code.AuditErrorCode;
 import com.minduc.happabi.service.audit.IAuditSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +45,8 @@ public class AuditSearchService implements IAuditSearchService {
         try {
             SearchRequest searchRequest = SearchRequest.of(s -> {
                 s.index(indexPattern)
+                        .allowNoIndices(true)
+                        .ignoreUnavailable(true)
                         .from((int) pageable.getOffset())
                         .size(pageable.getPageSize())
                         .sort(so -> so.field(
@@ -77,7 +79,7 @@ public class AuditSearchService implements IAuditSearchService {
 
         } catch (IOException e) {
             log.error("Failed to search audit logs in Elasticsearch", e);
-            throw new AppException(BusinessMetricsErrorCode.GET_DAILY_GMV_LAST_30_DAYS_ERROR_CODE);
+            throw new AppException(AuditErrorCode.AUDIT_LOG_SEARCH_FAILED);
         }
     }
 
