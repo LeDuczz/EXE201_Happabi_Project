@@ -28,6 +28,7 @@ import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IBookingService;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
+import com.minduc.happabi.service.booking.PlatformCommissionCalculator;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +63,7 @@ public class BookingServiceImpl implements IBookingService {
     private final ServiceOfferingRepository serviceOfferingRepository;
     private final UserAccountLookupService userAccountLookupService;
     private final IServiceEligibilityService serviceEligibilityService;
+    private final PlatformCommissionCalculator platformCommissionCalculator;
     private final INotificationPublisher notificationPublisher;
 
     @Value("${app.booking.payment-ttl-minutes:15}")
@@ -100,6 +102,8 @@ public class BookingServiceImpl implements IBookingService {
         BookingPaymentOption paymentOption = request.getPaymentOption() == null
                 ? BookingPaymentOption.DEPOSIT_30_PERCENT
                 : request.getPaymentOption();
+        PlatformCommissionCalculator.CommissionQuote commissionQuote = platformCommissionCalculator
+                .quote(serviceOffering.getGrossAmount());
         PaymentBreakdown paymentBreakdown = calculatePaymentBreakdown(serviceOffering.getGrossAmount(), paymentOption);
         Booking booking = Booking.builder()
                 .mother(mother)
@@ -111,8 +115,8 @@ public class BookingServiceImpl implements IBookingService {
                 .endAt(endAt)
                 .paymentExpiresAt(paymentExpiresAt)
                 .grossAmount(serviceOffering.getGrossAmount())
-                .platformFeeAmount(serviceOffering.getPlatformFeeAmount())
-                .nurseEarningAmount(serviceOffering.getNurseEarningAmount())
+                .platformFeeAmount(commissionQuote.platformFeeAmount())
+                .nurseEarningAmount(commissionQuote.nurseEarningAmount())
                 .paymentOption(paymentOption)
                 .depositAmount(paymentBreakdown.depositAmount())
                 .remainingCashAmount(paymentBreakdown.remainingCashAmount())
