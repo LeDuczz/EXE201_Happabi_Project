@@ -19,8 +19,7 @@ public class AdminOperationsDashboardResponse {
     private final NurseSupplyHealth nurseSupplyHealth;
     private final FeedbackInsight feedbackInsight;
     private final List<RiskAlert> riskAlerts;
-    private final List<DailyMetric> appPaymentTrend;
-    private final List<FinancialDailyMetric> financialTrend;
+    private final List<DailyMetric> gmvTrend;
     private final OffsetDateTime generatedAt;
 
     @Getter
@@ -55,6 +54,9 @@ public class AdminOperationsDashboardResponse {
     @Builder
     public static class FinancialControl {
         private final BigDecimal adminWalletBalance;
+        private final BigDecimal todayGrossMerchandiseValue;
+        private final BigDecimal last7DaysGrossMerchandiseValue;
+        private final BigDecimal last30DaysGrossMerchandiseValue;
         private final BigDecimal todayAppPayments;
         private final BigDecimal last7DaysAppPayments;
         private final BigDecimal last30DaysAppPayments;
@@ -62,7 +64,7 @@ public class AdminOperationsDashboardResponse {
         private final BigDecimal last30DaysPlatformRevenue;
         private final BigDecimal last30DaysPaymentGatewayFees;
         private final BigDecimal last30DaysNursePayouts;
-        private final BigDecimal last30DaysNetPlatformRevenue;
+        private final BigDecimal last30DaysNetCashContribution;
         private final BigDecimal pendingWithdrawalAmount;
         private final BigDecimal pendingRefundAmount;
         private final long pendingWithdrawals;
@@ -125,12 +127,4 @@ public class AdminOperationsDashboardResponse {
         private final BigDecimal value;
     }
 
-    @Getter
-    @Builder
-    public static class FinancialDailyMetric {
-        private final LocalDate date;
-        private final BigDecimal platformRevenue;
-        private final BigDecimal paymentGatewayFee;
-        private final BigDecimal netPlatformRevenue;
-    }
 }
