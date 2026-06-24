@@ -4,7 +4,6 @@ import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardR
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.ActionQueue;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.BookingOperations;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.DailyMetric;
-import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.FinancialDailyMetric;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.FeedbackInsight;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.FinancialControl;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.LatestFeedback;
@@ -12,6 +11,7 @@ import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardR
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.RiskAlert;
 import com.minduc.happabi.entity.AdminWallet;
 import com.minduc.happabi.entity.AdminWalletTransaction;
+import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.UserFeedback;
 import com.minduc.happabi.enums.AdminWalletTransactionType;
 import com.minduc.happabi.enums.AvailabilityStatus;
@@ -66,6 +66,11 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
             WorkSessionStatus.IN_PROGRESS,
             WorkSessionStatus.PENDING_MOTHER_CONFIRMATION,
             WorkSessionStatus.REPORTED
+    );
+    private static final List<BookingStatus> PAID_BOOKING_STATUSES = List.of(
+            BookingStatus.PENDING_NURSE_ACCEPTANCE,
+            BookingStatus.ACCEPTED,
+            BookingStatus.COMPLETED
     );
 
     private final UserRepository userRepository;
@@ -165,8 +170,7 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 .nurseSupplyHealth(nurseSupplyHealth)
                 .feedbackInsight(feedbackInsight)
                 .riskAlerts(buildRiskAlerts(actionQueue, bookingOperations, nurseSupplyHealth))
-                .appPaymentTrend(buildAppPaymentTrend(last30Days))
-                .financialTrend(buildFinancialTrend(last30Days))
+                .gmvTrend(buildGmvTrend(last30Days))
                 .generatedAt(now)
                 .build();
     }
@@ -233,6 +237,9 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 .adminWalletBalance(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)
                         .map(AdminWallet::getBalance)
                         .orElse(BigDecimal.ZERO))
+                .todayGrossMerchandiseValue(sumGrossMerchandiseValue(todayStart, tomorrowStart))
+                .last7DaysGrossMerchandiseValue(sumGrossMerchandiseValue(last7Days, now))
+                .last30DaysGrossMerchandiseValue(sumGrossMerchandiseValue(last30Days, now))
                 .todayAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, todayStartInstant, tomorrowStartInstant))
                 .last7DaysAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, last7DaysInstant, nowInstant))
                 .last30DaysAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, last30DaysInstant, nowInstant))
@@ -247,7 +254,7 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                         last30DaysInstant,
                         nowInstant
                 ))
-                .last30DaysNetPlatformRevenue(last30DaysPlatformRevenue.subtract(last30DaysPaymentGatewayFees))
+                .last30DaysNetCashContribution(last30DaysPlatformRevenue.subtract(last30DaysPaymentGatewayFees))
                 .pendingWithdrawalAmount(nurseWithdrawalRequestRepository.sumAmountByStatus(NurseWithdrawalStatus.PENDING))
                 .pendingRefundAmount(pendingRefundAmount)
                 .pendingWithdrawals(pendingWithdrawals)
@@ -264,6 +271,14 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 startAt,
                 endAt
         );
+    }
+
+    private BigDecimal sumGrossMerchandiseValue(OffsetDateTime startAt, OffsetDateTime endAt) {
+        return BigDecimal.valueOf(bookingRepository.sumGrossAmountByStatusInAndCreatedAtBetween(
+                PAID_BOOKING_STATUSES,
+                startAt,
+                endAt
+        ));
     }
 
     private List<RiskAlert> buildRiskAlerts(ActionQueue actionQueue,
@@ -307,7 +322,7 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 .build());
     }
 
-    private List<DailyMetric> buildAppPaymentTrend(OffsetDateTime from) {
+    private List<DailyMetric> buildGmvTrend(OffsetDateTime from) {
         ZoneId zoneId = ZoneId.systemDefault();
         LocalDate startDate = from.toLocalDate();
         LocalDate today = LocalDate.now(zoneId);
@@ -316,15 +331,12 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
             dailyAmounts.put(date, BigDecimal.ZERO);
         }
 
-        List<AdminWalletTransaction> transactions =
-                adminWalletTransactionRepository.findByWalletIdAndTransactionTypeAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
-                        AdminWallet.PLATFORM_ADMIN_WALLET_ID,
-                        AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED,
-                        from.toInstant()
-                );
-        for (AdminWalletTransaction transaction : transactions) {
-            LocalDate date = transaction.getCreatedAt().atZone(zoneId).toLocalDate();
-            dailyAmounts.computeIfPresent(date, (key, current) -> current.add(transaction.getAmount()));
+        for (Booking booking : bookingRepository.findByStatusInAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
+                PAID_BOOKING_STATUSES,
+                from
+        )) {
+            LocalDate date = booking.getCreatedAt().atZoneSameInstant(zoneId).toLocalDate();
+            dailyAmounts.computeIfPresent(date, (key, current) -> current.add(BigDecimal.valueOf(booking.getGrossAmount())));
         }
 
         return dailyAmounts.entrySet().stream()
@@ -333,52 +345,6 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                         .value(entry.getValue())
                         .build())
                 .toList();
-    }
-
-    private List<FinancialDailyMetric> buildFinancialTrend(OffsetDateTime from) {
-        ZoneId zoneId = ZoneId.systemDefault();
-        LocalDate startDate = from.toLocalDate();
-        LocalDate today = LocalDate.now(zoneId);
-        Map<LocalDate, FinancialAmounts> dailyAmounts = new LinkedHashMap<>();
-        for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
-            dailyAmounts.put(date, new FinancialAmounts());
-        }
-
-        platformRevenueRepository.findByCreatedAtGreaterThanEqualOrderByCreatedAtAsc(from.toInstant())
-                .forEach(revenue -> {
-                    LocalDate date = revenue.getCreatedAt().atZone(zoneId).toLocalDate();
-                    FinancialAmounts amounts = dailyAmounts.get(date);
-                    if (amounts != null) {
-                        amounts.platformRevenue = amounts.platformRevenue.add(revenue.getAmount());
-                    }
-                });
-
-        adminWalletTransactionRepository.findByWalletIdAndTransactionTypeInAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
-                        AdminWallet.PLATFORM_ADMIN_WALLET_ID,
-                        List.of(AdminWalletTransactionType.PAYMENT_GATEWAY_FEE),
-                        from.toInstant()
-                )
-                .forEach(transaction -> {
-                    LocalDate date = transaction.getCreatedAt().atZone(zoneId).toLocalDate();
-                    FinancialAmounts amounts = dailyAmounts.get(date);
-                    if (amounts != null) {
-                        amounts.paymentGatewayFee = amounts.paymentGatewayFee.add(transaction.getAmount());
-                    }
-                });
-
-        return dailyAmounts.entrySet().stream()
-                .map(entry -> FinancialDailyMetric.builder()
-                        .date(entry.getKey())
-                        .platformRevenue(entry.getValue().platformRevenue)
-                        .paymentGatewayFee(entry.getValue().paymentGatewayFee)
-                        .netPlatformRevenue(entry.getValue().platformRevenue.subtract(entry.getValue().paymentGatewayFee))
-                        .build())
-                .toList();
-    }
-
-    private static class FinancialAmounts {
-        private BigDecimal platformRevenue = BigDecimal.ZERO;
-        private BigDecimal paymentGatewayFee = BigDecimal.ZERO;
     }
 
     private LatestFeedback toLatestFeedback(UserFeedback feedback) {

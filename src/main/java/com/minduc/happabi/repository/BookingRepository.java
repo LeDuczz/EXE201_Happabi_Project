@@ -41,6 +41,19 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
                                                           @Param("startAt") OffsetDateTime startAt,
                                                           @Param("endAt") OffsetDateTime endAt);
 
+    @Query("""
+            select coalesce(sum(booking.grossAmount), 0)
+            from Booking booking
+            where booking.status in :statuses
+              and booking.createdAt between :startAt and :endAt
+            """)
+    Long sumGrossAmountByStatusInAndCreatedAtBetween(@Param("statuses") Collection<BookingStatus> statuses,
+                                                      @Param("startAt") OffsetDateTime startAt,
+                                                      @Param("endAt") OffsetDateTime endAt);
+
+    List<Booking> findByStatusInAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(Collection<BookingStatus> statuses,
+                                                                                  OffsetDateTime startAt);
+
     List<Booking> findByCreatedAtGreaterThanEqualOrderByCreatedAtAsc(OffsetDateTime startAt);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
