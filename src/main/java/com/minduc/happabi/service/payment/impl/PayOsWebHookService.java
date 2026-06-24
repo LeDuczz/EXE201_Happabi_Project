@@ -151,6 +151,14 @@ public class PayOsWebHookService implements IPayOsWebhookService {
                 adminWalletLedgerService.recordBookingPaymentReceived(
                         bookingId,
                         BigDecimal.valueOf(bookingPayment.getAmount()));
+                long providerFeeAmount = bookingPayment.getProviderFeeAmount() == null
+                        ? 0L
+                        : bookingPayment.getProviderFeeAmount();
+                if (providerFeeAmount > 0) {
+                    adminWalletLedgerService.recordPaymentGatewayFee(
+                            bookingId,
+                            BigDecimal.valueOf(providerFeeAmount));
+                }
                 workSessionService.createFromAcceptedBooking(booking);
                 eventPublisher.publishEvent(new BusinessMetricRequestedEvent(
                         UUID.randomUUID(),
@@ -159,8 +167,9 @@ public class PayOsWebHookService implements IPayOsWebhookService {
                         BigDecimal.valueOf(bookingPayment.getAmount()),
                         "SUCCESS"
                 ));
-                log.info("[PayOSWebhook] Booking payment success bookingId={} orderCode={} amount={}",
-                        bookingId, data.getOrderCode(), bookingPayment.getAmount());
+                log.info("[PayOSWebhook] Booking payment success bookingId={} orderCode={} grossAmount={} providerFee={} netReceived={}",
+                        bookingId, data.getOrderCode(), bookingPayment.getAmount(), providerFeeAmount,
+                        bookingPayment.getNetReceivedAmount());
             }
             return "Success to handle PayOs booking payment webhook";
         }

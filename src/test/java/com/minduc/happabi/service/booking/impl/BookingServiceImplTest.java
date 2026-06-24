@@ -24,6 +24,7 @@ import com.minduc.happabi.repository.NurseAvailabilityWindowRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.ServiceOfferingRepository;
 import com.minduc.happabi.service.booking.IServiceEligibilityService;
+import com.minduc.happabi.service.booking.PlatformCommissionCalculator;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,6 +74,9 @@ class BookingServiceImplTest {
     private IServiceEligibilityService serviceEligibilityService;
 
     @Mock
+    private PlatformCommissionCalculator platformCommissionCalculator;
+
+    @Mock
     private INotificationPublisher notificationPublisher;
 
     private BookingServiceImpl service;
@@ -91,10 +96,20 @@ class BookingServiceImplTest {
                 serviceOfferingRepository,
                 userAccountLookupService,
                 serviceEligibilityService,
+                platformCommissionCalculator,
                 notificationPublisher);
         ReflectionTestUtils.setField(service, "paymentTtlMinutes", 15L);
 
         mother = User.builder().id(UUID.randomUUID()).fullName("Mother").build();
+        lenient().when(platformCommissionCalculator.quote(any(Long.class))).thenAnswer(invocation -> {
+            long grossAmount = invocation.getArgument(0);
+            long platformFee = Math.round(grossAmount * 0.15d);
+            return new PlatformCommissionCalculator.CommissionQuote(
+                    java.math.BigDecimal.valueOf(0.15d),
+                    platformFee,
+                    grossAmount - platformFee
+            );
+        });
         nurse = NurseProfile.builder()
                 .id(UUID.randomUUID())
                 .user(User.builder().id(UUID.randomUUID()).fullName("Nurse A").build())

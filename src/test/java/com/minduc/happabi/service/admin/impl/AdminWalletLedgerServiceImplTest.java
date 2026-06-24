@@ -84,6 +84,21 @@ class AdminWalletLedgerServiceImplTest {
     }
 
     @Test
+    void recordPaymentGatewayFeeDebitsAdminWalletOnce() {
+        wallet.setBalance(BigDecimal.valueOf(135000));
+        when(adminWalletTransactionRepository.findByBookingIdAndTransactionType(
+                bookingId, AdminWalletTransactionType.PAYMENT_GATEWAY_FEE)).thenReturn(Optional.empty());
+        when(adminWalletRepository.findByIdForUpdate(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
+
+        service.recordPaymentGatewayFee(bookingId, BigDecimal.valueOf(743));
+
+        assertThat(wallet.getBalance()).isEqualByComparingTo("134257");
+        AdminWalletTransaction transaction = captureTransaction();
+        assertThat(transaction.getTransactionType()).isEqualTo(AdminWalletTransactionType.PAYMENT_GATEWAY_FEE);
+        assertThat(transaction.getWalletImpact()).isEqualByComparingTo("-743");
+    }
+
+    @Test
     void recordWithdrawalPayoutDebitsAdminWallet() {
         wallet.setBalance(BigDecimal.valueOf(1000000));
         when(adminWalletTransactionRepository.findByBookingIdAndTransactionType(

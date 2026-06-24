@@ -23,6 +23,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -53,6 +54,16 @@ public class BookingPaymentTransaction {
 
     @Column(name = "amount", nullable = false)
     private Long amount;
+
+    @Column(name = "provider_fee_rate", precision = 8, scale = 6)
+    private BigDecimal providerFeeRate;
+
+    @Column(name = "provider_fee_amount")
+    @Builder.Default
+    private Long providerFeeAmount = 0L;
+
+    @Column(name = "net_received_amount")
+    private Long netReceivedAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
