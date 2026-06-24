@@ -8,9 +8,12 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Repository
 public interface PlatformRevenueRepository extends JpaRepository<PlatformRevenue, String> {
+
+    List<PlatformRevenue> findByCreatedAtGreaterThanEqualOrderByCreatedAtAsc(Instant createdAt);
 
     @Query("""
             select coalesce(sum(revenue.amount), 0)

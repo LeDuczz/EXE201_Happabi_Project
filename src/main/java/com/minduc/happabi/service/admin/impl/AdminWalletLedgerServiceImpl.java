@@ -50,6 +50,22 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
 
     @Override
     @LogExecution
+    @TimedAction("ADMIN_WALLET_RECORD_PAYMENT_GATEWAY_FEE")
+    @AuditAction(action = "ADMIN_WALLET_RECORD_PAYMENT_GATEWAY_FEE", resourceType = "ADMIN_WALLET")
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recordPaymentGatewayFee(UUID bookingId, BigDecimal amount) {
+        BigDecimal feeAmount = positive(amount);
+        recordTransaction(
+                bookingId,
+                AdminWalletTransactionType.PAYMENT_GATEWAY_FEE,
+                feeAmount,
+                feeAmount.negate(),
+                "Payment gateway fee for booking " + bookingId
+        );
+    }
+
+    @Override
+    @LogExecution
     @TimedAction("ADMIN_WALLET_RECORD_NURSE_PAYOUT")
     @AuditAction(action = "ADMIN_WALLET_RECORD_NURSE_PAYOUT", resourceType = "ADMIN_WALLET")
     @Transactional(propagation = Propagation.MANDATORY)

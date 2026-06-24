@@ -26,6 +26,11 @@ public interface AdminWalletTransactionRepository extends JpaRepository<AdminWal
             AdminWalletTransactionType transactionType,
             Instant createdAt);
 
+    List<AdminWalletTransaction> findByWalletIdAndTransactionTypeInAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
+            String walletId,
+            List<AdminWalletTransactionType> transactionTypes,
+            Instant createdAt);
+
     @Query("""
             select coalesce(sum(transaction.amount), 0)
             from AdminWalletTransaction transaction

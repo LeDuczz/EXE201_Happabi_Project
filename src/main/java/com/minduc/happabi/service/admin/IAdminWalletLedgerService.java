@@ -10,6 +10,8 @@ public interface IAdminWalletLedgerService {
 
     void recordBookingPaymentReceived(UUID bookingId, BigDecimal amount);
 
+    void recordPaymentGatewayFee(UUID bookingId, BigDecimal amount);
+
     void recordNursePayout(UUID bookingId, BigDecimal amount);
 
     void recordBookingRefund(UUID bookingId, BigDecimal amount);

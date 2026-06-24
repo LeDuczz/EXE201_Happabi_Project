@@ -21,6 +21,7 @@ import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.payment.IPayOsPaymentService;
+import com.minduc.happabi.service.payment.PaymentGatewayFeeCalculator;
 import com.minduc.happabi.service.nurse.NurseDepositPolicy;
 import com.minduc.happabi.service.nurse.NurseWalletProvisioningService;
 import com.minduc.happabi.service.user.UserAccountLookupService;
@@ -48,6 +49,7 @@ public class PayOsPaymentService implements IPayOsPaymentService {
 
     private final WalletTransactionRepository walletTransactionRepository;
     private final BookingPaymentTransactionRepository bookingPaymentTransactionRepository;
+    private final PaymentGatewayFeeCalculator paymentGatewayFeeCalculator;
     private final BookingRepository bookingRepository;
     private final NurseProfileRepository nurseProfileRepository;
     private final UserAccountLookupService userAccountLookupService;
@@ -205,10 +207,15 @@ public class PayOsPaymentService implements IPayOsPaymentService {
             return toBookingPaymentLinkResponse(existingPending.get(), booking);
         }
 
+        PaymentGatewayFeeCalculator.GatewayFeeQuote feeQuote = paymentGatewayFeeCalculator
+                .quote(booking.getAppPaymentAmount());
         BookingPaymentTransaction transaction = BookingPaymentTransaction.builder()
                 .booking(booking)
                 .transactionId(nextUniqueTransactionId())
                 .amount(booking.getAppPaymentAmount())
+                .providerFeeRate(feeQuote.rate())
+                .providerFeeAmount(feeQuote.feeAmount())
+                .netReceivedAmount(feeQuote.netReceivedAmount())
                 .status(TransactionStatus.PENDING)
                 .description("Booking payment pending")
                 .build();
