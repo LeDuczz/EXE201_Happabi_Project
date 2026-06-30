@@ -10,6 +10,7 @@ import com.minduc.happabi.service.permission.PermissionCacheService;
 import com.minduc.happabi.service.user.AuthenticatedUserIdentity;
 import com.minduc.happabi.service.user.IUserIdentityService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -91,10 +92,32 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(globalIpRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(tokenBlacklistFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterAfter(rateLimitFilter, GlobalIpRateLimitFilter.class)
+                .addFilterAfter(tokenBlacklistFilter, RateLimitFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<GlobalIpRateLimitFilter> globalIpRateLimitFilterRegistration(
+            GlobalIpRateLimitFilter filter) {
+        FilterRegistrationBean<GlobalIpRateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<TokenBlacklistFilter> tokenBlacklistFilterRegistration(TokenBlacklistFilter filter) {
+        FilterRegistrationBean<TokenBlacklistFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
