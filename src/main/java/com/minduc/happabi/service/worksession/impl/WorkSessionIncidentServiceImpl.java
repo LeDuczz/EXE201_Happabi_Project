@@ -1,5 +1,6 @@
 package com.minduc.happabi.service.worksession.impl;
 
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.dto.request.admin.ReviewWorkSessionIncidentRequest;
 import com.minduc.happabi.dto.request.worksession.ReportWorkSessionIncidentRequest;
 import com.minduc.happabi.dto.response.worksession.WorkSessionIncidentEvidenceResponse;
@@ -20,7 +21,6 @@ import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.exception.code.WorkSessionErrorCode;
 import com.minduc.happabi.integration.s3.IS3Service;
-import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
@@ -37,6 +37,7 @@ import com.minduc.happabi.service.worksession.IWorkSessionIncidentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -65,8 +66,8 @@ public class WorkSessionIncidentServiceImpl implements IWorkSessionIncidentServi
     private final UserAccountLookupService userAccountLookupService;
     private final INotificationPublisher notificationPublisher;
     private final IS3Service s3Service;
-    private final IFileCleanupPublisher fileCleanupPublisher;
     private final INursePenaltyService nursePenaltyService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.work-session.mother-unreachable-report-open-minutes:15}")
     private long motherUnreachableReportOpenMinutes;
@@ -102,25 +103,19 @@ public class WorkSessionIncidentServiceImpl implements IWorkSessionIncidentServi
                 .description(cleanDescription(request))
                 .build());
 
-        List<String> uploadedKeys = new ArrayList<>();
-        try {
-            List<WorkSessionIncidentEvidence> evidences = uploadEvidences(incident, images, uploadedKeys);
-            incidentEvidenceRepository.saveAll(evidences);
-            session.setStatus(WorkSessionStatus.REPORTED);
-            session.setReportedAt(OffsetDateTime.now());
-            session.setReportReason(incident.getDescription());
-            workSessionRepository.save(session);
-            notifyMother(session,
-                    "Mother unreachable incident reported",
-                    "The nurse reported that they could not reach you after arrival. Admin will review the evidence.");
-            notifyAdmins(incident);
-            log.info("[WorkSessionIncident] Mother unreachable reported incidentId={} workSessionId={}",
-                    incident.getId(), session.getId());
-            return toResponse(incident);
-        } catch (RuntimeException e) {
-            uploadedKeys.forEach(key -> fileCleanupPublisher.publishDeleteObject(key, "WORK_SESSION_INCIDENT_ROLLBACK"));
-            throw e;
-        }
+        List<WorkSessionIncidentEvidence> evidences = uploadEvidences(incident, images);
+        incidentEvidenceRepository.saveAll(evidences);
+        session.setStatus(WorkSessionStatus.REPORTED);
+        session.setReportedAt(OffsetDateTime.now());
+        session.setReportReason(incident.getDescription());
+        workSessionRepository.save(session);
+        notifyMother(session,
+                "Mother unreachable incident reported",
+                "The nurse reported that they could not reach you after arrival. Admin will review the evidence.");
+        notifyAdmins(incident);
+        log.info("[WorkSessionIncident] Mother unreachable reported incidentId={} workSessionId={}",
+                incident.getId(), session.getId());
+        return toResponse(incident);
     }
 
     @Override
@@ -268,15 +263,15 @@ public class WorkSessionIncidentServiceImpl implements IWorkSessionIncidentServi
     }
 
     private List<WorkSessionIncidentEvidence> uploadEvidences(WorkSessionIncident incident,
-                                                              List<MultipartFile> files,
-                                                              List<String> uploadedKeys) {
+                                                              List<MultipartFile> files) {
         List<WorkSessionIncidentEvidence> evidences = new ArrayList<>();
         for (MultipartFile file : files) {
             if (file == null || file.isEmpty()) {
                 continue;
             }
             String key = s3Service.upload(INCIDENT_EVIDENCE_FOLDER, incident.getWorkSession().getId().toString(), file);
-            uploadedKeys.add(key);
+            eventPublisher.publishEvent(new S3UploadedObjectRollbackCleanupEvent(
+                    key, "WORK_SESSION_INCIDENT_UPLOAD_ROLLBACK:" + incident.getId()));
             evidences.add(WorkSessionIncidentEvidence.builder()
                     .incident(incident)
                     .s3Key(key)

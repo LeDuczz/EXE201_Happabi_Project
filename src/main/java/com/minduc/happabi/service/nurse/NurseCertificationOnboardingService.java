@@ -1,5 +1,6 @@
 package com.minduc.happabi.service.nurse;
 
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.dto.request.nurse.CreateNurseCertificationRequest;
 import com.minduc.happabi.dto.response.nurse.NurseCertificationResponse;
 import com.minduc.happabi.entity.NurseCertification;
@@ -15,6 +16,7 @@ import com.minduc.happabi.service.doctor.DoctorNurseReviewCacheService;
 import com.minduc.happabi.service.user.UserCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ public class NurseCertificationOnboardingService {
     private final NurseOnboardingSupportService supportService;
     private final DoctorNurseReviewCacheService reviewCacheService;
     private final UserCacheService userCacheService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @PreAuthorize("hasRole('NURSE')")
@@ -43,13 +46,17 @@ public class NurseCertificationOnboardingService {
             throw new AppException(AuthErrorCode.AUTH_FAILED, "Certification document is required.");
         }
 
+        String documentKey = s3Service.upload("certifications", profile.getUser().getId().toString(), document);
+        eventPublisher.publishEvent(new S3UploadedObjectRollbackCleanupEvent(
+                documentKey, "NURSE_CERTIFICATION_UPLOAD_ROLLBACK"));
+
         NurseCertification certification = NurseCertification.builder()
                 .nurse(profile)
                 .certName(request.getCertName())
                 .issuedBy(request.getIssuedBy())
                 .issuedDate(request.getIssuedDate())
                 .expiryDate(request.getExpiryDate())
-                .documentS3Key(s3Service.upload("certifications", profile.getUser().getId().toString(), document))
+                .documentS3Key(documentKey)
                 .isVerified(false)
                 .build();
         NurseCertification saved = certificationRepository.save(certification);

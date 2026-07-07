@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.user;
 
 import com.minduc.happabi.dto.event.S3ObjectDeleteRequestedEvent;
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.LogExecution;
@@ -37,6 +38,7 @@ public class UserAvatarService {
 
         String oldKey = user.getAvatarS3Key();
         String newKey = s3Service.upload("avatars", user.getId().toString(), file);
+        eventPublisher.publishEvent(new S3UploadedObjectRollbackCleanupEvent(newKey, "AVATAR_UPLOAD_ROLLBACK"));
 
         user.setAvatarS3Key(newKey);
         userRepository.save(user);

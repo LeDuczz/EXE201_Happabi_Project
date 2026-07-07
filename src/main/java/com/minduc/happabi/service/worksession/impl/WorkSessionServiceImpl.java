@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.worksession.impl;
 
 import com.minduc.happabi.dto.event.S3ObjectDeleteRequestedEvent;
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.dto.request.worksession.CompleteChecklistItemRequest;
 import com.minduc.happabi.dto.request.worksession.ReportWorkSessionRequest;
 import com.minduc.happabi.dto.response.worksession.WorkSessionChecklistItemResponse;
@@ -22,7 +23,6 @@ import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.exception.code.WorkSessionErrorCode;
 import com.minduc.happabi.integration.s3.IS3Service;
-import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import com.minduc.happabi.mapper.WorkSessionMapper;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
@@ -50,9 +50,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
@@ -79,7 +79,6 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private final IBookingSettlementService bookingSettlementService;
     private final AuditRecorder auditRecorder;
     private final ApplicationEventPublisher eventPublisher;
-    private final IFileCleanupPublisher fileCleanupPublisher;
     private final NurseAvailabilityStatusSyncService availabilityStatusSyncService;
 
     @Value("${app.work-session.check-in-open-minutes:10}")
@@ -193,31 +192,25 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
                     "Check-in opens at " + opensAt);
         }
 
-        List<String> uploadedKeys = new ArrayList<>();
-        try {
-            List<WorkSessionEvidence> evidences = uploadEvidence(session, null,
-                    WorkSessionEvidenceType.CHECK_IN, images, uploadedKeys);
-            evidenceRepository.saveAll(evidences);
+        List<WorkSessionEvidence> evidences = uploadEvidence(session, null,
+                WorkSessionEvidenceType.CHECK_IN, images);
+        evidenceRepository.saveAll(evidences);
 
-            session.setCheckedInAt(now);
-            session.setLateMinutes(calculateLateMinutes(session.getScheduledStartAt(), now));
-            session.setStatus(WorkSessionStatus.IN_PROGRESS);
-            nurseProfile.setAvailabilityStatus(AvailabilityStatus.BUSY);
-            WorkSession saved = workSessionRepository.save(session);
+        session.setCheckedInAt(now);
+        session.setLateMinutes(calculateLateMinutes(session.getScheduledStartAt(), now));
+        session.setStatus(WorkSessionStatus.IN_PROGRESS);
+        nurseProfile.setAvailabilityStatus(AvailabilityStatus.BUSY);
+        WorkSession saved = workSessionRepository.save(session);
 
-            notifyMother(session,
-                    "Nurse checked in",
-                    session.getLateMinutes() > 0
-                            ? "Your nurse checked in " + session.getLateMinutes() + " minute(s) late."
-                            : "Your nurse has checked in for the work session.");
-            notifyNurse(session,
-                    "Check-in successful",
-                    "You have checked in for this work session. Please complete the service checklist before checkout.");
-            return toResponse(saved);
-        } catch (RuntimeException e) {
-            cleanupUploadedKeys(uploadedKeys, "WORK_SESSION_CHECK_IN_ROLLBACK");
-            throw e;
-        }
+        notifyMother(session,
+                "Nurse checked in",
+                session.getLateMinutes() > 0
+                        ? "Your nurse checked in " + session.getLateMinutes() + " minute(s) late."
+                        : "Your nurse has checked in for the work session.");
+        notifyNurse(session,
+                "Check-in successful",
+                "You have checked in for this work session. Please complete the service checklist before checkout.");
+        return toResponse(saved);
     }
 
     @Override
@@ -233,21 +226,15 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         requireStatus(session, WorkSessionStatus.IN_PROGRESS);
         WorkSessionChecklistItem item = getChecklistItemForUpdate(workSessionId, checklistItemId);
 
-        List<String> uploadedKeys = new ArrayList<>();
-        try {
-            List<WorkSessionEvidence> evidences = uploadEvidence(session, item,
-                    WorkSessionEvidenceType.CHECKLIST_ITEM, images, uploadedKeys);
-            evidenceRepository.saveAll(evidences);
+        List<WorkSessionEvidence> evidences = uploadEvidence(session, item,
+                WorkSessionEvidenceType.CHECKLIST_ITEM, images);
+        evidenceRepository.saveAll(evidences);
 
-            item.setStatus(WorkSessionChecklistStatus.COMPLETED);
-            item.setCompletedAt(OffsetDateTime.now());
-            item.setNote(normalize(request == null ? null : request.getNote()));
-            checklistItemRepository.save(item);
-            return toResponse(session);
-        } catch (RuntimeException e) {
-            cleanupUploadedKeys(uploadedKeys, "WORK_SESSION_CHECKLIST_ROLLBACK");
-            throw e;
-        }
+        item.setStatus(WorkSessionChecklistStatus.COMPLETED);
+        item.setCompletedAt(OffsetDateTime.now());
+        item.setNote(normalize(request == null ? null : request.getNote()));
+        checklistItemRepository.save(item);
+        return toResponse(session);
     }
 
     @Override
@@ -419,15 +406,15 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private List<WorkSessionEvidence> uploadEvidence(WorkSession session,
                                                      WorkSessionChecklistItem item,
                                                      WorkSessionEvidenceType type,
-                                                     List<MultipartFile> files,
-                                                     List<String> uploadedKeys) {
+                                                     List<MultipartFile> files) {
         List<WorkSessionEvidence> evidences = new ArrayList<>();
         for (MultipartFile file : files) {
             if (file == null || file.isEmpty()) {
                 continue;
             }
             String key = s3Service.upload(EVIDENCE_FOLDER, session.getId().toString(), file);
-            uploadedKeys.add(key);
+            eventPublisher.publishEvent(new S3UploadedObjectRollbackCleanupEvent(
+                    key, "WORK_SESSION_EVIDENCE_UPLOAD_ROLLBACK:" + session.getId()));
             evidences.add(WorkSessionEvidence.builder()
                     .workSession(session)
                     .checklistItem(item)
@@ -442,10 +429,6 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
             throw new AppException(WorkSessionErrorCode.WORK_SESSION_EVIDENCE_REQUIRED);
         }
         return evidences;
-    }
-
-    private void cleanupUploadedKeys(List<String> uploadedKeys, String reason) {
-        uploadedKeys.forEach(key -> fileCleanupPublisher.publishDeleteObject(key, reason));
     }
 
     private List<WorkSessionChecklistItem> buildChecklistItems(WorkSession session) {
