@@ -1,6 +1,7 @@
 package com.minduc.happabi.listener;
 
 import com.minduc.happabi.dto.event.S3ObjectDeleteRequestedEvent;
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.integration.sqs.IFileCleanupPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,17 @@ public class S3ObjectDeleteEventListener {
             fileCleanupPublisher.publishDeleteObject(event.key(), event.reason());
         } catch (RuntimeException e) {
             log.warn("[SQS] Failed to publish S3 delete message after commit: key={} reason={}",
+                    event.key(), event.reason(), e);
+        }
+    }
+
+    @Async("appTaskExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_ROLLBACK)
+    public void onS3UploadedObjectRollbackCleanup(S3UploadedObjectRollbackCleanupEvent event) {
+        try {
+            fileCleanupPublisher.publishDeleteObject(event.key(), event.reason());
+        } catch (RuntimeException e) {
+            log.warn("[SQS] Failed to publish S3 rollback cleanup message: key={} reason={}",
                     event.key(), event.reason(), e);
         }
     }

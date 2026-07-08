@@ -1,5 +1,6 @@
 package com.minduc.happabi.service.booking.impl;
 
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.dto.request.admin.ApproveMotherRefundRequest;
 import com.minduc.happabi.dto.request.admin.RejectMotherRefundRequest;
 import com.minduc.happabi.dto.response.booking.MotherRefundResponse;
@@ -19,6 +20,7 @@ import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,6 +42,7 @@ public class MotherRefundServiceImpl implements IMotherRefundService {
     private final IAdminWalletLedgerService adminWalletLedgerService;
     private final INotificationPublisher notificationPublisher;
     private final IS3Service s3Service;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -75,28 +78,22 @@ public class MotherRefundServiceImpl implements IMotherRefundService {
             throw new AppException(BookingErrorCode.MOTHER_REFUND_EVIDENCE_REQUIRED);
         }
 
-        String uploadedKey = null;
-        try {
-            uploadedKey = s3Service.upload("withdrawals", refund.getMother().getId().toString(), evidence);
-            refund.setTransferEvidenceS3Key(uploadedKey);
-            refund.setProcessedByAdmin(userAccountLookupService.getCurrentUser());
-            refund.setStatus(MotherRefundStatus.APPROVED);
-            refund.setApprovedAt(OffsetDateTime.now());
-            refund.setAdminNote(cleanOptional(request == null ? null : request.getAdminNote()));
-            refund.setBankTransactionCode(cleanOptional(request == null ? null : request.getBankTransactionCode()));
-            adminWalletLedgerService.recordBookingRefund(refund.getBooking().getId(), BigDecimal.valueOf(refund.getAmount()));
-            MotherRefundRequest saved = refundRequestRepository.save(refund);
-            notifyMother(saved,
-                    "Refund request approved",
-                    "Your refund request has been approved. Please check your bank account.");
-            log.info("[MotherRefund] Approved request id={} amount={}", saved.getId(), saved.getAmount());
-            return toResponse(saved);
-        } catch (RuntimeException e) {
-            if (uploadedKey != null) {
-                s3Service.delete(uploadedKey);
-            }
-            throw e;
-        }
+        String uploadedKey = s3Service.upload("withdrawals", refund.getMother().getId().toString(), evidence);
+        eventPublisher.publishEvent(new S3UploadedObjectRollbackCleanupEvent(
+                uploadedKey, "MOTHER_REFUND_EVIDENCE_UPLOAD_ROLLBACK:" + refund.getId()));
+        refund.setTransferEvidenceS3Key(uploadedKey);
+        refund.setProcessedByAdmin(userAccountLookupService.getCurrentUser());
+        refund.setStatus(MotherRefundStatus.APPROVED);
+        refund.setApprovedAt(OffsetDateTime.now());
+        refund.setAdminNote(cleanOptional(request == null ? null : request.getAdminNote()));
+        refund.setBankTransactionCode(cleanOptional(request == null ? null : request.getBankTransactionCode()));
+        adminWalletLedgerService.recordBookingRefund(refund.getBooking().getId(), BigDecimal.valueOf(refund.getAmount()));
+        MotherRefundRequest saved = refundRequestRepository.save(refund);
+        notifyMother(saved,
+                "Refund request approved",
+                "Your refund request has been approved. Please check your bank account.");
+        log.info("[MotherRefund] Approved request id={} amount={}", saved.getId(), saved.getAmount());
+        return toResponse(saved);
     }
 
     @Override

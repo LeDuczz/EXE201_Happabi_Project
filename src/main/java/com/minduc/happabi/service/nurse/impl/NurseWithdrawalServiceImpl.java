@@ -1,5 +1,6 @@
 package com.minduc.happabi.service.nurse.impl;
 
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.dto.request.admin.ApproveWithdrawalRequest;
 import com.minduc.happabi.dto.request.admin.RejectWithdrawalRequest;
 import com.minduc.happabi.dto.request.nurse.CreateWithdrawalRequest;
@@ -35,6 +36,7 @@ import com.minduc.happabi.service.nurse.INurseWithdrawalService;
 import com.minduc.happabi.service.user.UserAccountLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -63,6 +65,7 @@ public class NurseWithdrawalServiceImpl implements INurseWithdrawalService {
     private final INotificationPublisher notificationPublisher;
     private final IAdminWalletLedgerService adminWalletLedgerService;
     private final IS3Service s3Service;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @LogExecution
@@ -165,38 +168,32 @@ public class NurseWithdrawalServiceImpl implements INurseWithdrawalService {
         if (evidence == null || evidence.isEmpty()) {
             throw new AppException(NurseWalletErrorCode.WITHDRAWAL_EVIDENCE_REQUIRED);
         }
-        String uploadedKey = null;
-        try {
-            uploadedKey = s3Service.upload("withdrawals", withdrawal.getNurseProfile().getId().toString(), evidence);
-            withdrawal.setTransferEvidenceS3Key(uploadedKey);
-            NurseWallet wallet = lockWallet(withdrawal.getNurseProfile().getId());
-            normalizeWallet(wallet);
-            if (wallet.getLockedWithdrawalAmount().compareTo(withdrawal.getAmount()) < 0) {
-                throw new AppException(NurseWalletErrorCode.WITHDRAWAL_BALANCE_INSUFFICIENT,
-                        "Locked withdrawal amount is not enough to approve request " + withdrawal.getId());
-            }
-            wallet.setLockedWithdrawalAmount(wallet.getLockedWithdrawalAmount().subtract(withdrawal.getAmount()));
-            nurseWalletRepository.save(wallet);
-
-            adminWalletLedgerService.recordWithdrawalPayout(withdrawal.getId(), withdrawal.getAmount());
-            User admin = userAccountLookupService.getCurrentUser();
-            withdrawal.setStatus(NurseWithdrawalStatus.APPROVED);
-            withdrawal.setProcessedByAdmin(admin);
-            withdrawal.setApprovedAt(OffsetDateTime.now());
-            withdrawal.setAdminNote(cleanOptional(request == null ? null : request.getAdminNote()));
-            withdrawal.setBankTransactionCode(cleanOptional(request == null ? null : request.getBankTransactionCode()));
-            NurseWithdrawalRequest saved = withdrawalRequestRepository.save(withdrawal);
-            notifyNurse(saved,
-                    "Withdrawal request approved",
-                    "Your withdrawal request has been approved. Please check your bank account.");
-            log.info("[Withdrawal] Approved request id={} amount={}", saved.getId(), saved.getAmount());
-            return toResponse(saved);
-        } catch (RuntimeException e) {
-            if (uploadedKey != null) {
-                s3Service.delete(uploadedKey);
-            }
-            throw e;
+        String uploadedKey = s3Service.upload("withdrawals", withdrawal.getNurseProfile().getId().toString(), evidence);
+        eventPublisher.publishEvent(new S3UploadedObjectRollbackCleanupEvent(
+                uploadedKey, "NURSE_WITHDRAWAL_EVIDENCE_UPLOAD_ROLLBACK:" + withdrawal.getId()));
+        withdrawal.setTransferEvidenceS3Key(uploadedKey);
+        NurseWallet wallet = lockWallet(withdrawal.getNurseProfile().getId());
+        normalizeWallet(wallet);
+        if (wallet.getLockedWithdrawalAmount().compareTo(withdrawal.getAmount()) < 0) {
+            throw new AppException(NurseWalletErrorCode.WITHDRAWAL_BALANCE_INSUFFICIENT,
+                    "Locked withdrawal amount is not enough to approve request " + withdrawal.getId());
         }
+        wallet.setLockedWithdrawalAmount(wallet.getLockedWithdrawalAmount().subtract(withdrawal.getAmount()));
+        nurseWalletRepository.save(wallet);
+
+        adminWalletLedgerService.recordWithdrawalPayout(withdrawal.getId(), withdrawal.getAmount());
+        User admin = userAccountLookupService.getCurrentUser();
+        withdrawal.setStatus(NurseWithdrawalStatus.APPROVED);
+        withdrawal.setProcessedByAdmin(admin);
+        withdrawal.setApprovedAt(OffsetDateTime.now());
+        withdrawal.setAdminNote(cleanOptional(request == null ? null : request.getAdminNote()));
+        withdrawal.setBankTransactionCode(cleanOptional(request == null ? null : request.getBankTransactionCode()));
+        NurseWithdrawalRequest saved = withdrawalRequestRepository.save(withdrawal);
+        notifyNurse(saved,
+                "Withdrawal request approved",
+                "Your withdrawal request has been approved. Please check your bank account.");
+        log.info("[Withdrawal] Approved request id={} amount={}", saved.getId(), saved.getAmount());
+        return toResponse(saved);
     }
 
     @Override

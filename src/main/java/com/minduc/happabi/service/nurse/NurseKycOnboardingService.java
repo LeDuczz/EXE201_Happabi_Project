@@ -1,6 +1,7 @@
 package com.minduc.happabi.service.nurse;
 
 import com.minduc.happabi.dto.event.S3ObjectDeleteRequestedEvent;
+import com.minduc.happabi.dto.event.S3UploadedObjectRollbackCleanupEvent;
 import com.minduc.happabi.dto.request.nurse.UpdateNurseKycRequest;
 import com.minduc.happabi.dto.response.nurse.NurseOnboardingResponse;
 import com.minduc.happabi.entity.NurseKyc;
@@ -71,6 +72,7 @@ public class NurseKycOnboardingService {
 
         String oldKey = oldKeySupplier.get();
         String newKey = s3Service.upload("kyc", ownerId, image);
+        eventPublisher.publishEvent(new S3UploadedObjectRollbackCleanupEvent(newKey, "KYC_UPLOAD_ROLLBACK"));
         newKeySetter.accept(newKey);
 
         if (oldKey != null && !oldKey.isBlank() && !oldKey.equals(newKey)) {
