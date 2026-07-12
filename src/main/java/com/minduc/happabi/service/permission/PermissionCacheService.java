@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -69,6 +70,7 @@ public class PermissionCacheService {
         return permissions;
     }
 
+    @Async("appTaskExecutor")
     public void evictRole(String roleName) {
         String redisKey = CACHE_KEY_PREFIX + roleName;
         if (safeDelete(redisKey)) {
@@ -76,6 +78,7 @@ public class PermissionCacheService {
         }
     }
 
+    @Async("appTaskExecutor")
     public void evictAll() {
         ScanOptions scanOptions = ScanOptions.scanOptions()
                 .match(CACHE_KEY_PREFIX + "*")

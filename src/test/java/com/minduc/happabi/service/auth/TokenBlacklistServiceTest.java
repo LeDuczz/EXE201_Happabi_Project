@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -66,6 +67,25 @@ class TokenBlacklistServiceTest {
         TokenBlacklistService service = new TokenBlacklistService(stringRedisTemplate);
 
         assertThat(service.isBlacklisted("not-a-jwt")).isFalse();
+    }
+
+    @Test
+    void blacklistFailsOpenWhenRedisIsUnavailable() throws Exception {
+        TokenBlacklistService service = new TokenBlacklistService(stringRedisTemplate);
+        String token = signedToken("jti-redis-down", Instant.now().plusSeconds(300));
+        when(stringRedisTemplate.opsForValue()).thenThrow(new RuntimeException("redis down"));
+
+        assertThatCode(() -> service.blacklist(token)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void isBlacklistedFailsOpenWhenRedisIsUnavailable() throws Exception {
+        TokenBlacklistService service = new TokenBlacklistService(stringRedisTemplate);
+        String token = signedToken("jti-check-down", Instant.now().plusSeconds(300));
+        when(stringRedisTemplate.hasKey("blacklist:token:jti-check-down"))
+                .thenThrow(new RuntimeException("redis down"));
+
+        assertThat(service.isBlacklisted(token)).isFalse();
     }
 
     private String signedToken(String jti, Instant expiresAt) throws Exception {
