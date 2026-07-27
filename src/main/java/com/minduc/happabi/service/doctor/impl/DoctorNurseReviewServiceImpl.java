@@ -237,13 +237,16 @@ public class DoctorNurseReviewServiceImpl implements IDoctorNurseReviewService {
     }
 
     private void ensurePendingContract(NurseProfile profile) {
-        contractRepository.findTopByNurseOrderByCreatedAtDesc(profile)
+        boolean hasPendingContract = contractRepository.findTopByNurseOrderByCreatedAtDesc(profile)
                 .filter(contract -> contract.getStatus() == NurseContractStatus.PENDING)
-                .orElseGet(() -> contractRepository.save(NurseContract.builder()
-                        .nurse(profile)
-                        .contractVersion(CURRENT_CONTRACT_VERSION)
-                        .status(NurseContractStatus.PENDING)
-                        .build()));
+                .isPresent();
+        if (!hasPendingContract) {
+            contractRepository.save(NurseContract.builder()
+                    .nurse(profile)
+                    .contractVersion(CURRENT_CONTRACT_VERSION)
+                    .status(NurseContractStatus.PENDING)
+                    .build());
+        }
     }
 
     private NurseOnboardingResponse toResponse(NurseProfile profile) {

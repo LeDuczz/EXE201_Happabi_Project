@@ -9,6 +9,10 @@ import com.minduc.happabi.filter.TokenBlacklistFilter;
 import com.minduc.happabi.service.permission.PermissionCacheService;
 import com.minduc.happabi.service.user.AuthenticatedUserIdentity;
 import com.minduc.happabi.service.user.IUserIdentityService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -23,7 +27,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,9 +42,13 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import com.minduc.happabi.config.security.UserContext;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
+import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -63,6 +77,17 @@ public class SecurityConfig {
             "/api/v1/webhook/payos",
     };
 
+    private static final String[] CSRF_IGNORED_POST = {
+            "/api/v1/auth/register",
+            "/api/v1/auth/verify-otp",
+            "/api/v1/auth/resend-otp",
+            "/api/v1/auth/login",
+            "/api/v1/auth/social/sync",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/webhook/payos",
+    };
+
     private static final String[] PUBLIC_GET = {
             "/swagger-ui/**",
             "/swagger-ui.html",
@@ -74,8 +99,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
+        csrfRequestHandler.setCsrfRequestAttributeName(null);
+
         http
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(csrfRequestHandler)
+                        .ignoringRequestMatchers(csrfIgnoredPostMatchers()))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
@@ -93,9 +124,16 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(globalIpRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(rateLimitFilter, GlobalIpRateLimitFilter.class)
-                .addFilterAfter(tokenBlacklistFilter, RateLimitFilter.class);
+                .addFilterAfter(tokenBlacklistFilter, RateLimitFilter.class)
+                .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
 
         return http.build();
+    }
+
+    private static RequestMatcher[] csrfIgnoredPostMatchers() {
+        return Arrays.stream(CSRF_IGNORED_POST)
+                .map(path -> antMatcher(HttpMethod.POST, path))
+                .toArray(RequestMatcher[]::new);
     }
 
     @Bean
@@ -165,5 +203,17 @@ public class SecurityConfig {
         }
 
         return authorities;
+    }
+
+    private static final class CsrfCookieFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
+            CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+            if (csrfToken != null) {
+                csrfToken.getToken();
+            }
+            filterChain.doFilter(request, response);
+        }
     }
 }
