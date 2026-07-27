@@ -1,6 +1,5 @@
 package com.minduc.happabi.config;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +26,6 @@ public class OpenAiConfig {
     private int readTimeoutMs;
 
     @Bean
-    @Qualifier("openAiRestClient")
     public RestClient openAiRestClient() {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));

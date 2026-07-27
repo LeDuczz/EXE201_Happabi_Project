@@ -1,6 +1,5 @@
 package com.minduc.happabi.config;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +23,6 @@ public class OpenRouterConfig {
     private String appName;
 
     @Bean
-    @Qualifier("openRouterRestClient")
     public RestClient openRouterRestClient() {
         return RestClient.builder()
                 .baseUrl(openRouterBaseUrl)
