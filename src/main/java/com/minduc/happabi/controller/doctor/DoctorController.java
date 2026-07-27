@@ -76,13 +76,15 @@ public class DoctorController {
         String contentType = file.contentType() == null || file.contentType().isBlank()
                 ? MediaType.APPLICATION_OCTET_STREAM_VALUE
                 : file.contentType();
+        byte[] body = file.bytes() == null ? new byte[0] : file.bytes();
+        long contentLength = file.contentLength() == null ? body.length : file.contentLength();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .contentLength(file.contentLength() == null ? file.bytes().length : file.contentLength())
+                .contentLength(contentLength)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
                         .filename(filename)
                         .build()
                         .toString())
-                .body(file.bytes());
+                .body(body);
     }
 }

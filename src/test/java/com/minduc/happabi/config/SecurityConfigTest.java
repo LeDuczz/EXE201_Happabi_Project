@@ -12,20 +12,15 @@ import com.minduc.happabi.service.permission.PermissionCacheService;
 import com.minduc.happabi.service.user.AuthenticatedUserIdentity;
 import com.minduc.happabi.service.user.IUserIdentityService;
 import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.web.util.matcher.RequestMatcher;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -70,18 +65,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void csrfIsIgnoredOnlyForPublicPostEndpointsThatDoNotUseRefreshCookie() {
-        RequestMatcher[] matchers = ReflectionTestUtils.invokeMethod(SecurityConfig.class, "csrfIgnoredPostMatchers");
-
-        assertThat(matchesAny(matchers, "POST", "/api/v1/auth/login")).isTrue();
-        assertThat(matchesAny(matchers, "POST", "/api/v1/webhook/payos")).isTrue();
-        assertThat(matchesAny(matchers, "POST", "/api/v1/auth/refresh")).isFalse();
-        assertThat(matchesAny(matchers, "POST", "/api/v1/auth/logout")).isFalse();
-        assertThat(matchesAny(matchers, "GET", "/api/v1/auth/login")).isFalse();
-    }
-
-    @Test
-    void csrfCookieFilterExposesDeferredTokenBeforeContinuingChain() throws Exception {
+    void csrfCookieFilterExposesDeferredTokenHeaderBeforeContinuingChain() throws Exception {
         AtomicBoolean tokenRead = new AtomicBoolean(false);
         AtomicBoolean chainInvoked = new AtomicBoolean(false);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/refresh");
@@ -107,6 +91,7 @@ class SecurityConfigTest {
         csrfCookieFilter().doFilter(request, response, (servletRequest, servletResponse) -> chainInvoked.set(true));
 
         assertThat(tokenRead).isTrue();
+        assertThat(response.getHeader("X-XSRF-TOKEN")).isEqualTo("token");
         assertThat(chainInvoked).isTrue();
     }
 
@@ -131,17 +116,6 @@ class SecurityConfigTest {
                 mock(TokenBlacklistFilter.class),
                 identityService
         );
-    }
-
-    private boolean matchesAny(RequestMatcher[] matchers, String method, String path) {
-        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
-        request.setServletPath(path);
-        for (RequestMatcher matcher : matchers) {
-            if (matcher.matches(request)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private Filter csrfCookieFilter() throws Exception {

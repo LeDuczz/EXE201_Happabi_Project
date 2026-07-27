@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -34,6 +36,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final IAuthService authService;
+
+    @GetMapping("/csrf")
+    public ResponseEntity<BaseResponse<String>> csrf(CsrfToken csrfToken) {
+        return ResponseEntity.ok(BaseResponse.ok("CSRF token issued.", csrfToken.getToken()));
+    }
 
     @AuditAction(action = "AUTH_REGISTER", resourceType = "USER")
     @PostMapping("/register")
