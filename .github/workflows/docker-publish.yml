@@ -1,7 +1,11 @@
-﻿name: Build and Push Docker Image
+name: Backend CI/CD
 
 on:
   push:
+    branches:
+      - main
+      - master
+  pull_request:
     branches:
       - main
       - master
@@ -12,7 +16,42 @@ permissions:
   packages: write
 
 jobs:
+  quality:
+    name: Test and SonarCloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
+
+      - name: Run tests with coverage
+        run: ./mvnw -B clean verify
+
+      - name: SonarCloud scan
+        run: >
+          ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+          -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+
   docker:
+    name: Build and Push Docker Image
+    needs: quality
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
