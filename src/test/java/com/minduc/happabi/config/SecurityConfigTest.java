@@ -104,6 +104,14 @@ class SecurityConfigTest {
         assertThat(config.tokenBlacklistFilterRegistration(mock(TokenBlacklistFilter.class)).isEnabled()).isFalse();
     }
 
+    @Test
+    void csrfComponentsCanBeCreatedForSecurityChain() {
+        SecurityConfig config = securityConfig(mock(IUserIdentityService.class), mock(PermissionCacheService.class));
+
+        assertThat(config.csrfTokenRepository()).isNotNull();
+        assertThat(config.csrfRequestHandler()).isNotNull();
+    }
+
     private SecurityConfig securityConfig(IUserIdentityService identityService,
                                           PermissionCacheService permissionCacheService) {
         return new SecurityConfig(

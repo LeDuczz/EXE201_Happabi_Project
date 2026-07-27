@@ -85,14 +85,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
-        csrfRequestHandler.setCsrfRequestAttributeName(null);
-        CookieCsrfTokenRepository csrfTokenRepository = new CookieCsrfTokenRepository();
-
         http
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(csrfTokenRepository)
-                        .csrfTokenRequestHandler(csrfRequestHandler))
+                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()).csrfTokenRequestHandler(csrfRequestHandler()))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
@@ -114,6 +108,16 @@ public class SecurityConfig {
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
 
         return http.build();
+    }
+
+    CookieCsrfTokenRepository csrfTokenRepository() {
+        return new CookieCsrfTokenRepository();
+    }
+
+    CsrfTokenRequestAttributeHandler csrfRequestHandler() {
+        CsrfTokenRequestAttributeHandler handler = new CsrfTokenRequestAttributeHandler();
+        handler.setCsrfRequestAttributeName(null);
+        return handler;
     }
 
     @Bean

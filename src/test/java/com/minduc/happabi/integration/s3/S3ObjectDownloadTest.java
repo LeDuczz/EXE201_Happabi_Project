@@ -27,4 +27,12 @@ class S3ObjectDownloadTest {
 
         assertThat(download.bytes()).containsExactly(1, 2, 3);
     }
+
+    @Test
+    void equalsHandlesSameReferenceAndDifferentTypes() {
+        S3ObjectDownload download = new S3ObjectDownload(new byte[]{1}, "text/plain", 1L);
+
+        assertThat(download.equals(download)).isTrue();
+        assertThat(download).isNotEqualTo("not a download");
+    }
 }
