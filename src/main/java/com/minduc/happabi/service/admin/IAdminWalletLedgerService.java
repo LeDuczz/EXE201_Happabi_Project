@@ -4,6 +4,7 @@ import com.minduc.happabi.dto.response.admin.AdminWalletResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 public interface IAdminWalletLedgerService {
@@ -19,4 +20,10 @@ public interface IAdminWalletLedgerService {
     void recordWithdrawalPayout(UUID withdrawalRequestId, BigDecimal amount);
 
     AdminWalletResponse getPlatformWallet(Pageable pageable);
+
+    AdminWalletResponse getPlatformWallet(Pageable pageable,
+                                          String transactionType,
+                                          String direction,
+                                          Instant startAt,
+                                          Instant endAt);
 }

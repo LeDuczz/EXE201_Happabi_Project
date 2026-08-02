@@ -52,6 +52,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String CSRF_COOKIE_NAME = "HAPPABI-CSRF";
+    private static final String CSRF_HEADER_NAME = "X-HAPPABI-CSRF";
+
     private final CustomAuthenticationEntryPoint authEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final CorsConfigurationSource corsConfigurationSource;
@@ -117,7 +120,11 @@ public class SecurityConfig {
     }
 
     CookieCsrfTokenRepository csrfTokenRepository() {
-        return new CookieCsrfTokenRepository();
+        CookieCsrfTokenRepository repository = new CookieCsrfTokenRepository();
+        repository.setCookieName(CSRF_COOKIE_NAME);
+        repository.setHeaderName(CSRF_HEADER_NAME);
+        repository.setCookiePath("/");
+        return repository;
     }
 
     CsrfTokenRequestAttributeHandler csrfRequestHandler() {
