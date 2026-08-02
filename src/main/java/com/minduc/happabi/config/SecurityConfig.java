@@ -117,9 +117,7 @@ public class SecurityConfig {
     }
 
     CookieCsrfTokenRepository csrfTokenRepository() {
-        // SPA double-submit CSRF: JavaScript must read XSRF-TOKEN and echo it in X-XSRF-TOKEN.
-        // This cookie is not an authentication secret; the refresh token remains HttpOnly.
-        return CookieCsrfTokenRepository.withHttpOnlyFalse();
+        return new CookieCsrfTokenRepository();
     }
 
     CsrfTokenRequestAttributeHandler csrfRequestHandler() {
