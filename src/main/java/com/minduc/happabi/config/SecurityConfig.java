@@ -89,6 +89,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository())
                         .csrfTokenRequestHandler(csrfRequestHandler())
+                        // PayOS calls this server-to-server webhook and cannot obtain a browser CSRF token.
+                        // The webhook payload is still validated by PayOS checksum handling in the payment layer.
                         .ignoringRequestMatchers("/api/v1/webhook/payos"))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -115,6 +117,8 @@ public class SecurityConfig {
     }
 
     CookieCsrfTokenRepository csrfTokenRepository() {
+        // SPA double-submit CSRF: JavaScript must read XSRF-TOKEN and echo it in X-XSRF-TOKEN.
+        // This cookie is not an authentication secret; the refresh token remains HttpOnly.
         return CookieCsrfTokenRepository.withHttpOnlyFalse();
     }
 
