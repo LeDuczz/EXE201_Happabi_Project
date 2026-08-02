@@ -17,6 +17,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
@@ -29,6 +32,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class AdminWalletLedgerServiceImplTest {
@@ -148,6 +152,7 @@ class AdminWalletLedgerServiceImplTest {
                 .walletImpact(BigDecimal.valueOf(135000))
                 .balanceAfter(BigDecimal.valueOf(135000))
                 .build();
+        ArgumentCaptor<Specification<AdminWalletTransaction>> specCaptor = ArgumentCaptor.forClass(Specification.class);
         when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
         when(adminWalletTransactionRepository.findAll(
                 org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
@@ -157,12 +162,15 @@ class AdminWalletLedgerServiceImplTest {
         Page<?> transactions = service.getPlatformWallet(Pageable.unpaged()).getTransactions();
 
         assertThat(transactions.getTotalElements()).isEqualTo(1);
+        verify(adminWalletTransactionRepository).findAll(specCaptor.capture(), eq(Pageable.unpaged()));
+        specCaptor.getValue().toPredicate(mock(Root.class), mock(CriteriaQuery.class), mock(CriteriaBuilder.class));
     }
 
     @Test
     void getPlatformWalletAppliesTransactionFilters() {
         Instant startAt = Instant.parse("2026-07-01T00:00:00Z");
         Instant endAt = Instant.parse("2026-07-08T00:00:00Z");
+        ArgumentCaptor<Specification<AdminWalletTransaction>> specCaptor = ArgumentCaptor.forClass(Specification.class);
         when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
         when(adminWalletTransactionRepository.findAll(
                 org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
@@ -177,6 +185,38 @@ class AdminWalletLedgerServiceImplTest {
                 endAt);
 
         assertThat(response.getTransactions().getTotalElements()).isZero();
+        verify(adminWalletTransactionRepository).findAll(specCaptor.capture(), eq(Pageable.unpaged()));
+        specCaptor.getValue().toPredicate(mock(Root.class), mock(CriteriaQuery.class), mock(CriteriaBuilder.class));
+    }
+
+    @Test
+    void getPlatformWalletAppliesIncomingDirectionFilterWithoutDates() {
+        ArgumentCaptor<Specification<AdminWalletTransaction>> specCaptor = ArgumentCaptor.forClass(Specification.class);
+        when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
+        when(adminWalletTransactionRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
+                eq(Pageable.unpaged())))
+                .thenReturn(Page.empty());
+
+        service.getPlatformWallet(Pageable.unpaged(), null, "IN", null, null);
+
+        verify(adminWalletTransactionRepository).findAll(specCaptor.capture(), eq(Pageable.unpaged()));
+        specCaptor.getValue().toPredicate(mock(Root.class), mock(CriteriaQuery.class), mock(CriteriaBuilder.class));
+    }
+
+    @Test
+    void getPlatformWalletTreatsBlankFiltersAsMissing() {
+        ArgumentCaptor<Specification<AdminWalletTransaction>> specCaptor = ArgumentCaptor.forClass(Specification.class);
+        when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
+        when(adminWalletTransactionRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
+                eq(Pageable.unpaged())))
+                .thenReturn(Page.empty());
+
+        service.getPlatformWallet(Pageable.unpaged(), "   ", "   ", null, null);
+
+        verify(adminWalletTransactionRepository).findAll(specCaptor.capture(), eq(Pageable.unpaged()));
+        specCaptor.getValue().toPredicate(mock(Root.class), mock(CriteriaQuery.class), mock(CriteriaBuilder.class));
     }
 
     @Test

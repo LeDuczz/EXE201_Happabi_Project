@@ -60,4 +60,22 @@ class AdminWalletControllerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getData()).isSameAs(walletResponse);
     }
+
+    @Test
+    void getPlatformWalletPassesNullBoundsWhenDatesAreMissing() {
+        AdminWalletController controller = new AdminWalletController(adminWalletLedgerService);
+        Pageable pageable = Pageable.unpaged();
+        AdminWalletResponse walletResponse = AdminWalletResponse.builder()
+                .walletId("PLATFORM_ADMIN")
+                .balance(BigDecimal.ZERO)
+                .build();
+        when(adminWalletLedgerService.getPlatformWallet(pageable, null, null, null, null))
+                .thenReturn(walletResponse);
+
+        var response = controller.getPlatformWallet(pageable, null, null, null, null);
+
+        verify(adminWalletLedgerService).getPlatformWallet(pageable, null, null, null, null);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getData()).isSameAs(walletResponse);
+    }
 }
