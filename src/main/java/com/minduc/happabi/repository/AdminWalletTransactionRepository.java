@@ -21,6 +21,25 @@ public interface AdminWalletTransactionRepository extends JpaRepository<AdminWal
 
     Page<AdminWalletTransaction> findByWalletIdOrderByCreatedAtDesc(String walletId, Pageable pageable);
 
+    @Query("""
+            select transaction
+            from AdminWalletTransaction transaction
+            where transaction.walletId = :walletId
+              and (:transactionType is null or transaction.transactionType = :transactionType)
+              and (:direction is null
+                   or (:direction = 'IN' and transaction.walletImpact >= 0)
+                   or (:direction = 'OUT' and transaction.walletImpact < 0))
+              and (:startAt is null or transaction.createdAt >= :startAt)
+              and (:endAt is null or transaction.createdAt < :endAt)
+            """)
+    Page<AdminWalletTransaction> searchPlatformWalletTransactions(
+            @Param("walletId") String walletId,
+            @Param("transactionType") AdminWalletTransactionType transactionType,
+            @Param("direction") String direction,
+            @Param("startAt") Instant startAt,
+            @Param("endAt") Instant endAt,
+            Pageable pageable);
+
     List<AdminWalletTransaction> findByWalletIdAndTransactionTypeAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
             String walletId,
             AdminWalletTransactionType transactionType,

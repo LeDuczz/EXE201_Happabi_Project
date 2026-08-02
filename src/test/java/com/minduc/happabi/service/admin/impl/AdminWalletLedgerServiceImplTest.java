@@ -146,8 +146,13 @@ class AdminWalletLedgerServiceImplTest {
                 .balanceAfter(BigDecimal.valueOf(135000))
                 .build();
         when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
-        when(adminWalletTransactionRepository.findByWalletIdOrderByCreatedAtDesc(
-                AdminWallet.PLATFORM_ADMIN_WALLET_ID, Pageable.unpaged()))
+        when(adminWalletTransactionRepository.searchPlatformWalletTransactions(
+                org.mockito.ArgumentMatchers.eq(AdminWallet.PLATFORM_ADMIN_WALLET_ID),
+                any(),
+                any(),
+                any(),
+                any(),
+                org.mockito.ArgumentMatchers.eq(Pageable.unpaged())))
                 .thenReturn(new PageImpl<>(java.util.List.of(transaction)));
 
         Page<?> transactions = service.getPlatformWallet(Pageable.unpaged()).getTransactions();

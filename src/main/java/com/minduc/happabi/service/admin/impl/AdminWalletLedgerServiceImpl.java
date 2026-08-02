@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
@@ -124,13 +125,34 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
     @TimedAction("ADMIN_GET_PLATFORM_WALLET")
     @AuditAction(action = "ADMIN_GET_PLATFORM_WALLET", resourceType = "ADMIN_WALLET")
     public AdminWalletResponse getPlatformWallet(Pageable pageable) {
+        return getPlatformWallet(pageable, null, null, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @LogExecution
+    @TimedAction("ADMIN_GET_PLATFORM_WALLET")
+    @AuditAction(action = "ADMIN_GET_PLATFORM_WALLET", resourceType = "ADMIN_WALLET")
+    public AdminWalletResponse getPlatformWallet(Pageable pageable,
+                                                 String transactionType,
+                                                 String direction,
+                                                 Instant startAt,
+                                                 Instant endAt) {
         AdminWallet wallet = adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)
                 .orElseGet(() -> AdminWallet.builder()
                         .id(AdminWallet.PLATFORM_ADMIN_WALLET_ID)
                         .balance(BigDecimal.ZERO)
                         .build());
+        AdminWalletTransactionType parsedType = parseTransactionType(transactionType);
+        String parsedDirection = parseDirection(direction);
         Page<AdminWalletTransactionResponse> transactions = adminWalletTransactionRepository
-                .findByWalletIdOrderByCreatedAtDesc(AdminWallet.PLATFORM_ADMIN_WALLET_ID, pageable)
+                .searchPlatformWalletTransactions(
+                        AdminWallet.PLATFORM_ADMIN_WALLET_ID,
+                        parsedType,
+                        parsedDirection,
+                        startAt,
+                        endAt,
+                        pageable)
                 .map(this::toResponse);
         return AdminWalletResponse.builder()
                 .walletId(wallet.getId())
@@ -138,6 +160,30 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
                 .updatedAt(wallet.getUpdatedAt())
                 .transactions(transactions)
                 .build();
+    }
+
+    private AdminWalletTransactionType parseTransactionType(String transactionType) {
+        if (transactionType == null || transactionType.isBlank()) {
+            return null;
+        }
+        try {
+            return AdminWalletTransactionType.valueOf(transactionType.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new AppException(BookingErrorCode.BOOKING_SETTLEMENT_FAILED,
+                    "Unsupported admin wallet transaction type: " + transactionType);
+        }
+    }
+
+    private String parseDirection(String direction) {
+        if (direction == null || direction.isBlank()) {
+            return null;
+        }
+        String normalized = direction.trim().toUpperCase();
+        if (!normalized.equals("IN") && !normalized.equals("OUT")) {
+            throw new AppException(BookingErrorCode.BOOKING_SETTLEMENT_FAILED,
+                    "Unsupported admin wallet transaction direction: " + direction);
+        }
+        return normalized;
     }
 
     private void recordTransaction(UUID bookingId,
