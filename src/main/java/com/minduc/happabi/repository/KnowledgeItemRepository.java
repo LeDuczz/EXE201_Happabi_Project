@@ -5,7 +5,7 @@ import com.minduc.happabi.enums.KnowledgeStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UUID> {
+public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UUID>, JpaSpecificationExecutor<KnowledgeItem> {
 
     List<KnowledgeItem> findByStatusOrderByCreatedAtDesc(KnowledgeStatus status);
 
@@ -22,18 +22,6 @@ public interface KnowledgeItemRepository extends JpaRepository<KnowledgeItem, UU
     Page<KnowledgeItem> findByStatusOrderByCreatedAtDesc(KnowledgeStatus status, Pageable pageable);
 
     Page<KnowledgeItem> findAllByOrderByCreatedAtDesc(Pageable pageable);
-
-    @Query("""
-            select item
-            from KnowledgeItem item
-            where (:status is null or item.status = :status)
-              and (:keyword is null
-                   or lower(item.title) like lower(concat('%', :keyword, '%'))
-                   or lower(item.question) like lower(concat('%', :keyword, '%'))
-                   or lower(item.answer) like lower(concat('%', :keyword, '%')))
-            order by item.createdAt desc
-            """)
-    Page<KnowledgeItem> searchItems(KnowledgeStatus status, String keyword, Pageable pageable);
 
     long countByStatus(KnowledgeStatus status);
 
