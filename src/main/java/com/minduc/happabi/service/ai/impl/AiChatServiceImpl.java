@@ -22,6 +22,8 @@ import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.service.ai.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -68,6 +70,13 @@ public class AiChatServiceImpl implements IAiChatService {
     public List<ConversationResponse> getCurrentUserConversations() {
         User user = getCurrentUser();
         return chatHistoryService.getConversations(user.getId());
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    public Page<ConversationResponse> getCurrentUserConversations(String keyword, Pageable pageable) {
+        User user = getCurrentUser();
+        return chatHistoryService.getConversations(user.getId(), keyword, pageable);
     }
 
     @Override

@@ -5,6 +5,8 @@ import com.minduc.happabi.dto.request.ai.SendAiMessageRequest;
 import com.minduc.happabi.dto.response.ai.AiChatResponse;
 import com.minduc.happabi.dto.response.ai.AiMessageResponse;
 import com.minduc.happabi.dto.response.ai.ConversationResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +16,8 @@ public interface IAiChatService {
     ConversationResponse createConversation(CreateConversationRequest request);
 
     List<ConversationResponse> getCurrentUserConversations();
+
+    Page<ConversationResponse> getCurrentUserConversations(String keyword, Pageable pageable);
 
     List<AiMessageResponse> getMessages(UUID conversationId);
 
