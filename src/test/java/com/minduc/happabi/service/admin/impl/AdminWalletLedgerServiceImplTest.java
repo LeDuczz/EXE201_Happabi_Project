@@ -17,12 +17,14 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -158,6 +160,64 @@ class AdminWalletLedgerServiceImplTest {
         Page<?> transactions = service.getPlatformWallet(Pageable.unpaged()).getTransactions();
 
         assertThat(transactions.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void getPlatformWalletAppliesTransactionFilters() {
+        Instant startAt = Instant.parse("2026-07-01T00:00:00Z");
+        Instant endAt = Instant.parse("2026-07-08T00:00:00Z");
+        when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
+        when(adminWalletTransactionRepository.searchPlatformWalletTransactions(
+                eq(AdminWallet.PLATFORM_ADMIN_WALLET_ID),
+                eq(AdminWalletTransactionType.NURSE_PAYOUT),
+                eq("OUT"),
+                eq(startAt),
+                eq(endAt),
+                eq(Pageable.unpaged())))
+                .thenReturn(Page.empty());
+
+        var response = service.getPlatformWallet(
+                Pageable.unpaged(),
+                " nurse_payout ",
+                " out ",
+                startAt,
+                endAt);
+
+        assertThat(response.getTransactions().getTotalElements()).isZero();
+    }
+
+    @Test
+    void getPlatformWalletRejectsUnsupportedTransactionType() {
+        when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
+
+        assertThatThrownBy(() -> service.getPlatformWallet(
+                Pageable.unpaged(),
+                "unknown",
+                null,
+                null,
+                null))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Unsupported admin wallet transaction type");
+
+        verify(adminWalletTransactionRepository, never()).searchPlatformWalletTransactions(
+                any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void getPlatformWalletRejectsUnsupportedDirection() {
+        when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
+
+        assertThatThrownBy(() -> service.getPlatformWallet(
+                Pageable.unpaged(),
+                null,
+                "SIDEWAYS",
+                null,
+                null))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Unsupported admin wallet transaction direction");
+
+        verify(adminWalletTransactionRepository, never()).searchPlatformWalletTransactions(
+                any(), any(), any(), any(), any(), any());
     }
 
     private AdminWalletTransaction captureTransaction() {

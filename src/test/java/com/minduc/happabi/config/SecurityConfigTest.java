@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -73,7 +74,7 @@ class SecurityConfigTest {
         request.setAttribute(CsrfToken.class.getName(), new CsrfToken() {
             @Override
             public String getHeaderName() {
-                return "X-XSRF-TOKEN";
+                return "X-HAPPABI-CSRF";
             }
 
             @Override
@@ -91,7 +92,7 @@ class SecurityConfigTest {
         csrfCookieFilter().doFilter(request, response, (servletRequest, servletResponse) -> chainInvoked.set(true));
 
         assertThat(tokenRead).isTrue();
-        assertThat(response.getHeader("X-XSRF-TOKEN")).isEqualTo("token");
+        assertThat(response.getHeader("X-HAPPABI-CSRF")).isEqualTo("token");
         assertThat(chainInvoked).isTrue();
     }
 
@@ -110,6 +111,22 @@ class SecurityConfigTest {
 
         assertThat(config.csrfTokenRepository()).isNotNull();
         assertThat(config.csrfRequestHandler()).isNotNull();
+    }
+
+    @Test
+    void csrfRepositoryUsesHappabiSpecificCookieAndHeaderNames() {
+        SecurityConfig config = securityConfig(mock(IUserIdentityService.class), mock(PermissionCacheService.class));
+        CsrfTokenRepository repository = config.csrfTokenRepository();
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/csrf");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        CsrfToken token = repository.generateToken(request);
+        repository.saveToken(token, request, response);
+
+        assertThat(token.getHeaderName()).isEqualTo("X-HAPPABI-CSRF");
+        assertThat(response.getCookie("HAPPABI-CSRF")).isNotNull();
+        assertThat(response.getCookie("HAPPABI-CSRF").getPath()).isEqualTo("/");
+        assertThat(response.getCookie("HAPPABI-CSRF").isHttpOnly()).isTrue();
     }
 
     private SecurityConfig securityConfig(IUserIdentityService identityService,
