@@ -15,6 +15,7 @@ import com.minduc.happabi.service.ai.IKnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -143,8 +145,28 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
     @AuditAction(action = "GET_KNOWLEDGE_ITEMS_PAGE", resourceType = "KNOWLEDGE_ITEM")
     @TimedAction("GET_KNOWLEDGE_ITEMS_PAGE")
     public Page<KnowledgeItemResponse> getKnowledgeItems(KnowledgeStatus status, String keyword, Pageable pageable) {
-        return knowledgeItemRepository.searchItems(status, blankToNull(keyword), pageable)
+        return knowledgeItemRepository.findAll(knowledgeItemSpec(status, keyword), pageable)
                 .map(this::toResponse);
+    }
+
+    private Specification<KnowledgeItem> knowledgeItemSpec(KnowledgeStatus status, String keyword) {
+        return (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+
+            String normalizedKeyword = blankToNull(keyword);
+            if (normalizedKeyword != null) {
+                String pattern = "%" + normalizedKeyword.toLowerCase() + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("question")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("answer")), pattern)
+                ));
+            }
+            return criteriaBuilder.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
     }
 
     @Override
