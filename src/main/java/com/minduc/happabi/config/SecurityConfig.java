@@ -86,13 +86,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()).csrfTokenRequestHandler(csrfRequestHandler()))
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfTokenRepository())
+                        .csrfTokenRequestHandler(csrfRequestHandler())
+                        .ignoringRequestMatchers("/api/v1/webhook/payos"))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
                         .anyRequest().authenticated())
@@ -111,7 +115,7 @@ public class SecurityConfig {
     }
 
     CookieCsrfTokenRepository csrfTokenRepository() {
-        return new CookieCsrfTokenRepository();
+        return CookieCsrfTokenRepository.withHttpOnlyFalse();
     }
 
     CsrfTokenRequestAttributeHandler csrfRequestHandler() {
