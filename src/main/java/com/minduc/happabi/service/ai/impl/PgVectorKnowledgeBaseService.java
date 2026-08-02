@@ -13,6 +13,8 @@ import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.KnowledgeItemRepository;
 import com.minduc.happabi.service.ai.IKnowledgeBaseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -132,6 +134,17 @@ public class PgVectorKnowledgeBaseService implements IKnowledgeBaseService {
         return items.stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
+    @Transactional(readOnly = true)
+    @LogExecution
+    @AuditAction(action = "GET_KNOWLEDGE_ITEMS_PAGE", resourceType = "KNOWLEDGE_ITEM")
+    @TimedAction("GET_KNOWLEDGE_ITEMS_PAGE")
+    public Page<KnowledgeItemResponse> getKnowledgeItems(KnowledgeStatus status, String keyword, Pageable pageable) {
+        return knowledgeItemRepository.searchItems(status, blankToNull(keyword), pageable)
+                .map(this::toResponse);
     }
 
     @Override

@@ -10,6 +10,8 @@ import com.minduc.happabi.exception.code.AiChatErrorCode;
 import com.minduc.happabi.repository.ChatMessageRepository;
 import com.minduc.happabi.repository.ConversationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,18 @@ public class ChatHistoryService {
                 .stream()
                 .map(this::toConversationResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ConversationResponse> getConversations(UUID userId, String keyword, Pageable pageable) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Page<Conversation> conversations = normalizedKeyword == null
+                ? conversationRepository.findByUserIdOrderByUpdatedAtDesc(userId, pageable)
+                : conversationRepository.findByUserIdAndTitleContainingIgnoreCaseOrderByUpdatedAtDesc(
+                        userId,
+                        normalizedKeyword,
+                        pageable);
+        return conversations.map(this::toConversationResponse);
     }
 
     @Transactional(readOnly = true)

@@ -4,6 +4,8 @@ import com.minduc.happabi.dto.request.ai.UpsertKnowledgeChunkRequest;
 import com.minduc.happabi.dto.response.ai.KnowledgeChunkResponse;
 import com.minduc.happabi.dto.response.ai.KnowledgeItemResponse;
 import com.minduc.happabi.enums.KnowledgeStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +23,8 @@ public interface IKnowledgeBaseService {
     List<KnowledgeItemResponse> getPendingReviewItems();
 
     List<KnowledgeItemResponse> getKnowledgeItems(KnowledgeStatus status);
+
+    Page<KnowledgeItemResponse> getKnowledgeItems(KnowledgeStatus status, String keyword, Pageable pageable);
 
     KnowledgeItemResponse reviewKnowledgeItem(UUID knowledgeItemId, UUID reviewerId, boolean approved);
 
