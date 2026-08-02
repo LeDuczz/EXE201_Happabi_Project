@@ -4,6 +4,7 @@ import com.minduc.happabi.entity.AdminWalletTransaction;
 import com.minduc.happabi.enums.AdminWalletTransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,31 +15,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface AdminWalletTransactionRepository extends JpaRepository<AdminWalletTransaction, UUID> {
+public interface AdminWalletTransactionRepository extends JpaRepository<AdminWalletTransaction, UUID>,
+        JpaSpecificationExecutor<AdminWalletTransaction> {
 
     Optional<AdminWalletTransaction> findByBookingIdAndTransactionType(UUID bookingId,
                                                                        AdminWalletTransactionType transactionType);
 
     Page<AdminWalletTransaction> findByWalletIdOrderByCreatedAtDesc(String walletId, Pageable pageable);
-
-    @Query("""
-            select transaction
-            from AdminWalletTransaction transaction
-            where transaction.walletId = :walletId
-              and (:transactionType is null or transaction.transactionType = :transactionType)
-              and (:direction is null
-                   or (:direction = 'IN' and transaction.walletImpact >= 0)
-                   or (:direction = 'OUT' and transaction.walletImpact < 0))
-              and (:startAt is null or transaction.createdAt >= :startAt)
-              and (:endAt is null or transaction.createdAt < :endAt)
-            """)
-    Page<AdminWalletTransaction> searchPlatformWalletTransactions(
-            @Param("walletId") String walletId,
-            @Param("transactionType") AdminWalletTransactionType transactionType,
-            @Param("direction") String direction,
-            @Param("startAt") Instant startAt,
-            @Param("endAt") Instant endAt,
-            Pageable pageable);
 
     List<AdminWalletTransaction> findByWalletIdAndTransactionTypeAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
             String walletId,
