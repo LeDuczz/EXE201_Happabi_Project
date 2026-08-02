@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -148,12 +149,8 @@ class AdminWalletLedgerServiceImplTest {
                 .balanceAfter(BigDecimal.valueOf(135000))
                 .build();
         when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
-        when(adminWalletTransactionRepository.searchPlatformWalletTransactions(
-                org.mockito.ArgumentMatchers.eq(AdminWallet.PLATFORM_ADMIN_WALLET_ID),
-                any(),
-                any(),
-                any(),
-                any(),
+        when(adminWalletTransactionRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
                 org.mockito.ArgumentMatchers.eq(Pageable.unpaged())))
                 .thenReturn(new PageImpl<>(java.util.List.of(transaction)));
 
@@ -167,12 +164,8 @@ class AdminWalletLedgerServiceImplTest {
         Instant startAt = Instant.parse("2026-07-01T00:00:00Z");
         Instant endAt = Instant.parse("2026-07-08T00:00:00Z");
         when(adminWalletRepository.findById(AdminWallet.PLATFORM_ADMIN_WALLET_ID)).thenReturn(Optional.of(wallet));
-        when(adminWalletTransactionRepository.searchPlatformWalletTransactions(
-                eq(AdminWallet.PLATFORM_ADMIN_WALLET_ID),
-                eq(AdminWalletTransactionType.NURSE_PAYOUT),
-                eq("OUT"),
-                eq(startAt),
-                eq(endAt),
+        when(adminWalletTransactionRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
                 eq(Pageable.unpaged())))
                 .thenReturn(Page.empty());
 
@@ -199,8 +192,9 @@ class AdminWalletLedgerServiceImplTest {
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("Unsupported admin wallet transaction type");
 
-        verify(adminWalletTransactionRepository, never()).searchPlatformWalletTransactions(
-                any(), any(), any(), any(), any(), any());
+        verify(adminWalletTransactionRepository, never()).findAll(
+                org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
+                any(Pageable.class));
     }
 
     @Test
@@ -216,8 +210,9 @@ class AdminWalletLedgerServiceImplTest {
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("Unsupported admin wallet transaction direction");
 
-        verify(adminWalletTransactionRepository, never()).searchPlatformWalletTransactions(
-                any(), any(), any(), any(), any(), any());
+        verify(adminWalletTransactionRepository, never()).findAll(
+                org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
+                any(Pageable.class));
     }
 
     private AdminWalletTransaction captureTransaction() {

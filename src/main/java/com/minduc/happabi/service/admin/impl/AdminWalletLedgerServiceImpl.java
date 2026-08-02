@@ -18,12 +18,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.UUID;
 
 @Slf4j
@@ -146,13 +148,7 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
         AdminWalletTransactionType parsedType = parseTransactionType(transactionType);
         String parsedDirection = parseDirection(direction);
         Page<AdminWalletTransactionResponse> transactions = adminWalletTransactionRepository
-                .searchPlatformWalletTransactions(
-                        AdminWallet.PLATFORM_ADMIN_WALLET_ID,
-                        parsedType,
-                        parsedDirection,
-                        startAt,
-                        endAt,
-                        pageable)
+                .findAll(walletTransactionSpec(parsedType, parsedDirection, startAt, endAt), pageable)
                 .map(this::toResponse);
         return AdminWalletResponse.builder()
                 .walletId(wallet.getId())
@@ -160,6 +156,31 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
                 .updatedAt(wallet.getUpdatedAt())
                 .transactions(transactions)
                 .build();
+    }
+
+    private Specification<AdminWalletTransaction> walletTransactionSpec(AdminWalletTransactionType transactionType,
+                                                                        String direction,
+                                                                        Instant startAt,
+                                                                        Instant endAt) {
+        return (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<jakarta.persistence.criteria.Predicate>();
+            predicates.add(criteriaBuilder.equal(root.get("walletId"), AdminWallet.PLATFORM_ADMIN_WALLET_ID));
+            if (transactionType != null) {
+                predicates.add(criteriaBuilder.equal(root.get("transactionType"), transactionType));
+            }
+            if ("IN".equals(direction)) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("walletImpact"), BigDecimal.ZERO));
+            } else if ("OUT".equals(direction)) {
+                predicates.add(criteriaBuilder.lessThan(root.get("walletImpact"), BigDecimal.ZERO));
+            }
+            if (startAt != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startAt));
+            }
+            if (endAt != null) {
+                predicates.add(criteriaBuilder.lessThan(root.get("createdAt"), endAt));
+            }
+            return criteriaBuilder.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
     }
 
     private AdminWalletTransactionType parseTransactionType(String transactionType) {
