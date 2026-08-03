@@ -4,6 +4,7 @@ import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardR
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.ActionQueue;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.BookingOperations;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.DailyMetric;
+import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.DashboardPeriod;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.FeedbackInsight;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.FinancialControl;
 import com.minduc.happabi.dto.response.admin.dashboard.AdminOperationsDashboardResponse.LatestFeedback;
@@ -39,6 +40,8 @@ import com.minduc.happabi.repository.UserFeedbackRepository;
 import com.minduc.happabi.repository.UserRepository;
 import com.minduc.happabi.repository.WorkSessionIncidentRepository;
 import com.minduc.happabi.repository.WorkSessionRepository;
+import com.minduc.happabi.service.admin.AdminDashboardCache;
+import com.minduc.happabi.service.admin.DashboardDateRange;
 import com.minduc.happabi.service.admin.IAdminOperationsDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -47,10 +50,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -85,6 +90,8 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
     private final WorkSessionIncidentRepository workSessionIncidentRepository;
     private final UserFeedbackRepository userFeedbackRepository;
     private final KnowledgeItemRepository knowledgeItemRepository;
+    private final AdminDashboardCache dashboardCache;
+    private final Clock clock;
 
     @Override
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('ADMIN:MANAGE')")
@@ -92,13 +99,25 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
     @LogExecution
     @TimedAction("ADMIN_OPERATIONS_DASHBOARD_OVERVIEW")
     @AuditAction(action = "READ_ADMIN_OPERATIONS_DASHBOARD", resourceType = "ADMIN_DASHBOARD")
-    public AdminOperationsDashboardResponse getOverview() {
-        OffsetDateTime now = OffsetDateTime.now();
+    public AdminOperationsDashboardResponse getOverview(LocalDate from, LocalDate to) {
+        DashboardDateRange range = DashboardDateRange.resolve(from, to, clock);
+        return dashboardCache.get(range.from(), range.to())
+                .orElseGet(() -> {
+                    AdminOperationsDashboardResponse response = buildOverview(range);
+                    dashboardCache.put(range.from(), range.to(), response);
+                    return response;
+                });
+    }
+
+    private AdminOperationsDashboardResponse buildOverview(DashboardDateRange range) {
+        ZoneId zoneId = clock.getZone();
+        OffsetDateTime now = OffsetDateTime.now(clock);
         OffsetDateTime todayStart = now.toLocalDate().atStartOfDay().atOffset(now.getOffset());
         OffsetDateTime tomorrowStart = todayStart.plusDays(1);
         OffsetDateTime next24Hours = now.plusHours(24);
         OffsetDateTime last7Days = now.minusDays(7);
-        OffsetDateTime last30Days = now.minusDays(30);
+        OffsetDateTime periodStart = range.startAt(zoneId);
+        OffsetDateTime periodEndExclusive = range.endExclusiveAt(zoneId);
 
         long pendingWithdrawals = nurseWithdrawalRequestRepository.countByStatus(NurseWithdrawalStatus.PENDING);
         long pendingRefunds = motherRefundRequestRepository.countByStatus(MotherRefundStatus.PENDING);
@@ -133,8 +152,8 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 todayStart,
                 tomorrowStart,
                 last7Days,
-                last30Days,
-                now,
+                periodStart,
+                periodEndExclusive,
                 pendingWithdrawals,
                 pendingRefunds
         );
@@ -170,7 +189,12 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 .nurseSupplyHealth(nurseSupplyHealth)
                 .feedbackInsight(feedbackInsight)
                 .riskAlerts(buildRiskAlerts(actionQueue, bookingOperations, nurseSupplyHealth))
-                .gmvTrend(buildGmvTrend(last30Days))
+                .gmvTrend(buildGmvTrend(periodStart, periodEndExclusive))
+                .period(DashboardPeriod.builder()
+                        .from(range.from())
+                        .to(range.to())
+                        .days((int) ChronoUnit.DAYS.between(range.from(), range.to()) + 1)
+                        .build())
                 .generatedAt(now)
                 .build();
     }
@@ -210,27 +234,27 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
     private FinancialControl buildFinancialControl(OffsetDateTime todayStart,
                                                    OffsetDateTime tomorrowStart,
                                                    OffsetDateTime last7Days,
-                                                   OffsetDateTime last30Days,
-                                                   OffsetDateTime now,
+                                                   OffsetDateTime periodStart,
+                                                   OffsetDateTime periodEndExclusive,
                                                    long pendingWithdrawals,
                                                    long pendingRefunds) {
         Instant todayStartInstant = todayStart.toInstant();
         Instant tomorrowStartInstant = tomorrowStart.toInstant();
         Instant last7DaysInstant = last7Days.toInstant();
-        Instant last30DaysInstant = last30Days.toInstant();
-        Instant nowInstant = now.toInstant();
+        Instant periodStartInstant = periodStart.toInstant();
+        Instant periodEndInstant = periodEndExclusive.toInstant();
 
         BigDecimal pendingRefundAmount = BigDecimal.valueOf(
                 motherRefundRequestRepository.sumAmountByStatus(MotherRefundStatus.PENDING)
         );
         BigDecimal last30DaysPlatformRevenue = platformRevenueRepository.sumAmountByCreatedAtBetween(
-                last30DaysInstant,
-                nowInstant
+                periodStartInstant,
+                periodEndInstant
         );
         BigDecimal last30DaysPaymentGatewayFees = sumAdminWalletAmount(
                 AdminWalletTransactionType.PAYMENT_GATEWAY_FEE,
-                last30DaysInstant,
-                nowInstant
+                periodStartInstant,
+                periodEndInstant
         );
 
         return FinancialControl.builder()
@@ -238,11 +262,11 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                         .map(AdminWallet::getBalance)
                         .orElse(BigDecimal.ZERO))
                 .todayGrossMerchandiseValue(sumGrossMerchandiseValue(todayStart, tomorrowStart))
-                .last7DaysGrossMerchandiseValue(sumGrossMerchandiseValue(last7Days, now))
-                .last30DaysGrossMerchandiseValue(sumGrossMerchandiseValue(last30Days, now))
+                .last7DaysGrossMerchandiseValue(sumGrossMerchandiseValue(last7Days, periodEndExclusive))
+                .last30DaysGrossMerchandiseValue(sumGrossMerchandiseValue(periodStart, periodEndExclusive))
                 .todayAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, todayStartInstant, tomorrowStartInstant))
-                .last7DaysAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, last7DaysInstant, nowInstant))
-                .last30DaysAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, last30DaysInstant, nowInstant))
+                .last7DaysAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, last7DaysInstant, periodEndInstant))
+                .last30DaysAppPayments(sumAdminWalletAmount(AdminWalletTransactionType.BOOKING_PAYMENT_RECEIVED, periodStartInstant, periodEndInstant))
                 .todayPlatformRevenue(platformRevenueRepository.sumAmountByCreatedAtBetween(
                         todayStartInstant,
                         tomorrowStartInstant
@@ -251,8 +275,8 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 .last30DaysPaymentGatewayFees(last30DaysPaymentGatewayFees)
                 .last30DaysNursePayouts(sumAdminWalletAmount(
                         AdminWalletTransactionType.NURSE_PAYOUT,
-                        last30DaysInstant,
-                        nowInstant
+                        periodStartInstant,
+                        periodEndInstant
                 ))
                 .last30DaysNetCashContribution(last30DaysPlatformRevenue.subtract(last30DaysPaymentGatewayFees))
                 .pendingWithdrawalAmount(nurseWithdrawalRequestRepository.sumAmountByStatus(NurseWithdrawalStatus.PENDING))
@@ -322,18 +346,19 @@ public class AdminOperationsDashboardServiceImpl implements IAdminOperationsDash
                 .build());
     }
 
-    private List<DailyMetric> buildGmvTrend(OffsetDateTime from) {
-        ZoneId zoneId = ZoneId.systemDefault();
+    private List<DailyMetric> buildGmvTrend(OffsetDateTime from, OffsetDateTime toExclusive) {
+        ZoneId zoneId = clock.getZone();
         LocalDate startDate = from.toLocalDate();
-        LocalDate today = LocalDate.now(zoneId);
+        LocalDate endDate = toExclusive.minusNanos(1).toLocalDate();
         Map<LocalDate, BigDecimal> dailyAmounts = new LinkedHashMap<>();
-        for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             dailyAmounts.put(date, BigDecimal.ZERO);
         }
 
-        for (Booking booking : bookingRepository.findByStatusInAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
+        for (Booking booking : bookingRepository.findByStatusInAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
                 PAID_BOOKING_STATUSES,
-                from
+                from,
+                toExclusive
         )) {
             LocalDate date = booking.getCreatedAt().atZoneSameInstant(zoneId).toLocalDate();
             dailyAmounts.computeIfPresent(date, (key, current) -> current.add(BigDecimal.valueOf(booking.getGrossAmount())));

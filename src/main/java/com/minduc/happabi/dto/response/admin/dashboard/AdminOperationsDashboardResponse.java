@@ -20,6 +20,7 @@ public class AdminOperationsDashboardResponse {
     private final FeedbackInsight feedbackInsight;
     private final List<RiskAlert> riskAlerts;
     private final List<DailyMetric> gmvTrend;
+    private final DashboardPeriod period;
     private final OffsetDateTime generatedAt;
 
     @Getter
@@ -125,6 +126,14 @@ public class AdminOperationsDashboardResponse {
     public static class DailyMetric {
         private final LocalDate date;
         private final BigDecimal value;
+    }
+
+    @Getter
+    @Builder
+    public static class DashboardPeriod {
+        private final LocalDate from;
+        private final LocalDate to;
+        private final int days;
     }
 
 }

@@ -18,7 +18,8 @@ public interface PlatformRevenueRepository extends JpaRepository<PlatformRevenue
     @Query("""
             select coalesce(sum(revenue.amount), 0)
             from PlatformRevenue revenue
-            where revenue.createdAt between :startAt and :endAt
+            where revenue.createdAt >= :startAt
+              and revenue.createdAt < :endAt
             """)
     BigDecimal sumAmountByCreatedAtBetween(@Param("startAt") Instant startAt,
                                            @Param("endAt") Instant endAt);
