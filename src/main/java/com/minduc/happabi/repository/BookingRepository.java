@@ -35,7 +35,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             select coalesce(sum(booking.appPaymentAmount), 0)
             from Booking booking
             where booking.status in :statuses
-              and booking.createdAt between :startAt and :endAt
+              and booking.createdAt >= :startAt
+              and booking.createdAt < :endAt
             """)
     Long sumAppPaymentAmountByStatusInAndCreatedAtBetween(@Param("statuses") Collection<BookingStatus> statuses,
                                                           @Param("startAt") OffsetDateTime startAt,
@@ -45,14 +46,17 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             select coalesce(sum(booking.grossAmount), 0)
             from Booking booking
             where booking.status in :statuses
-              and booking.createdAt between :startAt and :endAt
+              and booking.createdAt >= :startAt
+              and booking.createdAt < :endAt
             """)
     Long sumGrossAmountByStatusInAndCreatedAtBetween(@Param("statuses") Collection<BookingStatus> statuses,
                                                       @Param("startAt") OffsetDateTime startAt,
                                                       @Param("endAt") OffsetDateTime endAt);
 
-    List<Booking> findByStatusInAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(Collection<BookingStatus> statuses,
-                                                                                  OffsetDateTime startAt);
+    List<Booking> findByStatusInAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+            Collection<BookingStatus> statuses,
+            OffsetDateTime startAt,
+            OffsetDateTime endAt);
 
     List<Booking> findByCreatedAtGreaterThanEqualOrderByCreatedAtAsc(OffsetDateTime startAt);
 

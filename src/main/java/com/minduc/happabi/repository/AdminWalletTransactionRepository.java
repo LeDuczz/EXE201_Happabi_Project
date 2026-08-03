@@ -38,7 +38,8 @@ public interface AdminWalletTransactionRepository extends JpaRepository<AdminWal
             from AdminWalletTransaction transaction
             where transaction.walletId = :walletId
               and transaction.transactionType = :transactionType
-              and transaction.createdAt between :startAt and :endAt
+              and transaction.createdAt >= :startAt
+              and transaction.createdAt < :endAt
             """)
     BigDecimal sumAmountByWalletAndTypeAndCreatedAtBetween(@Param("walletId") String walletId,
                                                            @Param("transactionType") AdminWalletTransactionType transactionType,
