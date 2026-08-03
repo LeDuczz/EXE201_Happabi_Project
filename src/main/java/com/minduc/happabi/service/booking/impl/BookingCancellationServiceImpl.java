@@ -177,17 +177,17 @@ public class BookingCancellationServiceImpl implements IBookingCancellationServi
         if (!cancellation.isRefundable() || cancellation.getRefundableAmount() <= 0) {
             return;
         }
-        refundRequestRepository.findByBooking_Id(booking.getId()).orElseGet(() -> {
-            MotherRefundRequest refund = refundRequestRepository.save(MotherRefundRequest.builder()
-                    .booking(booking)
-                    .mother(booking.getMother())
-                    .amount(cancellation.getRefundableAmount())
-                    .status(MotherRefundStatus.PENDING)
-                    .reason(cancellation.getReason())
-                    .build());
-            notifyAdminsRefundCreated(refund);
-            return refund;
-        });
+        if (refundRequestRepository.findByBooking_Id(booking.getId()).isPresent()) {
+            return;
+        }
+        MotherRefundRequest refund = refundRequestRepository.save(MotherRefundRequest.builder()
+                .booking(booking)
+                .mother(booking.getMother())
+                .amount(cancellation.getRefundableAmount())
+                .status(MotherRefundStatus.PENDING)
+                .reason(cancellation.getReason())
+                .build());
+        notifyAdminsRefundCreated(refund);
     }
 
     private boolean isBeforeFreeCancellationCutoff(Booking booking, OffsetDateTime now) {
