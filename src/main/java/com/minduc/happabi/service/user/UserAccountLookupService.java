@@ -23,6 +23,7 @@ public class UserAccountLookupService {
 
     private final UserRepository userRepository;
     private final UserIdentityProviderRepository identityProviderRepository;
+    private final AdminUserListCacheService adminUserListCacheService;
 
     public String getCurrentSubOrThrow() {
         return AuthUtils.getCurrentSub()
@@ -70,9 +71,17 @@ public class UserAccountLookupService {
     }
 
     public Page<UserDTO> getAllUsers(String searchTerm, Pageable pageable) {
+        return adminUserListCacheService.get(searchTerm, pageable)
+                .orElseGet(() -> {
+                    Page<UserDTO> users = loadAllUsers(searchTerm, pageable);
+                    adminUserListCacheService.put(searchTerm, pageable, users);
+                    return users;
+                });
+    }
+
+    private Page<UserDTO> loadAllUsers(String searchTerm, Pageable pageable) {
         Page<User> users;
         if (searchTerm != null && !searchTerm.isBlank()) {
-            String pattern = "%" + searchTerm.trim().toLowerCase() + "%";
             users = userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContaining(
                     searchTerm, searchTerm, searchTerm, pageable);
         } else {
@@ -98,6 +107,7 @@ public class UserAccountLookupService {
                         AuthErrorCode.USER_NOT_FOUND));
         user.setIsActive(!user.getIsActive());
         userRepository.save(user);
+        adminUserListCacheService.evictAll();
     }
 
 }
