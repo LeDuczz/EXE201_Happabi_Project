@@ -5,6 +5,8 @@ import com.minduc.happabi.dto.request.worksession.ReportWorkSessionRequest;
 import com.minduc.happabi.dto.response.worksession.WorkSessionResponse;
 import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.WorkSession;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -30,6 +32,8 @@ public interface IWorkSessionService {
     WorkSessionResponse checkout(UUID workSessionId);
 
     List<WorkSessionResponse> getMyMotherWorkSessions();
+
+    Page<WorkSessionResponse> getMyMotherWorkSessions(String bucket, Pageable pageable);
 
     WorkSessionResponse getMyMotherWorkSession(UUID workSessionId);
 

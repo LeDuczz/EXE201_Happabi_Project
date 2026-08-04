@@ -3,6 +3,7 @@ package com.minduc.happabi.service.user;
 import com.minduc.happabi.common.utils.AuthUtils;
 import com.minduc.happabi.dto.UserDTO;
 import com.minduc.happabi.entity.User;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
@@ -10,10 +11,12 @@ import com.minduc.happabi.repository.UserIdentityProviderRepository;
 import com.minduc.happabi.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -23,6 +26,7 @@ public class UserAccountLookupService {
 
     private final UserRepository userRepository;
     private final UserIdentityProviderRepository identityProviderRepository;
+    private final AdminUserListCacheService adminUserListCacheService;
 
     public String getCurrentSubOrThrow() {
         return AuthUtils.getCurrentSub()
@@ -69,15 +73,20 @@ public class UserAccountLookupService {
                 });
     }
 
-    public Page<UserDTO> getAllUsers(String searchTerm, Pageable pageable) {
-        Page<User> users;
-        if (searchTerm != null && !searchTerm.isBlank()) {
-            String pattern = "%" + searchTerm.trim().toLowerCase() + "%";
-            users = userRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContaining(
-                    searchTerm, searchTerm, searchTerm, pageable);
-        } else {
-            users = userRepository.findAll(pageable);
-        }
+    public Page<UserDTO> getAllUsers(String searchTerm, UserRole roleFilter, Boolean active, Pageable pageable) {
+        return adminUserListCacheService.get(searchTerm, roleFilter, active, pageable)
+                .orElseGet(() -> {
+                    Page<UserDTO> users = loadAllUsers(searchTerm, roleFilter, active, pageable);
+                    adminUserListCacheService.put(searchTerm, roleFilter, active, pageable, users);
+                    return users;
+                });
+    }
+
+    private Page<UserDTO> loadAllUsers(String searchTerm, UserRole roleFilter, Boolean active, Pageable pageable) {
+        String normalizedSearch = searchTerm == null || searchTerm.isBlank()
+                ? null
+                : searchTerm.trim().toLowerCase();
+        Page<User> users = userRepository.findAll(adminUserSpecification(normalizedSearch, roleFilter, active), pageable);
 
         return users.map(user -> UserDTO.builder()
                 .id(user.getId())
@@ -92,12 +101,46 @@ public class UserAccountLookupService {
                 .build());
     }
 
+    private Specification<User> adminUserSpecification(String searchTerm, UserRole roleFilter, Boolean active) {
+        return (root, query, criteriaBuilder) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+            if (searchTerm != null) {
+                String pattern = "%" + searchTerm + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("fullName")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern),
+                        criteriaBuilder.like(root.get("phone"), pattern)
+                ));
+            }
+
+            if (active != null) {
+                predicates.add(criteriaBuilder.equal(root.get("isActive"), active));
+            }
+
+            if (roleFilter != null) {
+                jakarta.persistence.criteria.Subquery<UUID> subquery = query.subquery(UUID.class);
+                jakarta.persistence.criteria.Root<com.minduc.happabi.entity.UserRoleAssignment> roleAssignment =
+                        subquery.from(com.minduc.happabi.entity.UserRoleAssignment.class);
+                subquery.select(roleAssignment.get("user").get("id"))
+                        .where(
+                                criteriaBuilder.equal(roleAssignment.get("user"), root),
+                                criteriaBuilder.equal(roleAssignment.get("role").get("roleName"), roleFilter)
+                        );
+                predicates.add(criteriaBuilder.exists(subquery));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+    }
+
     public void toggleUserStatus(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(
                         AuthErrorCode.USER_NOT_FOUND));
         user.setIsActive(!user.getIsActive());
         userRepository.save(user);
+        adminUserListCacheService.evictAll();
     }
 
 }

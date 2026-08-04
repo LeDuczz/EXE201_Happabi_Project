@@ -2,7 +2,7 @@ package com.minduc.happabi.repository;
 
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.UserRole;
-import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, UUID> {
+public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
     @Query("SELECT FUNCTION('DATE', u.createdAt) as createdDate, COUNT(u) as count " +
             "FROM User u " +
@@ -64,6 +64,4 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u JOIN u.roleAssignments ra WHERE ra.role.roleName = :roleName AND u.isActive = true")
     List<User> findActiveUsersByRoleName(@Param("roleName") UserRole roleName);
 
-    Page<User> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrPhoneContaining(
-            String fullName, String email, String phone, org.springframework.data.domain.Pageable pageable);
 }

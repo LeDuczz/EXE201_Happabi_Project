@@ -37,7 +37,7 @@ public interface IUserService {
 
     String uploadAvatar(MultipartFile file);
 
-    Page<com.minduc.happabi.dto.UserDTO> getAllUsers(String searchTerm, Pageable pageable);
+    Page<com.minduc.happabi.dto.UserDTO> getAllUsers(String searchTerm, com.minduc.happabi.enums.UserRole role, Boolean active, Pageable pageable);
 
     void toggleUserStatus(java.util.UUID userId);
 }
