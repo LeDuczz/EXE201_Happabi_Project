@@ -6,6 +6,8 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -95,6 +97,44 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, UUID> 
             order by ws.scheduledStartAt desc
             """)
     List<WorkSession> findByMotherId(@Param("motherId") UUID motherId);
+
+    @Query(value = """
+            select ws
+            from WorkSession ws
+            join fetch ws.booking b
+            join fetch ws.mother m
+            join fetch ws.nurseProfile np
+            join fetch np.user nu
+            join fetch ws.serviceOffering so
+            where ws.mother.id = :motherId
+            """,
+            countQuery = """
+            select count(ws)
+            from WorkSession ws
+            where ws.mother.id = :motherId
+            """)
+    Page<WorkSession> findByMotherId(@Param("motherId") UUID motherId, Pageable pageable);
+
+    @Query(value = """
+            select ws
+            from WorkSession ws
+            join fetch ws.booking b
+            join fetch ws.mother m
+            join fetch ws.nurseProfile np
+            join fetch np.user nu
+            join fetch ws.serviceOffering so
+            where ws.mother.id = :motherId
+              and ws.status in :statuses
+            """,
+            countQuery = """
+            select count(ws)
+            from WorkSession ws
+            where ws.mother.id = :motherId
+              and ws.status in :statuses
+            """)
+    Page<WorkSession> findByMotherIdAndStatusIn(@Param("motherId") UUID motherId,
+                                                @Param("statuses") Collection<WorkSessionStatus> statuses,
+                                                Pageable pageable);
 
     @Query("""
             select ws

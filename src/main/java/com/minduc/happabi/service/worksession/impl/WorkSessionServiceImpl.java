@@ -42,6 +42,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -311,6 +313,31 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         return workSessionRepository.findByMotherId(motherId).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('MOTHER')")
+    public Page<WorkSessionResponse> getMyMotherWorkSessions(String bucket, Pageable pageable) {
+        UUID motherId = userAccountLookupService.getCurrentUser().getId();
+        Collection<WorkSessionStatus> statuses = statusesForBucket(bucket);
+        if (statuses == null) {
+            return workSessionRepository.findByMotherId(motherId, pageable).map(this::toResponse);
+        }
+        return workSessionRepository.findByMotherIdAndStatusIn(motherId, statuses, pageable).map(this::toResponse);
+    }
+
+    private Collection<WorkSessionStatus> statusesForBucket(String bucket) {
+        if (bucket == null || bucket.isBlank()) {
+            return null;
+        }
+
+        return switch (bucket.trim().toUpperCase()) {
+            case "UPCOMING" -> List.of(WorkSessionStatus.SCHEDULED, WorkSessionStatus.IN_PROGRESS);
+            case "ACTION_NEEDED" -> List.of(WorkSessionStatus.PENDING_MOTHER_CONFIRMATION, WorkSessionStatus.REPORTED);
+            case "HISTORY" -> List.of(WorkSessionStatus.COMPLETED, WorkSessionStatus.AUTO_CONFIRMED, WorkSessionStatus.CANCELLED);
+            default -> null;
+        };
     }
 
     @Override
