@@ -35,6 +35,7 @@ public class AuditSearchService implements IAuditSearchService {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final int SUGGESTION_LIMIT = 8;
+    private static final String TIMESTAMP_FIELD = "@timestamp";
     private static final List<String> SEARCH_FIELDS = List.of(
             "action", "actor_id", "actor_role", "target_resource_type",
             "target_resource_id", "status", "reason", "ip_address");
@@ -63,7 +64,7 @@ public class AuditSearchService implements IAuditSearchService {
                         .from((int) pageable.getOffset())
                         .size(pageable.getPageSize())
                         .sort(so -> so.field(
-                                f -> f.field("@timestamp")
+                                f -> f.field(TIMESTAMP_FIELD)
                                         .order(co.elastic.clients.elasticsearch._types.SortOrder.Desc)));
 
                 Query query = buildQuery(searchTerm, fromDate, toDate);
@@ -76,10 +77,10 @@ public class AuditSearchService implements IAuditSearchService {
             @SuppressWarnings("rawtypes")
             SearchResponse<Map> response = elasticsearchClient.search(searchRequest, Map.class);
 
-            @SuppressWarnings({ "unchecked", "rawtypes" })
             List<Map<String, Object>> content = response.hits().hits().stream()
                     .map(Hit::source)
-                    .map(source -> mapTo((Map<String, Object>) source))
+                    .map(this::typedSource)
+                    .map(this::mapTo)
                     .collect(Collectors.toList());
 
             long total = response.hits().total() != null ? response.hits().total().value() : 0;
@@ -103,7 +104,7 @@ public class AuditSearchService implements IAuditSearchService {
                         .ignoreUnavailable(true)
                         .size(20)
                         .sort(so -> so.field(
-                                f -> f.field("@timestamp")
+                                f -> f.field(TIMESTAMP_FIELD)
                                         .order(co.elastic.clients.elasticsearch._types.SortOrder.Desc)));
 
                 Query query = buildTextQuery(searchTerm);
@@ -116,11 +117,11 @@ public class AuditSearchService implements IAuditSearchService {
             @SuppressWarnings("rawtypes")
             SearchResponse<Map> response = elasticsearchClient.search(searchRequest, Map.class);
 
-            @SuppressWarnings("unchecked")
             Set<String> suggestions = response.hits().hits().stream()
                     .map(Hit::source)
                     .filter(Objects::nonNull)
-                    .flatMap(source -> suggestionValues((Map<String, Object>) source).stream())
+                    .map(this::typedSource)
+                    .flatMap(source -> suggestionValues(source).stream())
                     .filter(value -> matchesSuggestion(searchTerm, value))
                     .limit(SUGGESTION_LIMIT)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -166,7 +167,7 @@ public class AuditSearchService implements IAuditSearchService {
         }
 
         return Query.of(q -> q.range(r -> {
-            r.field("@timestamp");
+            r.field(TIMESTAMP_FIELD);
             if (fromDate != null) {
                 r.gte(JsonData.of(fromDate.atStartOfDay(BUSINESS_ZONE).toInstant().toString()));
             }
@@ -207,5 +208,11 @@ public class AuditSearchService implements IAuditSearchService {
         mapped.put("createdAt", source.get("created_at"));
 
         return mapped;
+    }
+
+    private Map<String, Object> typedSource(Map<?, ?> source) {
+        Map<String, Object> typed = new HashMap<>();
+        source.forEach((key, value) -> typed.put(String.valueOf(key), value));
+        return typed;
     }
 }

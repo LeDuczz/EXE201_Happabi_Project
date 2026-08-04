@@ -321,7 +321,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     public Page<WorkSessionResponse> getMyMotherWorkSessions(String bucket, Pageable pageable) {
         UUID motherId = userAccountLookupService.getCurrentUser().getId();
         Collection<WorkSessionStatus> statuses = statusesForBucket(bucket);
-        if (statuses == null) {
+        if (statuses.isEmpty()) {
             return workSessionRepository.findByMotherId(motherId, pageable).map(this::toResponse);
         }
         return workSessionRepository.findByMotherIdAndStatusIn(motherId, statuses, pageable).map(this::toResponse);
@@ -329,14 +329,14 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
 
     private Collection<WorkSessionStatus> statusesForBucket(String bucket) {
         if (bucket == null || bucket.isBlank()) {
-            return null;
+            return List.of();
         }
 
         return switch (bucket.trim().toUpperCase()) {
             case "UPCOMING" -> List.of(WorkSessionStatus.SCHEDULED, WorkSessionStatus.IN_PROGRESS);
             case "ACTION_NEEDED" -> List.of(WorkSessionStatus.PENDING_MOTHER_CONFIRMATION, WorkSessionStatus.REPORTED);
             case "HISTORY" -> List.of(WorkSessionStatus.COMPLETED, WorkSessionStatus.AUTO_CONFIRMED, WorkSessionStatus.CANCELLED);
-            default -> null;
+            default -> List.of();
         };
     }
 

@@ -33,6 +33,14 @@ public class AdminUserListCacheService {
 
     private static final String CACHE_KEY_PREFIX = "admin:users:list:";
     private static final Duration CACHE_TTL = Duration.ofMinutes(2);
+    private static final String OPERATION_READ = "read";
+    private static final String OPERATION_WRITE = "write";
+    private static final String OPERATION_DELETE = "delete";
+    private static final String RESULT_SUCCESS = "success";
+    private static final String RESULT_FAILURE = "failure";
+    private static final String RESULT_FALLBACK_DB = "fallback_db";
+    private static final String REASON_NONE = "none";
+    private static final String REASON_REDIS_ERROR = "redis_error";
 
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
@@ -44,22 +52,22 @@ public class AdminUserListCacheService {
         try {
             cached = stringRedisTemplate.opsForValue().get(cacheKey);
         } catch (RuntimeException e) {
-            record("read", "fallback_db", "redis_error");
+            record(OPERATION_READ, RESULT_FALLBACK_DB, REASON_REDIS_ERROR);
             log.warn("[AdminUserListCache] Redis read failed for key={}", cacheKey, e);
             return Optional.empty();
         }
 
         if (cached == null || cached.isBlank()) {
-            record("read", "fallback_db", "miss");
+            record(OPERATION_READ, RESULT_FALLBACK_DB, "miss");
             return Optional.empty();
         }
 
         try {
             AdminUserPageCacheEntry entry = objectMapper.readValue(cached, AdminUserPageCacheEntry.class);
-            record("read", "hit", "none");
+            record(OPERATION_READ, "hit", REASON_NONE);
             return Optional.of(entry.toPage());
         } catch (JsonProcessingException e) {
-            record("read", "fallback_db", "corrupt_value");
+            record(OPERATION_READ, RESULT_FALLBACK_DB, "corrupt_value");
             log.warn("[AdminUserListCache] Failed to parse cached value for key={}", cacheKey, e);
             safeDelete(cacheKey);
             return Optional.empty();
@@ -72,16 +80,16 @@ public class AdminUserListCacheService {
         try {
             serialized = objectMapper.writeValueAsString(AdminUserPageCacheEntry.from(users));
         } catch (JsonProcessingException e) {
-            record("write", "failure", "serialization_error");
+            record(OPERATION_WRITE, RESULT_FAILURE, "serialization_error");
             log.warn("[AdminUserListCache] Failed to serialize cache value for key={}", cacheKey, e);
             return;
         }
 
         try {
             stringRedisTemplate.opsForValue().set(cacheKey, serialized, CACHE_TTL);
-            record("write", "success", "none");
+            record(OPERATION_WRITE, RESULT_SUCCESS, REASON_NONE);
         } catch (RuntimeException e) {
-            record("write", "failure", "redis_error");
+            record(OPERATION_WRITE, RESULT_FAILURE, REASON_REDIS_ERROR);
             log.warn("[AdminUserListCache] Redis write failed for key={}", cacheKey, e);
         }
     }
@@ -99,22 +107,22 @@ public class AdminUserListCacheService {
                 keys.add(cursor.next());
             }
         } catch (RuntimeException e) {
-            record("scan", "failure", "redis_error");
+            record("scan", RESULT_FAILURE, REASON_REDIS_ERROR);
             log.warn("[AdminUserListCache] Redis scan failed while evicting admin user list cache", e);
             return;
         }
 
         if (keys.isEmpty()) {
-            record("delete", "success", "empty");
+            record(OPERATION_DELETE, RESULT_SUCCESS, "empty");
             return;
         }
 
         try {
             stringRedisTemplate.delete(keys);
-            record("delete", "success", "none");
+            record(OPERATION_DELETE, RESULT_SUCCESS, REASON_NONE);
             log.info("[AdminUserListCache] Evicted {} admin user list cache keys", keys.size());
         } catch (RuntimeException e) {
-            record("delete", "failure", "redis_error");
+            record(OPERATION_DELETE, RESULT_FAILURE, REASON_REDIS_ERROR);
             log.warn("[AdminUserListCache] Redis bulk delete failed", e);
         }
     }
@@ -122,9 +130,9 @@ public class AdminUserListCacheService {
     private void safeDelete(String cacheKey) {
         try {
             stringRedisTemplate.delete(cacheKey);
-            record("delete", "success", "corrupt_value");
+            record(OPERATION_DELETE, RESULT_SUCCESS, "corrupt_value");
         } catch (RuntimeException e) {
-            record("delete", "failure", "redis_error");
+            record(OPERATION_DELETE, RESULT_FAILURE, REASON_REDIS_ERROR);
             log.warn("[AdminUserListCache] Failed to delete cache key={}", cacheKey, e);
         }
     }
@@ -188,7 +196,7 @@ public class AdminUserListCacheService {
         Page<UserDTO> toPage() {
             Sort restoredSort = sort == null || sort.isEmpty()
                     ? Sort.unsorted()
-                    : Sort.by(sort.stream().map(SortOrderSnapshot::toOrder).toList());
+                    : Sort.by(sort.stream().map(SortOrderSnapshot::restore).toList());
             Pageable pageable = PageRequest.of(pageNumber, pageSize, restoredSort);
             List<UserDTO> users = content == null
                     ? List.of()
@@ -236,7 +244,7 @@ public class AdminUserListCacheService {
             return new SortOrderSnapshot(order.getProperty(), order.getDirection());
         }
 
-        Sort.Order toOrder() {
+        Sort.Order restore() {
             return new Sort.Order(direction, property);
         }
     }

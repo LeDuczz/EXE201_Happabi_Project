@@ -8,6 +8,7 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import co.elastic.clients.elasticsearch.core.search.TotalHitsRelation;
 import com.minduc.happabi.service.audit.impl.AuditSearchService;
+import com.minduc.happabi.exception.AppException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -64,6 +66,31 @@ class AuditSearchServiceTest {
         assertThat(request.size()).isEqualTo(20);
         assertThat(request.query().bool().must()).hasSize(1);
         assertThat(request.query().bool().filter()).hasSize(1);
+    }
+
+    @Test
+    void searchLogsBuildsTextOnlyQueryWhenDatesAreEmpty() throws IOException {
+        when(elasticsearchClient.search(any(SearchRequest.class), eq(Map.class)))
+                .thenReturn(searchResponse(List.of(), 0));
+
+        service.searchLogs("LOCK_USER", null, null, PageRequest.of(0, 10));
+
+        ArgumentCaptor<SearchRequest> requestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(elasticsearchClient).search(requestCaptor.capture(), eq(Map.class));
+        assertThat(requestCaptor.getValue().query().queryString().query()).isEqualTo("*LOCK_USER*");
+    }
+
+    @Test
+    void searchLogsBuildsDateRangeOnlyQueryWhenSearchTermIsEmpty() throws IOException {
+        when(elasticsearchClient.search(any(SearchRequest.class), eq(Map.class)))
+                .thenReturn(searchResponse(List.of(), 0));
+
+        service.searchLogs(" ", LocalDate.of(2026, 8, 4), null, PageRequest.of(0, 10));
+
+        ArgumentCaptor<SearchRequest> requestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(elasticsearchClient).search(requestCaptor.capture(), eq(Map.class));
+        assertThat(requestCaptor.getValue().query().range().field()).isEqualTo("@timestamp");
+        assertThat(requestCaptor.getValue().query().range().gte()).isNotNull();
     }
 
     @Test
@@ -118,6 +145,41 @@ class AuditSearchServiceTest {
         List<String> suggestions = service.suggestSearchTerms("log");
 
         assertThat(suggestions).containsExactly("LOGIN", "LOGIN_FAILED");
+    }
+
+    @Test
+    void suggestSearchTermsReturnsFilteredValuesWhenSearchTermIsBlank() throws IOException {
+        Map<String, Object> source = Map.of(
+                "action", "LOCK_USER",
+                "actor_role", "ADMIN",
+                "target_resource_type", "USER",
+                "status", "SUCCESS",
+                "reason", " "
+        );
+        when(elasticsearchClient.search(any(SearchRequest.class), eq(Map.class)))
+                .thenReturn(searchResponse(List.of(source), 1));
+
+        List<String> suggestions = service.suggestSearchTerms(" ");
+
+        assertThat(suggestions).containsExactly("LOCK_USER", "ADMIN", "USER", "SUCCESS");
+    }
+
+    @Test
+    void searchLogsWrapsElasticsearchFailures() throws IOException {
+        when(elasticsearchClient.search(any(SearchRequest.class), eq(Map.class)))
+                .thenThrow(new IOException("elasticsearch down"));
+
+        assertThatThrownBy(() -> service.searchLogs(null, null, null, PageRequest.of(0, 10)))
+                .isInstanceOf(AppException.class);
+    }
+
+    @Test
+    void suggestSearchTermsWrapsElasticsearchFailures() throws IOException {
+        when(elasticsearchClient.search(any(SearchRequest.class), eq(Map.class)))
+                .thenThrow(new IOException("elasticsearch down"));
+
+        assertThatThrownBy(() -> service.suggestSearchTerms("admin"))
+                .isInstanceOf(AppException.class);
     }
 
     private SearchResponse<Map> searchResponse(List<Map<String, Object>> sources, long total) {

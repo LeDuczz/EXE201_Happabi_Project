@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -24,11 +25,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,7 +57,7 @@ class AdminUserListCacheServiceTest {
     @Test
     void putSerializesAdminUserPageWithStableCacheKey() {
         prepareValueOperations();
-        Pageable pageable = PageRequest.of(1, 20);
+        Pageable pageable = PageRequest.of(1, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<UserDTO> page = new PageImpl<>(List.of(user("Mother User")), pageable, 41);
 
         cacheService.put("  Mother  User ", UserRole.MOTHER, true, pageable, page);
@@ -67,7 +67,7 @@ class AdminUserListCacheServiceTest {
         verify(valueOperations).set(keyCaptor.capture(), valueCaptor.capture(), any());
 
         assertThat(keyCaptor.getValue())
-                .isEqualTo("admin:users:list:q=mother user:role=MOTHER:status=active:page=1:size=20:sort=unsorted");
+                .isEqualTo("admin:users:list:q=mother user:role=MOTHER:status=active:page=1:size=20:sort=createdAt,DESC");
         assertThat(valueCaptor.getValue()).contains("Mother User", "\"totalElements\":41");
     }
 
@@ -114,6 +114,17 @@ class AdminUserListCacheServiceTest {
     }
 
     @Test
+    void putDoesNotThrowWhenRedisWriteFails() {
+        prepareValueOperations();
+        Page<UserDTO> page = new PageImpl<>(List.of(user("Cached User")), PageRequest.of(0, 10), 1);
+        doThrow(new RuntimeException("redis down")).when(valueOperations).set(any(), any(), any());
+
+        cacheService.put(null, null, false, PageRequest.of(0, 10), page);
+
+        verify(valueOperations).set(any(), any(), any());
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void evictAllDeletesKeysMatchingAdminUserListPrefix() {
         Cursor<String> cursor = mock(Cursor.class);
@@ -129,6 +140,28 @@ class AdminUserListCacheServiceTest {
                 "admin:users:list:q=all:page=0:size=20:sort=unsorted",
                 "admin:users:list:q=nurse:page=0:size=20:sort=unsorted"
         ));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void evictAllStopsWhenRedisScanFails() {
+        when(stringRedisTemplate.scan(any())).thenThrow(new RuntimeException("redis down"));
+
+        cacheService.evictAll();
+
+        verify(stringRedisTemplate, never()).delete(any(List.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void evictAllRecordsEmptyScanWithoutDeleting() {
+        Cursor<String> cursor = mock(Cursor.class);
+        when(cursor.hasNext()).thenReturn(false);
+        when(stringRedisTemplate.scan(any())).thenReturn(cursor);
+
+        cacheService.evictAll();
+
+        verify(stringRedisTemplate, never()).delete(any(List.class));
     }
 
     private void prepareValueOperations() {
