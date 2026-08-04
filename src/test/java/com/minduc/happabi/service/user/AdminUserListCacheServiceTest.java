@@ -91,6 +91,37 @@ class AdminUserListCacheServiceTest {
     }
 
     @Test
+    void getReturnsCachedPageWithRestoredSortOrder() {
+        prepareValueOperations();
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "fullName"));
+        Page<UserDTO> page = new PageImpl<>(List.of(user("Sorted User")), pageable, 1);
+        cacheService.put(null, UserRole.NURSE, false, pageable, page);
+        ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
+        verify(valueOperations).set(any(), valueCaptor.capture(), any());
+
+        when(valueOperations.get("admin:users:list:q=all:role=NURSE:status=locked:page=0:size=10:sort=fullName,ASC"))
+                .thenReturn(valueCaptor.getValue());
+
+        Page<UserDTO> cached = cacheService.get(null, UserRole.NURSE, false, pageable).orElseThrow();
+
+        assertThat(cached.getSort().getOrderFor("fullName")).isNotNull();
+        assertThat(cached.getSort().getOrderFor("fullName").getDirection()).isEqualTo(Sort.Direction.ASC);
+        assertThat(cached.getContent().getFirst().getFullName()).isEqualTo("Sorted User");
+    }
+
+    @Test
+    void getReturnsEmptyWhenCachedValueIsBlank() {
+        prepareValueOperations();
+        Pageable pageable = PageRequest.of(0, 10);
+        when(valueOperations.get("admin:users:list:q=all:role=all:status=all:page=0:size=10:sort=unsorted"))
+                .thenReturn(" ");
+
+        assertThat(cacheService.get(null, null, null, pageable)).isEmpty();
+
+        verify(stringRedisTemplate, never()).delete(any(String.class));
+    }
+
+    @Test
     void getFallsBackWhenRedisValueIsCorruptAndDeletesKey() {
         prepareValueOperations();
         Pageable pageable = PageRequest.of(0, 10);
@@ -100,6 +131,42 @@ class AdminUserListCacheServiceTest {
         assertThat(cacheService.get(null, null, null, pageable)).isEmpty();
 
         verify(stringRedisTemplate).delete(key);
+    }
+
+    @Test
+    void getFallsBackWhenRedisValueIsCorruptAndDeleteFails() {
+        prepareValueOperations();
+        Pageable pageable = PageRequest.of(0, 10);
+        String key = "admin:users:list:q=all:role=all:status=all:page=0:size=10:sort=unsorted";
+        when(valueOperations.get(key)).thenReturn("{bad-json");
+        doThrow(new RuntimeException("redis down")).when(stringRedisTemplate).delete(key);
+
+        assertThat(cacheService.get(null, null, null, pageable)).isEmpty();
+
+        verify(stringRedisTemplate).delete(key);
+    }
+
+    @Test
+    void getReturnsEmptyPageWhenCachedContentAndSortAreNull() {
+        prepareValueOperations();
+        Pageable pageable = PageRequest.of(2, 5);
+        String key = "admin:users:list:q=all:role=all:status=all:page=2:size=5:sort=unsorted";
+        when(valueOperations.get(key)).thenReturn("""
+                {
+                  "content": null,
+                  "pageNumber": 2,
+                  "pageSize": 5,
+                  "totalElements": 0,
+                  "sort": null
+                }
+                """);
+
+        Page<UserDTO> cached = cacheService.get(null, null, null, pageable).orElseThrow();
+
+        assertThat(cached.getContent()).isEmpty();
+        assertThat(cached.getSort().isUnsorted()).isTrue();
+        assertThat(cached.getNumber()).isEqualTo(2);
+        assertThat(cached.getSize()).isEqualTo(5);
     }
 
     @Test
@@ -140,6 +207,21 @@ class AdminUserListCacheServiceTest {
                 "admin:users:list:q=all:page=0:size=20:sort=unsorted",
                 "admin:users:list:q=nurse:page=0:size=20:sort=unsorted"
         ));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void evictAllDoesNotThrowWhenBulkDeleteFails() {
+        Cursor<String> cursor = mock(Cursor.class);
+        List<String> keys = List.of("admin:users:list:q=all:page=0:size=20:sort=unsorted");
+        when(cursor.hasNext()).thenReturn(true, false);
+        when(cursor.next()).thenReturn(keys.getFirst());
+        when(stringRedisTemplate.scan(any())).thenReturn(cursor);
+        doThrow(new RuntimeException("redis down")).when(stringRedisTemplate).delete(keys);
+
+        cacheService.evictAll();
+
+        verify(stringRedisTemplate).delete(keys);
     }
 
     @Test
