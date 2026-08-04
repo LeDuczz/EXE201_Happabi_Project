@@ -9,6 +9,7 @@ import com.minduc.happabi.dto.response.mother.MotherProfileResponse;
 import com.minduc.happabi.dto.response.nurse.NurseProfileResponse;
 import com.minduc.happabi.dto.response.user.UserAttributeChangeResponse;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.service.user.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -82,8 +83,8 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
-    public Page<com.minduc.happabi.dto.UserDTO> getAllUsers(String searchTerm, Pageable pageable) {
-        return userAccountLookupService.getAllUsers(searchTerm, pageable);
+    public Page<com.minduc.happabi.dto.UserDTO> getAllUsers(String searchTerm, UserRole role, Boolean active, Pageable pageable) {
+        return userAccountLookupService.getAllUsers(searchTerm, role, active, pageable);
     }
 
     @Override

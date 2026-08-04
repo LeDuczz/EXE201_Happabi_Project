@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
@@ -27,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class UserAccountLookupServiceTest {
@@ -51,9 +54,9 @@ class UserAccountLookupServiceTest {
                 .fullName("Cached Mother")
                 .roles(List.of("MOTHER"))
                 .build()), pageable, 1);
-        when(adminUserListCacheService.get("mother", pageable)).thenReturn(Optional.of(cached));
+        when(adminUserListCacheService.get("mother", UserRole.MOTHER, true, pageable)).thenReturn(Optional.of(cached));
 
-        Page<UserDTO> result = service.getAllUsers("mother", pageable);
+        Page<UserDTO> result = service.getAllUsers("mother", UserRole.MOTHER, true, pageable);
 
         assertThat(result).isSameAs(cached);
         verify(userRepository, never()).findAll(pageable);
@@ -63,15 +66,29 @@ class UserAccountLookupServiceTest {
     void getAllUsersCachesDatabaseResultWhenCacheMisses() {
         Pageable pageable = PageRequest.of(0, 20);
         User user = user("Nguyen Mother", UserRole.MOTHER);
-        when(adminUserListCacheService.get(null, pageable)).thenReturn(Optional.empty());
-        when(userRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(user), pageable, 1));
+        when(adminUserListCacheService.get(null, null, null, pageable)).thenReturn(Optional.empty());
+        when(userRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(new PageImpl<>(List.of(user), pageable, 1));
 
-        Page<UserDTO> result = service.getAllUsers(null, pageable);
+        Page<UserDTO> result = service.getAllUsers(null, null, null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().getFirst().getFullName()).isEqualTo("Nguyen Mother");
         assertThat(result.getContent().getFirst().getRoles()).containsExactly("MOTHER");
-        verify(adminUserListCacheService).put(null, pageable, result);
+        verify(adminUserListCacheService).put(null, null, null, pageable, result);
+    }
+
+    @Test
+    void getAllUsersPassesRoleStatusAndNormalizedSearchToRepository() {
+        Pageable pageable = PageRequest.of(0, 20);
+        User user = user("Locked Nurse", UserRole.NURSE);
+        when(adminUserListCacheService.get(" Nurse ", UserRole.NURSE, false, pageable)).thenReturn(Optional.empty());
+        when(userRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(user), pageable, 1));
+
+        Page<UserDTO> result = service.getAllUsers(" Nurse ", UserRole.NURSE, false, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(adminUserListCacheService).put(" Nurse ", UserRole.NURSE, false, pageable, result);
     }
 
     @Test

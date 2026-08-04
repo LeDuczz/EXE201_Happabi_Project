@@ -3,6 +3,7 @@ package com.minduc.happabi.service.user;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.dto.UserDTO;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.observability.metrics.MetricsRecorder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,8 +38,8 @@ public class AdminUserListCacheService {
     private final ObjectMapper objectMapper;
     private final MetricsRecorder metricsRecorder;
 
-    public Optional<Page<UserDTO>> get(String query, Pageable pageable) {
-        String cacheKey = cacheKey(query, pageable);
+    public Optional<Page<UserDTO>> get(String query, UserRole role, Boolean active, Pageable pageable) {
+        String cacheKey = cacheKey(query, role, active, pageable);
         String cached;
         try {
             cached = stringRedisTemplate.opsForValue().get(cacheKey);
@@ -65,8 +66,8 @@ public class AdminUserListCacheService {
         }
     }
 
-    public void put(String query, Pageable pageable, Page<UserDTO> users) {
-        String cacheKey = cacheKey(query, pageable);
+    public void put(String query, UserRole role, Boolean active, Pageable pageable, Page<UserDTO> users) {
+        String cacheKey = cacheKey(query, role, active, pageable);
         String serialized;
         try {
             serialized = objectMapper.writeValueAsString(AdminUserPageCacheEntry.from(users));
@@ -128,15 +129,24 @@ public class AdminUserListCacheService {
         }
     }
 
-    private String cacheKey(String query, Pageable pageable) {
+    private String cacheKey(String query, UserRole role, Boolean active, Pageable pageable) {
         String normalizedQuery = query == null || query.isBlank()
                 ? "all"
                 : query.trim().toLowerCase().replaceAll("\\s+", " ");
         return CACHE_KEY_PREFIX
                 + "q=" + normalizedQuery
+                + ":role=" + (role == null ? "all" : role.name())
+                + ":status=" + statusKey(active)
                 + ":page=" + pageable.getPageNumber()
                 + ":size=" + pageable.getPageSize()
                 + ":sort=" + sortKey(pageable.getSort());
+    }
+
+    private String statusKey(Boolean active) {
+        if (active == null) {
+            return "all";
+        }
+        return active ? "active" : "locked";
     }
 
     private String sortKey(Sort sort) {

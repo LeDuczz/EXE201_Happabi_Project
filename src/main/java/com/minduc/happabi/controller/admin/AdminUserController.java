@@ -2,7 +2,7 @@ package com.minduc.happabi.controller.admin;
 
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.UserDTO;
-import com.minduc.happabi.entity.User;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.service.user.IUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,9 +29,11 @@ public class AdminUserController {
     @Operation(summary = "Get list of all users with optional search")
     public ResponseEntity<BaseResponse<Page<UserDTO>>> getAllUsers(
             @RequestParam(required = false) String query,
+            @RequestParam(required = false) UserRole role,
+            @RequestParam(required = false) UserStatusFilter status,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(
-                BaseResponse.ok("Get all users success", userService.getAllUsers(query, pageable)));
+                BaseResponse.ok("Get all users success", userService.getAllUsers(query, role, status == null ? null : status.active, pageable)));
     }
 
     @PostMapping("/{userId}/toggle-status")
@@ -40,5 +42,16 @@ public class AdminUserController {
         userService.toggleUserStatus(userId);
         return ResponseEntity.ok(
                 BaseResponse.ok("Toggle user status success", null));
+    }
+
+    public enum UserStatusFilter {
+        ACTIVE(true),
+        LOCKED(false);
+
+        private final Boolean active;
+
+        UserStatusFilter(Boolean active) {
+            this.active = active;
+        }
     }
 }

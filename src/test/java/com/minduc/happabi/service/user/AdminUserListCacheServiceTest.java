@@ -2,6 +2,7 @@ package com.minduc.happabi.service.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minduc.happabi.dto.UserDTO;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.observability.metrics.MetricsRecorder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,14 +60,14 @@ class AdminUserListCacheServiceTest {
         Pageable pageable = PageRequest.of(1, 20);
         Page<UserDTO> page = new PageImpl<>(List.of(user("Mother User")), pageable, 41);
 
-        cacheService.put("  Mother  User ", pageable, page);
+        cacheService.put("  Mother  User ", UserRole.MOTHER, true, pageable, page);
 
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
         verify(valueOperations).set(keyCaptor.capture(), valueCaptor.capture(), any());
 
         assertThat(keyCaptor.getValue())
-                .isEqualTo("admin:users:list:q=mother user:page=1:size=20:sort=unsorted");
+                .isEqualTo("admin:users:list:q=mother user:role=MOTHER:status=active:page=1:size=20:sort=unsorted");
         assertThat(valueCaptor.getValue()).contains("Mother User", "\"totalElements\":41");
     }
 
@@ -75,14 +76,14 @@ class AdminUserListCacheServiceTest {
         prepareValueOperations();
         Pageable pageable = PageRequest.of(0, 10);
         Page<UserDTO> page = new PageImpl<>(List.of(user("Cached User")), pageable, 1);
-        cacheService.put(null, pageable, page);
+        cacheService.put(null, null, null, pageable, page);
         ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
         verify(valueOperations).set(any(), valueCaptor.capture(), any());
 
-        when(valueOperations.get("admin:users:list:q=all:page=0:size=10:sort=unsorted"))
+        when(valueOperations.get("admin:users:list:q=all:role=all:status=all:page=0:size=10:sort=unsorted"))
                 .thenReturn(valueCaptor.getValue());
 
-        Page<UserDTO> cached = cacheService.get(null, pageable).orElseThrow();
+        Page<UserDTO> cached = cacheService.get(null, null, null, pageable).orElseThrow();
 
         assertThat(cached.getTotalElements()).isEqualTo(1);
         assertThat(cached.getContent()).hasSize(1);
@@ -93,10 +94,10 @@ class AdminUserListCacheServiceTest {
     void getFallsBackWhenRedisValueIsCorruptAndDeletesKey() {
         prepareValueOperations();
         Pageable pageable = PageRequest.of(0, 10);
-        String key = "admin:users:list:q=all:page=0:size=10:sort=unsorted";
+        String key = "admin:users:list:q=all:role=all:status=all:page=0:size=10:sort=unsorted";
         when(valueOperations.get(key)).thenReturn("{bad-json");
 
-        assertThat(cacheService.get(null, pageable)).isEmpty();
+        assertThat(cacheService.get(null, null, null, pageable)).isEmpty();
 
         verify(stringRedisTemplate).delete(key);
     }
@@ -107,7 +108,7 @@ class AdminUserListCacheServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         when(valueOperations.get(any())).thenThrow(new RuntimeException("redis down"));
 
-        assertThat(cacheService.get(null, pageable)).isEmpty();
+        assertThat(cacheService.get(null, null, null, pageable)).isEmpty();
 
         verify(stringRedisTemplate, never()).delete(any(String.class));
     }
