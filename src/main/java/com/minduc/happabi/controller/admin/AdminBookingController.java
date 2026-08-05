@@ -1,6 +1,7 @@
 package com.minduc.happabi.controller.admin;
 
 import com.minduc.happabi.common.base.BaseResponse;
+import com.minduc.happabi.dto.request.admin.AdminBookingSearchCriteria;
 import com.minduc.happabi.dto.response.admin.AdminBookingResponse;
 import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.BookingStatus;
@@ -49,15 +50,15 @@ public class AdminBookingController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceTo,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(BaseResponse.ok("Get admin bookings successfully",
-                adminBookingService.getBookings(
-                        query,
-                        status,
-                        paymentOption,
-                        startOfDay(createdFrom),
-                        exclusiveEndOfDay(createdTo),
-                        startOfDay(serviceFrom),
-                        exclusiveEndOfDay(serviceTo),
-                        pageable)));
+                adminBookingService.getBookings(AdminBookingSearchCriteria.builder()
+                        .query(query)
+                        .status(status)
+                        .paymentOption(paymentOption)
+                        .createdFrom(startOfDay(createdFrom))
+                        .createdTo(exclusiveEndOfDay(createdTo))
+                        .serviceFrom(startOfDay(serviceFrom))
+                        .serviceTo(exclusiveEndOfDay(serviceTo))
+                        .build(), pageable)));
     }
 
     @GetMapping("/{bookingId}")

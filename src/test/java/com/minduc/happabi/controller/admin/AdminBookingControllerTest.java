@@ -1,5 +1,6 @@
 package com.minduc.happabi.controller.admin;
 
+import com.minduc.happabi.dto.request.admin.AdminBookingSearchCriteria;
 import com.minduc.happabi.dto.response.admin.AdminBookingResponse;
 import com.minduc.happabi.enums.BookingPaymentOption;
 import com.minduc.happabi.enums.BookingStatus;
@@ -13,10 +14,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,15 +32,7 @@ class AdminBookingControllerTest {
     void getBookingsPassesFiltersWithVietnamBusinessDayBounds() {
         AdminBookingController controller = new AdminBookingController(adminBookingService);
         Pageable pageable = Pageable.unpaged();
-        when(adminBookingService.getBookings(
-                eq("ngoc"),
-                eq(BookingStatus.COMPLETED),
-                eq(BookingPaymentOption.FULL_APP_PAYMENT),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any(),
-                eq(pageable)))
+        when(adminBookingService.getBookings(any(AdminBookingSearchCriteria.class), eq(pageable)))
                 .thenReturn(Page.empty());
 
         var response = controller.getBookings(
@@ -52,23 +45,15 @@ class AdminBookingControllerTest {
                 LocalDate.of(2026, 7, 25),
                 pageable);
 
-        ArgumentCaptor<OffsetDateTime> createdFrom = ArgumentCaptor.forClass(OffsetDateTime.class);
-        ArgumentCaptor<OffsetDateTime> createdTo = ArgumentCaptor.forClass(OffsetDateTime.class);
-        ArgumentCaptor<OffsetDateTime> serviceFrom = ArgumentCaptor.forClass(OffsetDateTime.class);
-        ArgumentCaptor<OffsetDateTime> serviceTo = ArgumentCaptor.forClass(OffsetDateTime.class);
-        verify(adminBookingService).getBookings(
-                eq("ngoc"),
-                eq(BookingStatus.COMPLETED),
-                eq(BookingPaymentOption.FULL_APP_PAYMENT),
-                createdFrom.capture(),
-                createdTo.capture(),
-                serviceFrom.capture(),
-                serviceTo.capture(),
-                eq(pageable));
-        assertThat(createdFrom.getValue()).isEqualTo(OffsetDateTime.parse("2026-07-14T00:00:00+07:00"));
-        assertThat(createdTo.getValue()).isEqualTo(OffsetDateTime.parse("2026-07-21T00:00:00+07:00"));
-        assertThat(serviceFrom.getValue()).isEqualTo(OffsetDateTime.parse("2026-07-21T00:00:00+07:00"));
-        assertThat(serviceTo.getValue()).isEqualTo(OffsetDateTime.parse("2026-07-26T00:00:00+07:00"));
+        ArgumentCaptor<AdminBookingSearchCriteria> criteria = ArgumentCaptor.forClass(AdminBookingSearchCriteria.class);
+        verify(adminBookingService).getBookings(criteria.capture(), eq(pageable));
+        assertThat(criteria.getValue().getQuery()).isEqualTo("ngoc");
+        assertThat(criteria.getValue().getStatus()).isEqualTo(BookingStatus.COMPLETED);
+        assertThat(criteria.getValue().getPaymentOption()).isEqualTo(BookingPaymentOption.FULL_APP_PAYMENT);
+        assertThat(criteria.getValue().getCreatedFrom()).hasToString("2026-07-14T00:00+07:00");
+        assertThat(criteria.getValue().getCreatedTo()).hasToString("2026-07-21T00:00+07:00");
+        assertThat(criteria.getValue().getServiceFrom()).hasToString("2026-07-21T00:00+07:00");
+        assertThat(criteria.getValue().getServiceTo()).hasToString("2026-07-26T00:00+07:00");
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getData()).isEmpty();
     }

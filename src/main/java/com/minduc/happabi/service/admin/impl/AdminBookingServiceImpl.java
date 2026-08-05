@@ -1,12 +1,11 @@
 package com.minduc.happabi.service.admin.impl;
 
+import com.minduc.happabi.dto.request.admin.AdminBookingSearchCriteria;
 import com.minduc.happabi.dto.response.admin.AdminBookingResponse;
 import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.ServiceOffering;
 import com.minduc.happabi.entity.User;
-import com.minduc.happabi.enums.BookingPaymentOption;
-import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.repository.BookingRepository;
@@ -34,17 +33,9 @@ public class AdminBookingServiceImpl implements IAdminBookingService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminBookingResponse> getBookings(
-            String query,
-            BookingStatus status,
-            BookingPaymentOption paymentOption,
-            OffsetDateTime createdFrom,
-            OffsetDateTime createdTo,
-            OffsetDateTime serviceFrom,
-            OffsetDateTime serviceTo,
-            Pageable pageable) {
+    public Page<AdminBookingResponse> getBookings(AdminBookingSearchCriteria criteria, Pageable pageable) {
         return bookingRepository.findAll(
-                        buildSpecification(query, status, paymentOption, createdFrom, createdTo, serviceFrom, serviceTo),
+                        buildSpecification(criteria),
                         pageable)
                 .map(this::toResponse);
     }
@@ -57,14 +48,7 @@ public class AdminBookingServiceImpl implements IAdminBookingService {
         return toResponse(booking);
     }
 
-    private Specification<Booking> buildSpecification(
-            String query,
-            BookingStatus status,
-            BookingPaymentOption paymentOption,
-            OffsetDateTime createdFrom,
-            OffsetDateTime createdTo,
-            OffsetDateTime serviceFrom,
-            OffsetDateTime serviceTo) {
+    Specification<Booking> buildSpecification(AdminBookingSearchCriteria criteria) {
         return (root, criteriaQuery, criteriaBuilder) -> {
             if (criteriaQuery != null && !Long.class.equals(criteriaQuery.getResultType())) {
                 root.fetch("mother", JoinType.LEFT);
@@ -82,7 +66,7 @@ public class AdminBookingServiceImpl implements IAdminBookingService {
             Join<Booking, ServiceOffering> service = root.join("serviceOffering", JoinType.LEFT);
 
             var predicates = new ArrayList<Predicate>();
-            String normalizedQuery = normalize(query);
+            String normalizedQuery = normalize(criteria.getQuery());
             if (normalizedQuery != null) {
                 String likeQuery = "%" + normalizedQuery + "%";
                 predicates.add(criteriaBuilder.or(
@@ -98,14 +82,14 @@ public class AdminBookingServiceImpl implements IAdminBookingService {
                 ));
             }
 
-            if (status != null) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            if (criteria.getStatus() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), criteria.getStatus()));
             }
-            if (paymentOption != null) {
-                predicates.add(criteriaBuilder.equal(root.get("paymentOption"), paymentOption));
+            if (criteria.getPaymentOption() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("paymentOption"), criteria.getPaymentOption()));
             }
-            addRange(predicates, criteriaBuilder, root.get("createdAt"), createdFrom, createdTo);
-            addRange(predicates, criteriaBuilder, root.get("startAt"), serviceFrom, serviceTo);
+            addRange(predicates, criteriaBuilder, root.get("createdAt"), criteria.getCreatedFrom(), criteria.getCreatedTo());
+            addRange(predicates, criteriaBuilder, root.get("startAt"), criteria.getServiceFrom(), criteria.getServiceTo());
 
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
