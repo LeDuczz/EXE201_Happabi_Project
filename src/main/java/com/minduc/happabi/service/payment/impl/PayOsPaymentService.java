@@ -6,11 +6,13 @@ import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.BookingPaymentTransaction;
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.WalletTransaction;
+import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.enums.TransactionType;
 import com.minduc.happabi.exception.AppException;
+import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.exception.code.PaymentErrorCode;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.observability.annotation.AuditAction;
@@ -18,6 +20,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
+import com.minduc.happabi.repository.BookingSlotRepository;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.payment.IPayOsPaymentService;
@@ -51,6 +54,7 @@ public class PayOsPaymentService implements IPayOsPaymentService {
     private final BookingPaymentTransactionRepository bookingPaymentTransactionRepository;
     private final PaymentGatewayFeeCalculator paymentGatewayFeeCalculator;
     private final BookingRepository bookingRepository;
+    private final BookingSlotRepository bookingSlotRepository;
     private final NurseProfileRepository nurseProfileRepository;
     private final UserAccountLookupService userAccountLookupService;
     private final NurseWalletProvisioningService nurseWalletProvisioningService;
@@ -246,6 +250,45 @@ public class PayOsPaymentService implements IPayOsPaymentService {
             log.warn("[PayOSPayment] Failed to create booking payment link bookingId={} transactionId={}",
                     bookingId, transaction.getTransactionId());
             throw new AppException(PaymentErrorCode.FAIL_TO_CREATE_PAYMENT_LINK_FOR_NURSE, e.getMessage());
+        }
+    }
+
+    @LogExecution
+    @AuditAction(action = "CANCEL_BOOKING_PAYMENT_RETURN", resourceType = "BOOKING_PAYMENT")
+    @TimedAction("CANCEL_BOOKING_PAYMENT_RETURN")
+    @Transactional
+    @Override
+    public void cancelBookingPaymentFromReturn(Long orderCode) {
+        BookingPaymentTransaction transaction = bookingPaymentTransactionRepository
+                .findByTransactionIdForUpdate(orderCode)
+                .orElseThrow(() -> new AppException(PaymentErrorCode.BOOKING_PAYMENT_NOT_FOUND));
+        Booking booking = transaction.getBooking();
+        UUID currentUserId = userAccountLookupService.getCurrentUser().getId();
+        if (!booking.getMother().getId().equals(currentUserId)) {
+            throw new AppException(BookingErrorCode.BOOKING_ACCESS_DENIED);
+        }
+        if (transaction.getStatus() != TransactionStatus.PENDING) {
+            return;
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+        int transactionUpdated = bookingPaymentTransactionRepository.markStatusIfPending(
+                orderCode,
+                TransactionStatus.PENDING,
+                TransactionStatus.CANCELED,
+                now,
+                "PayOS checkout cancelled by customer");
+        if (transactionUpdated != 1) {
+            return;
+        }
+        int bookingCancelled = bookingRepository.cancelActivePendingPayment(
+                booking.getId(),
+                BookingStatus.PENDING_PAYMENT,
+                BookingStatus.CANCELLED,
+                now,
+                now);
+        if (bookingCancelled == 1) {
+            bookingSlotRepository.releaseByBookingId(booking.getId(), BookingSlotStatus.AVAILABLE);
         }
     }
 
