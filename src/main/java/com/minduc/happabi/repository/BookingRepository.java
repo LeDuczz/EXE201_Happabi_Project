@@ -5,6 +5,7 @@ import com.minduc.happabi.enums.BookingStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface BookingRepository extends JpaRepository<Booking, UUID> {
+public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpecificationExecutor<Booking> {
     boolean existsByNurseProfile_IdAndStartAtAndStatusIn(UUID nurseProfileId,
                                                          OffsetDateTime startAt,
                                                          Collection<BookingStatus> statuses);
@@ -83,6 +84,17 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             where booking.id = :bookingId
             """)
     Optional<Booking> findByIdWithPaymentRelations(@Param("bookingId") UUID bookingId);
+
+    @Query("""
+            select booking
+            from Booking booking
+            join fetch booking.mother mother
+            join fetch booking.nurseProfile nurseProfile
+            join fetch nurseProfile.user nurseUser
+            join fetch booking.serviceOffering serviceOffering
+            where booking.id in :bookingIds
+            """)
+    List<Booking> findAllByIdInWithPaymentRelations(@Param("bookingIds") Collection<UUID> bookingIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
