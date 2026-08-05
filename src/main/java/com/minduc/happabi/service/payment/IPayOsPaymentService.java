@@ -13,4 +13,6 @@ public interface IPayOsPaymentService {
 
     BookingPaymentLinkResponse createBookingPaymentLink(UUID bookingId);
 
+    void cancelBookingPaymentFromReturn(Long orderCode);
+
 }

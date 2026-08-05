@@ -166,4 +166,19 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
                                     @Param("nextStatus") BookingStatus nextStatus,
                                     @Param("now") OffsetDateTime now,
                                     @Param("updatedAt") OffsetDateTime updatedAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update Booking booking
+            set booking.status = :nextStatus,
+                booking.updatedAt = :updatedAt
+            where booking.id = :bookingId
+              and booking.status = :currentStatus
+              and booking.paymentExpiresAt > :now
+            """)
+    int cancelActivePendingPayment(@Param("bookingId") UUID bookingId,
+                                   @Param("currentStatus") BookingStatus currentStatus,
+                                   @Param("nextStatus") BookingStatus nextStatus,
+                                   @Param("now") OffsetDateTime now,
+                                   @Param("updatedAt") OffsetDateTime updatedAt);
 }

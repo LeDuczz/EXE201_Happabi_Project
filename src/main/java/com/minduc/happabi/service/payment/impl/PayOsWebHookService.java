@@ -5,6 +5,7 @@ import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.entity.BookingPaymentTransaction;
 import com.minduc.happabi.entity.NurseWallet;
 import com.minduc.happabi.entity.WalletTransaction;
+import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NotificationType;
 import com.minduc.happabi.enums.TransactionStatus;
@@ -17,6 +18,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
+import com.minduc.happabi.repository.BookingSlotRepository;
 import com.minduc.happabi.repository.NurseWalletRepository;
 import com.minduc.happabi.repository.WalletTransactionRepository;
 import com.minduc.happabi.service.admin.IAdminWalletLedgerService;
@@ -36,6 +38,7 @@ import vn.payos.model.webhooks.WebhookData;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import java.util.UUID;
 
 @Slf4j
@@ -47,6 +50,7 @@ public class PayOsWebHookService implements IPayOsWebhookService {
     private final WalletTransactionRepository walletTransactionRepository;
     private final BookingPaymentTransactionRepository bookingPaymentTransactionRepository;
     private final BookingRepository bookingRepository;
+    private final BookingSlotRepository bookingSlotRepository;
     private final NurseWalletRepository nurseWalletRepository;
     private final IWorkSessionService workSessionService;
     private final IAdminWalletLedgerService adminWalletLedgerService;
@@ -174,20 +178,67 @@ public class PayOsWebHookService implements IPayOsWebhookService {
             return "Success to handle PayOs booking payment webhook";
         }
 
+        TransactionStatus terminalStatus = resolveFailedBookingPaymentStatus(data);
         int transactionUpdated = bookingPaymentTransactionRepository.markStatusIfPending(
                 data.getOrderCode(),
                 TransactionStatus.PENDING,
-                TransactionStatus.FAILED,
+                terminalStatus,
                 now,
                 "FAIL TO PAYMENT: " + data.getDesc());
         if (transactionUpdated == 0) {
             log.info("[PayOSWebhook] Duplicate booking payment failed webhook orderCode={}", data.getOrderCode());
             return "Booking payment webhook already processed";
         }
+        if (terminalStatus == TransactionStatus.CANCELED) {
+            cancelBookingPayment(bookingId, now);
+            notifyMotherPaymentCancelled(bookingPayment);
+            log.info("[PayOSWebhook] Booking payment cancelled bookingId={} orderCode={} reason={}",
+                    bookingId, data.getOrderCode(), data.getDesc());
+            return "Success to handle cancelled PayOs booking payment webhook";
+        }
         notifyMotherPaymentFailed(bookingPayment, data.getDesc());
         log.warn("[PayOSWebhook] Booking payment failed bookingId={} orderCode={} reason={}",
                 bookingId, data.getOrderCode(), data.getDesc());
         return "Success to handle failed PayOs booking payment webhook";
+    }
+
+    private TransactionStatus resolveFailedBookingPaymentStatus(WebhookData data) {
+        String code = normalizeWebhookText(data.getCode());
+        String description = normalizeWebhookText(data.getDesc());
+        if (code.contains("cancel") || description.contains("cancel")
+                || description.contains("huy") || description.contains("hủy")) {
+            return TransactionStatus.CANCELED;
+        }
+        return TransactionStatus.FAILED;
+    }
+
+    private String normalizeWebhookText(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
+    }
+
+    private void cancelBookingPayment(UUID bookingId, OffsetDateTime now) {
+        int cancelled = bookingRepository.cancelActivePendingPayment(
+                bookingId,
+                BookingStatus.PENDING_PAYMENT,
+                BookingStatus.CANCELLED,
+                now,
+                now);
+        if (cancelled == 1) {
+            bookingSlotRepository.releaseByBookingId(bookingId, BookingSlotStatus.AVAILABLE);
+        }
+    }
+
+    private void notifyMotherPaymentCancelled(BookingPaymentTransaction bookingPayment) {
+        Booking booking = bookingPayment.getBooking();
+        notificationPublisher.publish(
+                booking.getMother().getId(),
+                NotificationType.BOOKING_PAYMENT_CANCELLED,
+                "Booking payment cancelled",
+                "Your booking for %s was cancelled because payment was cancelled."
+                        .formatted(booking.getServiceOffering().getServiceName()),
+                "BOOKING",
+                booking.getId().toString()
+        );
     }
 
     private void notifyMotherPaymentFailed(BookingPaymentTransaction bookingPayment, String reason) {
