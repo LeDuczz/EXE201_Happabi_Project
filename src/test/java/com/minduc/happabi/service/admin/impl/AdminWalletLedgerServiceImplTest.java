@@ -2,10 +2,18 @@ package com.minduc.happabi.service.admin.impl;
 
 import com.minduc.happabi.entity.AdminWallet;
 import com.minduc.happabi.entity.AdminWalletTransaction;
+import com.minduc.happabi.entity.Booking;
+import com.minduc.happabi.entity.NurseProfile;
+import com.minduc.happabi.entity.ServiceOffering;
+import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.AdminWalletTransactionType;
+import com.minduc.happabi.enums.BookingPaymentOption;
+import com.minduc.happabi.enums.BookingStatus;
+import com.minduc.happabi.enums.ServiceOfferingType;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.repository.AdminWalletRepository;
 import com.minduc.happabi.repository.AdminWalletTransactionRepository;
+import com.minduc.happabi.repository.BookingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,13 +51,16 @@ class AdminWalletLedgerServiceImplTest {
     @Mock
     private AdminWalletTransactionRepository adminWalletTransactionRepository;
 
+    @Mock
+    private BookingRepository bookingRepository;
+
     private AdminWalletLedgerServiceImpl service;
     private AdminWallet wallet;
     private UUID bookingId;
 
     @BeforeEach
     void setUp() {
-        service = new AdminWalletLedgerServiceImpl(adminWalletRepository, adminWalletTransactionRepository);
+        service = new AdminWalletLedgerServiceImpl(adminWalletRepository, adminWalletTransactionRepository, bookingRepository);
         wallet = AdminWallet.builder()
                 .id(AdminWallet.PLATFORM_ADMIN_WALLET_ID)
                 .balance(BigDecimal.ZERO)
@@ -158,10 +169,16 @@ class AdminWalletLedgerServiceImplTest {
                 org.mockito.ArgumentMatchers.<Specification<AdminWalletTransaction>>any(),
                 org.mockito.ArgumentMatchers.eq(Pageable.unpaged())))
                 .thenReturn(new PageImpl<>(java.util.List.of(transaction)));
+        when(bookingRepository.findAllByIdInWithPaymentRelations(java.util.Set.of(bookingId)))
+                .thenReturn(java.util.List.of(buildBooking(bookingId)));
 
         Page<?> transactions = service.getPlatformWallet(Pageable.unpaged()).getTransactions();
 
         assertThat(transactions.getTotalElements()).isEqualTo(1);
+        var response = (com.minduc.happabi.dto.response.admin.AdminWalletTransactionResponse) transactions.getContent().get(0);
+        assertThat(response.getBooking()).isNotNull();
+        assertThat(response.getBooking().getBookingKey()).isEqualTo("W9-PROD-001");
+        assertThat(response.getBooking().getMotherName()).isEqualTo("Le Bao Ngoc");
         verify(adminWalletTransactionRepository).findAll(specCaptor.capture(), eq(Pageable.unpaged()));
         specCaptor.getValue().toPredicate(mock(Root.class), mock(CriteriaQuery.class), mock(CriteriaBuilder.class));
     }
@@ -259,5 +276,52 @@ class AdminWalletLedgerServiceImplTest {
         ArgumentCaptor<AdminWalletTransaction> captor = ArgumentCaptor.forClass(AdminWalletTransaction.class);
         verify(adminWalletTransactionRepository).save(captor.capture());
         return captor.getValue();
+    }
+
+    private Booking buildBooking(UUID id) {
+        User mother = User.builder()
+                .id(UUID.randomUUID())
+                .fullName("Le Bao Ngoc")
+                .phone("+84910000003")
+                .email("mother03@happabi.local")
+                .build();
+        User nurseUser = User.builder()
+                .id(UUID.randomUUID())
+                .fullName("Pham Khanh Linh")
+                .phone("+84367270392")
+                .email("nurse01@happabi.local")
+                .build();
+        NurseProfile nurseProfile = NurseProfile.builder()
+                .id(UUID.randomUUID())
+                .user(nurseUser)
+                .build();
+        ServiceOffering serviceOffering = ServiceOffering.builder()
+                .id(UUID.randomUUID())
+                .serviceCode("W9_PRENATAL_RELAX_MASSAGE")
+                .serviceType(ServiceOfferingType.SINGLE)
+                .serviceName("Prenatal massage")
+                .grossAmount(450000L)
+                .platformFeeAmount(67500L)
+                .nurseEarningAmount(382500L)
+                .commissionRate(BigDecimal.valueOf(15))
+                .build();
+        return Booking.builder()
+                .id(id)
+                .bookingKey("W9-PROD-001")
+                .status(BookingStatus.COMPLETED)
+                .paymentOption(BookingPaymentOption.DEPOSIT_30_PERCENT)
+                .mother(mother)
+                .nurseProfile(nurseProfile)
+                .serviceOffering(serviceOffering)
+                .startAt(java.time.OffsetDateTime.now())
+                .endAt(java.time.OffsetDateTime.now().plusHours(1))
+                .grossAmount(450000L)
+                .appPaymentAmount(135000L)
+                .depositAmount(135000L)
+                .remainingCashAmount(315000L)
+                .platformFeeAmount(67500L)
+                .nurseEarningAmount(382500L)
+                .serviceAddress("S9.03 Vinhomes Grand Park")
+                .build();
     }
 }

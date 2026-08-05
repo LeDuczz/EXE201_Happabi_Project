@@ -22,4 +22,15 @@ public class AdminWalletTransactionResponse {
     private TransactionStatus status;
     private String description;
     private Instant createdAt;
+    private BookingSummary booking;
+
+    @Getter
+    @Builder
+    public static class BookingSummary {
+        private UUID id;
+        private String bookingKey;
+        private String motherName;
+        private String nurseName;
+        private String serviceName;
+    }
 }

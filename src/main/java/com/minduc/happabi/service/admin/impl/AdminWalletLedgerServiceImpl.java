@@ -4,6 +4,7 @@ import com.minduc.happabi.dto.response.admin.AdminWalletResponse;
 import com.minduc.happabi.dto.response.admin.AdminWalletTransactionResponse;
 import com.minduc.happabi.entity.AdminWallet;
 import com.minduc.happabi.entity.AdminWalletTransaction;
+import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.enums.AdminWalletTransactionType;
 import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.exception.AppException;
@@ -13,6 +14,7 @@ import com.minduc.happabi.observability.annotation.LogExecution;
 import com.minduc.happabi.observability.annotation.TimedAction;
 import com.minduc.happabi.repository.AdminWalletRepository;
 import com.minduc.happabi.repository.AdminWalletTransactionRepository;
+import com.minduc.happabi.repository.BookingRepository;
 import com.minduc.happabi.service.admin.IAdminWalletLedgerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -35,6 +42,7 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
 
     private final AdminWalletRepository adminWalletRepository;
     private final AdminWalletTransactionRepository adminWalletTransactionRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     @LogExecution
@@ -147,9 +155,11 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
                         .build());
         AdminWalletTransactionType parsedType = parseTransactionType(transactionType);
         String parsedDirection = parseDirection(direction);
-        Page<AdminWalletTransactionResponse> transactions = adminWalletTransactionRepository
-                .findAll(walletTransactionSpec(parsedType, parsedDirection, startAt, endAt), pageable)
-                .map(this::toResponse);
+        Page<AdminWalletTransaction> transactionPage = adminWalletTransactionRepository
+                .findAll(walletTransactionSpec(parsedType, parsedDirection, startAt, endAt), pageable);
+        Map<UUID, Booking> bookingsById = loadBookingsById(transactionPage.getContent());
+        Page<AdminWalletTransactionResponse> transactions = transactionPage
+                .map(transaction -> toResponse(transaction, bookingsById.get(transaction.getBookingId())));
         return AdminWalletResponse.builder()
                 .walletId(wallet.getId())
                 .balance(wallet.getBalance())
@@ -256,10 +266,24 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
         return amount;
     }
 
-    private AdminWalletTransactionResponse toResponse(AdminWalletTransaction transaction) {
+    private Map<UUID, Booking> loadBookingsById(Collection<AdminWalletTransaction> transactions) {
+        var bookingIds = transactions.stream()
+                .filter(transaction -> transaction.getTransactionType() != AdminWalletTransactionType.WITHDRAWAL_PAYOUT)
+                .map(AdminWalletTransaction::getBookingId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (bookingIds.isEmpty()) {
+            return Map.of();
+        }
+        return bookingRepository.findAllByIdInWithPaymentRelations(bookingIds).stream()
+                .collect(Collectors.toMap(Booking::getId, Function.identity()));
+    }
+
+    private AdminWalletTransactionResponse toResponse(AdminWalletTransaction transaction, Booking booking) {
         return AdminWalletTransactionResponse.builder()
                 .id(transaction.getId())
                 .bookingId(transaction.getBookingId())
+                .booking(toBookingSummary(booking))
                 .transactionType(transaction.getTransactionType())
                 .amount(transaction.getAmount())
                 .walletImpact(transaction.getWalletImpact())
@@ -267,6 +291,19 @@ public class AdminWalletLedgerServiceImpl implements IAdminWalletLedgerService {
                 .status(transaction.getStatus())
                 .description(transaction.getDescription())
                 .createdAt(transaction.getCreatedAt())
+                .build();
+    }
+
+    private AdminWalletTransactionResponse.BookingSummary toBookingSummary(Booking booking) {
+        if (booking == null) {
+            return null;
+        }
+        return AdminWalletTransactionResponse.BookingSummary.builder()
+                .id(booking.getId())
+                .bookingKey(booking.getBookingKey())
+                .motherName(booking.getMother().getFullName())
+                .nurseName(booking.getNurseProfile().getUser().getFullName())
+                .serviceName(booking.getServiceOffering().getServiceName())
                 .build();
     }
 }
