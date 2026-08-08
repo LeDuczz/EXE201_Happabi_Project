@@ -30,6 +30,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -136,6 +137,43 @@ class NotificationServiceImplTest {
         assertThatThrownBy(() -> notificationService.getMyNotifications(UserRole.ADMIN))
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("Active role does not belong to current user");
+    }
+
+
+    @Test
+    void markAsReadSetsReadTimestampWhenNotificationBelongsToCurrentUser() {
+        User user = userWithRoles(UserRole.MOTHER);
+        Notification notification = notification(user, UserRole.MOTHER);
+        notification.setReadAt(null);
+        authenticate();
+        when(userRepository.findByCognitoSub(COGNITO_SUB)).thenReturn(Optional.of(user));
+        when(notificationRepository.findByIdWithUser(notification.getId())).thenReturn(Optional.of(notification));
+        when(notificationRepository.save(notification)).thenReturn(notification);
+
+        NotificationResponse response = notificationService.markAsRead(notification.getId());
+
+        assertThat(response.getRead()).isTrue();
+        assertThat(response.getRecipientRole()).isEqualTo(UserRole.MOTHER);
+        assertThat(notification.getReadAt()).isNotNull();
+        verify(notificationRepository).save(notification);
+    }
+
+    @Test
+    void markAsReadRejectsNotificationOwnedByAnotherUser() {
+        User currentUser = userWithRoles(UserRole.MOTHER);
+        User otherUser = User.builder()
+                .id(UUID.randomUUID())
+                .fullName("Other User")
+                .build();
+        Notification notification = notification(otherUser, UserRole.MOTHER);
+        authenticate();
+        when(userRepository.findByCognitoSub(COGNITO_SUB)).thenReturn(Optional.of(currentUser));
+        when(notificationRepository.findByIdWithUser(notification.getId())).thenReturn(Optional.of(notification));
+
+        assertThatThrownBy(() -> notificationService.markAsRead(notification.getId()))
+                .isInstanceOf(AppException.class)
+                .hasMessageContaining("Notification does not belong to current user");
+        verify(notificationRepository, never()).save(any(Notification.class));
     }
 
     private void authenticate() {
