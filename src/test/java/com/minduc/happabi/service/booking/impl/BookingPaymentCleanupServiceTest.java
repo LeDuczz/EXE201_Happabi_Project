@@ -3,6 +3,7 @@ package com.minduc.happabi.service.booking.impl;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
@@ -76,6 +77,7 @@ class BookingPaymentCleanupServiceTest {
                 any(OffsetDateTime.class));
         verify(notificationPublisher).publish(
                 eq(booking.getMother().getId()),
+                eq(UserRole.MOTHER),
                 eq(NotificationType.BOOKING_PAYMENT_EXPIRED),
                 any(),
                 any(),

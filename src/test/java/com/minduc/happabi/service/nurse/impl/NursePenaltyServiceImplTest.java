@@ -5,6 +5,7 @@ import com.minduc.happabi.entity.User;
 import com.minduc.happabi.entity.WorkSession;
 import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.UserErrorCode;
@@ -96,6 +97,7 @@ class NursePenaltyServiceImplTest {
         verify(userCacheService).evictProfiles("nurse-cognito-sub");
         verify(notificationPublisher).publish(
                 eq(nurseUserId),
+                eq(UserRole.NURSE),
                 eq(NotificationType.NURSE_SUSPENDED),
                 eq("Booking availability suspended"),
                 org.mockito.ArgumentMatchers.contains("Your booking availability has been suspended until"),
@@ -134,6 +136,7 @@ class NursePenaltyServiceImplTest {
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
         verify(notificationPublisher).publish(
                 eq(nurseUserId),
+                eq(UserRole.NURSE),
                 eq(NotificationType.NURSE_SUSPENDED),
                 eq("Nurse account suspended"),
                 messageCaptor.capture(),

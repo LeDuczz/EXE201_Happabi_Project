@@ -7,6 +7,7 @@ import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.NurseAvailabilityWindowStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.UserErrorCode;
 import com.minduc.happabi.observability.annotation.AuditAction;
@@ -157,6 +158,7 @@ public class NurseAvailabilityWindowServiceImpl implements INurseAvailabilityWin
     private void notifyWindowOpened(NurseAvailabilityWindow window) {
         notificationPublisher.publish(
                 window.getNurseProfile().getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.NURSE_AVAILABILITY_WINDOW_OPENED,
                 "Availability window opened",
                 "You opened an availability window from %s to %s."
@@ -168,6 +170,7 @@ public class NurseAvailabilityWindowServiceImpl implements INurseAvailabilityWin
     private void notifyWindowCancelled(NurseAvailabilityWindow window) {
         notificationPublisher.publish(
                 window.getNurseProfile().getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.NURSE_AVAILABILITY_WINDOW_CANCELLED,
                 "Availability window cancelled",
                 "You cancelled an availability window from %s to %s."

@@ -1,6 +1,7 @@
 package com.minduc.happabi.entity;
 
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,6 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "notifications", indexes = {
+        @Index(name = "idx_notifications_user_role_read_created", columnList = "user_id, recipient_role, read_at, created_at"),
         @Index(name = "idx_notifications_user_read_created", columnList = "user_id, read_at, created_at")
 })
 @Getter
@@ -27,6 +29,10 @@ public class Notification {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recipient_role", length = 30, columnDefinition = "varchar(30)")
+    private UserRole recipientRole;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 80, columnDefinition = "varchar(80)")

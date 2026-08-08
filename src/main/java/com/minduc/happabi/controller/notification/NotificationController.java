@@ -3,6 +3,7 @@ package com.minduc.happabi.controller.notification;
 import com.minduc.happabi.common.base.BaseResponse;
 import com.minduc.happabi.dto.response.notification.NotificationListResponse;
 import com.minduc.happabi.dto.response.notification.NotificationResponse;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.service.notification.INotificationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,9 @@ public class NotificationController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<BaseResponse<NotificationListResponse>> getMyNotifications() {
-        return ResponseEntity.ok(BaseResponse.ok(notificationService.getMyNotifications()));
+    public ResponseEntity<BaseResponse<NotificationListResponse>> getMyNotifications(
+            @RequestParam(required = false) UserRole role) {
+        return ResponseEntity.ok(BaseResponse.ok(notificationService.getMyNotifications(role)));
     }
 
     @PatchMapping("/{notificationId}/read")

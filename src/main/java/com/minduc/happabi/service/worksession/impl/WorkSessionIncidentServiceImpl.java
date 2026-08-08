@@ -286,6 +286,7 @@ public class WorkSessionIncidentServiceImpl implements IWorkSessionIncidentServi
         userRepository.findActiveUsersByRoleName(UserRole.ADMIN).forEach(admin ->
                 notificationPublisher.publish(
                         admin.getId(),
+                UserRole.ADMIN,
                         NotificationType.WORK_SESSION_UPDATED,
                         "Work session incident reported",
                         "A nurse reported a mother unreachable incident for work session %s."
@@ -297,6 +298,7 @@ public class WorkSessionIncidentServiceImpl implements IWorkSessionIncidentServi
     private void notifyMother(WorkSession session, String title, String message) {
         notificationPublisher.publish(
                 session.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,
@@ -307,6 +309,7 @@ public class WorkSessionIncidentServiceImpl implements IWorkSessionIncidentServi
     private void notifyNurse(WorkSession session, String title, String message) {
         notificationPublisher.publish(
                 session.getNurseProfile().getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,

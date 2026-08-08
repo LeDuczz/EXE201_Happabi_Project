@@ -7,6 +7,7 @@ import com.minduc.happabi.dto.response.booking.MotherRefundResponse;
 import com.minduc.happabi.entity.MotherRefundRequest;
 import com.minduc.happabi.enums.MotherRefundStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.BookingErrorCode;
 import com.minduc.happabi.integration.s3.IS3Service;
@@ -130,6 +131,7 @@ public class MotherRefundServiceImpl implements IMotherRefundService {
     private void notifyMother(MotherRefundRequest refund, String title, String message) {
         notificationPublisher.publish(
                 refund.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,

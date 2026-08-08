@@ -4,6 +4,7 @@ import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.WorkSession;
 import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.UserErrorCode;
@@ -116,6 +117,7 @@ public class NursePenaltyServiceImpl implements INursePenaltyService {
                         .formatted(nurse.getBookingSuspendedUntil());
         notificationPublisher.publish(
                 nurse.getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.NURSE_SUSPENDED,
                 permanent ? "Nurse account suspended" : "Booking availability suspended",
                 message,

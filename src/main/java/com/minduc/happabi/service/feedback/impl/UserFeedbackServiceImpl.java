@@ -133,6 +133,7 @@ public class UserFeedbackServiceImpl implements IUserFeedbackService {
         userRepository.findActiveUsersByRoleName(UserRole.ADMIN).forEach(admin ->
                 notificationPublisher.publish(
                         admin.getId(),
+                UserRole.ADMIN,
                         NotificationType.WORK_SESSION_UPDATED,
                         "New user feedback",
                         "%s submitted feedback about %s."
@@ -144,6 +145,7 @@ public class UserFeedbackServiceImpl implements IUserFeedbackService {
     private void notifySubmitter(UserFeedback feedback, String title, String message) {
         notificationPublisher.publish(
                 feedback.getSubmittedBy().getId(),
+                feedback.getSubmittedByRole(),
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,

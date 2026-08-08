@@ -6,6 +6,7 @@ import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.entity.SystemConfig;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.repository.NurseProfileRepository;
 import com.minduc.happabi.repository.SystemConfigRepository;
@@ -76,6 +77,7 @@ class SystemConfigServiceTest {
         assertThat(response.getPlatformCommissionRate()).isEqualByComparingTo("0.20");
         verify(notificationPublisher, times(2)).publish(
                 any(UUID.class),
+                eq(UserRole.NURSE),
                 eq(NotificationType.PLATFORM_COMMISSION_UPDATED),
                 eq("Cập nhật tỷ lệ chia sẻ doanh thu"),
                 contains("Happabi giữ 20%, điều dưỡng nhận 80%"),
@@ -113,6 +115,7 @@ class SystemConfigServiceTest {
                 .isEqualTo("0.18");
         verify(notificationPublisher).publish(
                 eq(UUID.fromString("44444444-4444-4444-4444-444444444444")),
+                eq(UserRole.NURSE),
                 eq(NotificationType.PLATFORM_COMMISSION_UPDATED),
                 eq("Cập nhật tỷ lệ chia sẻ doanh thu"),
                 contains("Happabi giữ 18%, điều dưỡng nhận 82%"),

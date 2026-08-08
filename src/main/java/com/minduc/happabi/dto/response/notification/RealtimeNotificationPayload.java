@@ -2,6 +2,7 @@ package com.minduc.happabi.dto.response.notification;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,6 +14,7 @@ import java.util.UUID;
 public class RealtimeNotificationPayload {
     private UUID notificationId;
     private UUID targetUserId;
+    private UserRole recipientRole;
     private NotificationType type;
     private String title;
     private String message;

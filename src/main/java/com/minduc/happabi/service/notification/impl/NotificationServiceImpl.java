@@ -6,6 +6,7 @@ import com.minduc.happabi.dto.response.notification.NotificationResponse;
 import com.minduc.happabi.entity.Notification;
 import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.AuthErrorCode;
 import com.minduc.happabi.observability.annotation.LogExecution;
@@ -22,11 +23,19 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements INotificationService {
+
+    private static final List<UserRole> DEFAULT_ROLE_PRIORITY = List.of(
+            UserRole.ADMIN,
+            UserRole.NURSE,
+            UserRole.DOCTOR,
+            UserRole.MOTHER
+    );
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
@@ -36,10 +45,11 @@ public class NotificationServiceImpl implements INotificationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @LogExecution
     @TimedAction("CREATE_NOTIFICATION")
-    public Notification create(User targetUser, NotificationType type, String title, String message,
+    public Notification create(User targetUser, UserRole recipientRole, NotificationType type, String title, String message,
                                String resourceType, String resourceId) {
         Notification notification = Notification.builder()
                 .user(targetUser)
+                .recipientRole(recipientRole)
                 .type(type)
                 .title(title)
                 .message(message)
@@ -70,11 +80,12 @@ public class NotificationServiceImpl implements INotificationService {
     @Transactional(readOnly = true)
     @LogExecution
     @TimedAction("GET_MY_NOTIFICATIONS")
-    public NotificationListResponse getMyNotifications() {
+    public NotificationListResponse getMyNotifications(UserRole activeRole) {
         User user = currentUser();
+        UserRole resolvedRole = resolveActiveRole(user, activeRole);
         return NotificationListResponse.builder()
-                .unreadCount(notificationRepository.countByUserAndReadAtIsNull(user))
-                .notifications(notificationRepository.findTop30ByUserOrderByCreatedAtDesc(user).stream()
+                .unreadCount(notificationRepository.countByUserAndRecipientRoleAndReadAtIsNull(user, resolvedRole))
+                .notifications(notificationRepository.findTop30ByUserAndRecipientRoleOrderByCreatedAtDesc(user, resolvedRole).stream()
                         .map(this::toResponse)
                         .toList())
                 .build();
@@ -105,9 +116,23 @@ public class NotificationServiceImpl implements INotificationService {
                 .orElseThrow(() -> new AppException(AuthErrorCode.USER_NOT_FOUND));
     }
 
+    private UserRole resolveActiveRole(User user, UserRole activeRole) {
+        if (activeRole != null) {
+            if (!user.hasRole(activeRole)) {
+                throw new AppException(AuthErrorCode.AUTH_FAILED, "Active role does not belong to current user.");
+            }
+            return activeRole;
+        }
+        return DEFAULT_ROLE_PRIORITY.stream()
+                .filter(user::hasRole)
+                .findFirst()
+                .orElseThrow(() -> new AppException(AuthErrorCode.AUTH_FAILED, "Current user has no role."));
+    }
+
     private NotificationResponse toResponse(Notification notification) {
         return NotificationResponse.builder()
                 .id(notification.getId())
+                .recipientRole(notification.getRecipientRole())
                 .type(notification.getType())
                 .title(notification.getTitle())
                 .message(notification.getMessage())

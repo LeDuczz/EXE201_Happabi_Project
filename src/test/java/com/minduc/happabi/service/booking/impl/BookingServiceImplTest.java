@@ -14,6 +14,7 @@ import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NurseAvailabilityWindowStatus;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.ServiceOfferingType;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.BookingErrorCode;
@@ -162,6 +163,7 @@ class BookingServiceImplTest {
         assertThat(slot.getStatus()).isEqualTo(BookingSlotStatus.BOOKED);
         verify(notificationPublisher).publish(
                 eq(mother.getId()),
+                eq(UserRole.MOTHER),
                 eq(NotificationType.BOOKING_PAYMENT_PENDING),
                 any(),
                 any(),

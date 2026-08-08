@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter;
 public class WalletTransactionMapper {
 
   private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    .withZone(ZoneId.systemDefault());
+    .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
 
   public TransactionDTO toTransactionDTO(WalletTransaction walletTransaction) {
     if (walletTransaction == null) {

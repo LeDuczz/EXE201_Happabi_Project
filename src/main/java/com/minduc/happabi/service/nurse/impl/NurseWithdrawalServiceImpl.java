@@ -296,6 +296,7 @@ public class NurseWithdrawalServiceImpl implements INurseWithdrawalService {
         userRepository.findActiveUsersByRoleName(UserRole.ADMIN).forEach(admin ->
                 notificationPublisher.publish(
                         admin.getId(),
+                UserRole.ADMIN,
                         NotificationType.WORK_SESSION_UPDATED,
                         "New withdrawal request",
                         "%s requested a withdrawal of %s VND."
@@ -309,6 +310,7 @@ public class NurseWithdrawalServiceImpl implements INurseWithdrawalService {
         userRepository.findActiveUsersByRoleName(UserRole.ADMIN).forEach(admin ->
                 notificationPublisher.publish(
                         admin.getId(),
+                UserRole.ADMIN,
                         NotificationType.WORK_SESSION_UPDATED,
                         "Withdrawal request cancelled",
                         "%s cancelled a withdrawal request of %s VND."
@@ -323,6 +325,7 @@ public class NurseWithdrawalServiceImpl implements INurseWithdrawalService {
                              String message) {
         notificationPublisher.publish(
                 withdrawal.getNurseProfile().getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,
