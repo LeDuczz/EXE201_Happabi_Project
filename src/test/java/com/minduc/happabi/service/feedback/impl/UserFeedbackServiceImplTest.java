@@ -83,8 +83,8 @@ class UserFeedbackServiceImplTest {
         assertThat(response.getCategory()).isEqualTo(UserFeedbackCategory.APP_EXPERIENCE);
         assertThat(response.getStatus()).isEqualTo(UserFeedbackStatus.NEW);
         assertThat(response.getRating()).isEqualTo(5);
-        verify(notificationPublisher).publish(eq(admin.getId()), any(), eq("New user feedback"), any(), eq("USER_FEEDBACK"), any());
-        verify(notificationPublisher).publish(eq(mother.getId()), any(), eq("Feedback received"), any(), eq("USER_FEEDBACK"), any());
+        verify(notificationPublisher).publish(eq(admin.getId()), eq(UserRole.ADMIN), any(), eq("New user feedback"), any(), eq("USER_FEEDBACK"), any());
+        verify(notificationPublisher).publish(eq(mother.getId()), eq(UserRole.MOTHER), any(), eq("Feedback received"), any(), eq("USER_FEEDBACK"), any());
     }
 
     @Test
@@ -112,7 +112,7 @@ class UserFeedbackServiceImplTest {
         assertThat(response.getStatus()).isEqualTo(UserFeedbackStatus.REVIEWING);
         assertThat(response.getAdminNote()).isEqualTo("We are checking this.");
         assertThat(response.getReviewedByAdminName()).isEqualTo("Admin Test");
-        verify(notificationPublisher).publish(eq(mother.getId()), any(), eq("Feedback status updated"), any(), eq("USER_FEEDBACK"), eq(feedbackId.toString()));
+        verify(notificationPublisher).publish(eq(mother.getId()), eq(UserRole.MOTHER), any(), eq("Feedback status updated"), any(), eq("USER_FEEDBACK"), eq(feedbackId.toString()));
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.minduc.happabi.entity.User;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
@@ -120,6 +121,7 @@ class PayOsWebHookServiceTest {
         verify(bookingSlotRepository).releaseByBookingId(bookingId, BookingSlotStatus.AVAILABLE);
         verify(notificationPublisher).publish(
                 eq(transaction.getBooking().getMother().getId()),
+                eq(UserRole.MOTHER),
                 eq(NotificationType.BOOKING_PAYMENT_CANCELLED),
                 eq("Booking payment cancelled"),
                 eq("Your booking for Newborn bath was cancelled because payment was cancelled."),
@@ -150,6 +152,7 @@ class PayOsWebHookServiceTest {
         verify(bookingSlotRepository, never()).releaseByBookingId(any(), any());
         verify(notificationPublisher).publish(
                 eq(transaction.getBooking().getMother().getId()),
+                eq(UserRole.MOTHER),
                 eq(NotificationType.BOOKING_PAYMENT_FAILED),
                 eq("Booking payment was not completed"),
                 any(),
