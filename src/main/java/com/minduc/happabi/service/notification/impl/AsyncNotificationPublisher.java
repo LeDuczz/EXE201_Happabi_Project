@@ -2,6 +2,7 @@ package com.minduc.happabi.service.notification.impl;
 
 import com.minduc.happabi.dto.event.NotificationRequestedEvent;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -17,6 +18,7 @@ public class AsyncNotificationPublisher implements INotificationPublisher {
 
     @Override
     public void publish(UUID targetUserId,
+                        UserRole recipientRole,
                         NotificationType type,
                         String title,
                         String message,
@@ -27,6 +29,7 @@ public class AsyncNotificationPublisher implements INotificationPublisher {
         }
         eventPublisher.publishEvent(new NotificationRequestedEvent(
                 targetUserId,
+                recipientRole,
                 type,
                 title,
                 message,

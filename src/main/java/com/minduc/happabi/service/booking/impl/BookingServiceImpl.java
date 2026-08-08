@@ -14,6 +14,7 @@ import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NurseAvailabilityWindowStatus;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.ServiceOfferingType;
 import com.minduc.happabi.exception.AppException;
 import com.minduc.happabi.exception.code.BookingErrorCode;
@@ -282,6 +283,7 @@ public class BookingServiceImpl implements IBookingService {
     private void notifyMotherPaymentPending(Booking booking) {
         notificationPublisher.publish(
                 booking.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.BOOKING_PAYMENT_PENDING,
                 "Booking is waiting for payment",
                 "Your booking for %s has been created. Please complete payment before %s."

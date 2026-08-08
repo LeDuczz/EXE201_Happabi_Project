@@ -221,6 +221,7 @@ public class BookingCancellationServiceImpl implements IBookingCancellationServi
         userRepository.findActiveUsersByRoleName(UserRole.ADMIN).forEach(admin ->
                 notificationPublisher.publish(
                         admin.getId(),
+                UserRole.ADMIN,
                         NotificationType.WORK_SESSION_UPDATED,
                         "Mother refund request created",
                         "A refund request of %s VND was created for booking %s."
@@ -232,6 +233,7 @@ public class BookingCancellationServiceImpl implements IBookingCancellationServi
     private void notifyMother(Booking booking, String title, String message) {
         notificationPublisher.publish(
                 booking.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,
@@ -242,6 +244,7 @@ public class BookingCancellationServiceImpl implements IBookingCancellationServi
     private void notifyNurse(Booking booking, String title, String message) {
         notificationPublisher.publish(
                 booking.getNurseProfile().getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,

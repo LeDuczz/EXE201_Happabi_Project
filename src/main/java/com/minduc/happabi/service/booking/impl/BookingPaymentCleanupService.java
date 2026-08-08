@@ -4,6 +4,7 @@ import com.minduc.happabi.entity.Booking;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.repository.BookingPaymentTransactionRepository;
 import com.minduc.happabi.repository.BookingRepository;
@@ -83,6 +84,7 @@ public class BookingPaymentCleanupService {
         bookingRepository.findByIdWithPaymentRelations(bookingId)
                 .ifPresent(booking -> notificationPublisher.publish(
                         booking.getMother().getId(),
+                UserRole.MOTHER,
                         NotificationType.BOOKING_PAYMENT_EXPIRED,
                         "Booking payment expired",
                         "Your booking for %s was cancelled because payment was not completed in time."

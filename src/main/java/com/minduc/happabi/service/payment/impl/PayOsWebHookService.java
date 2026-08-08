@@ -8,6 +8,7 @@ import com.minduc.happabi.entity.WalletTransaction;
 import com.minduc.happabi.enums.BookingSlotStatus;
 import com.minduc.happabi.enums.BookingStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.TransactionStatus;
 import com.minduc.happabi.enums.TransactionType;
 import com.minduc.happabi.exception.AppException;
@@ -232,6 +233,7 @@ public class PayOsWebHookService implements IPayOsWebhookService {
         Booking booking = bookingPayment.getBooking();
         notificationPublisher.publish(
                 booking.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.BOOKING_PAYMENT_CANCELLED,
                 "Booking payment cancelled",
                 "Your booking for %s was cancelled because payment was cancelled."
@@ -245,6 +247,7 @@ public class PayOsWebHookService implements IPayOsWebhookService {
         Booking booking = bookingPayment.getBooking();
         notificationPublisher.publish(
                 booking.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.BOOKING_PAYMENT_FAILED,
                 "Booking payment was not completed",
                 "Payment for %s was not completed%s. You can try again before %s."

@@ -2,6 +2,7 @@ package com.minduc.happabi.service.notification.impl;
 
 import com.minduc.happabi.entity.NurseProfile;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.service.notification.INotificationPublisher;
 import com.minduc.happabi.service.notification.INurseNotificationService;
 import lombok.RequiredArgsConstructor;
@@ -114,6 +115,7 @@ public class NurseNotificationService implements INurseNotificationService {
         }
         notificationPublisher.publish(
                 profile.getUser().getId(),
+                UserRole.NURSE,
                 type,
                 title,
                 message,

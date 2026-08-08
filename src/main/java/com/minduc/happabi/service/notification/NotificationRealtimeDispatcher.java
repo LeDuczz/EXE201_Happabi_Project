@@ -36,10 +36,14 @@ public class NotificationRealtimeDispatcher {
             return;
         }
 
-        long unreadCount = notificationRepository.countByUserAndReadAtIsNull(notification.getUser());
+        long unreadCount = notification.getRecipientRole() == null
+                ? notificationRepository.countByUserAndReadAtIsNull(notification.getUser())
+                : notificationRepository.countByUserAndRecipientRoleAndReadAtIsNull(
+                        notification.getUser(), notification.getRecipientRole());
         RealtimeNotificationPayload payload = RealtimeNotificationPayload.builder()
                 .notificationId(notification.getId())
                 .targetUserId(notification.getUser().getId())
+                .recipientRole(notification.getRecipientRole())
                 .type(notification.getType())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
@@ -50,7 +54,7 @@ public class NotificationRealtimeDispatcher {
                 .build();
 
         realtime.pushToUser(notification.getUser().getId(), payload);
-        log.info("[Notification] Realtime notification pushed: notificationId={} userId={}",
-                notification.getId(), notification.getUser().getId());
+        log.info("[Notification] Realtime notification pushed: notificationId={} userId={} role={}",
+                notification.getId(), notification.getUser().getId(), notification.getRecipientRole());
     }
 }

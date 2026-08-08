@@ -4,6 +4,7 @@ import com.minduc.happabi.entity.SystemConfig;
 import com.minduc.happabi.dto.request.admin.UpdateFinancialConfigurationRequest;
 import com.minduc.happabi.dto.response.admin.FinancialConfigurationResponse;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.NurseStatus;
 import com.minduc.happabi.observability.annotation.AuditAction;
 import com.minduc.happabi.observability.annotation.TimedAction;
@@ -148,6 +149,7 @@ public class SystemConfigService implements ISystemConfigService {
             try {
                 notificationPublisher.publish(
                         profile.getUser().getId(),
+                UserRole.NURSE,
                         NotificationType.PLATFORM_COMMISSION_UPDATED,
                         "Cập nhật tỷ lệ chia sẻ doanh thu",
                         message,

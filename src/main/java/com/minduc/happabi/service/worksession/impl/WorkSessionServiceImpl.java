@@ -14,6 +14,7 @@ import com.minduc.happabi.entity.WorkSessionChecklistItem;
 import com.minduc.happabi.entity.WorkSessionEvidence;
 import com.minduc.happabi.enums.AvailabilityStatus;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import com.minduc.happabi.enums.WorkSessionChecklistStatus;
 import com.minduc.happabi.enums.WorkSessionEvidenceStatus;
 import com.minduc.happabi.enums.WorkSessionEvidenceType;
@@ -520,6 +521,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private void notifyMother(WorkSession session, String title, String message) {
         notificationPublisher.publish(
                 session.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,
@@ -531,6 +533,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private void notifyNurse(WorkSession session, String title, String message) {
         notificationPublisher.publish(
                 session.getNurseProfile().getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.WORK_SESSION_UPDATED,
                 title,
                 message,
@@ -542,6 +545,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
     private void notifyBookingConfirmed(WorkSession session) {
         notificationPublisher.publish(
                 session.getMother().getId(),
+                UserRole.MOTHER,
                 NotificationType.BOOKING_PAYMENT_SUCCESS,
                 "Booking confirmed",
                 "Your payment was successful. Your session with %s is scheduled for %s."
@@ -552,6 +556,7 @@ public class WorkSessionServiceImpl implements IWorkSessionService {
         );
         notificationPublisher.publish(
                 session.getNurseProfile().getUser().getId(),
+                UserRole.NURSE,
                 NotificationType.NURSE_BOOKING_ASSIGNED,
                 "New booking assigned",
                 "You have a new session for %s at %s."

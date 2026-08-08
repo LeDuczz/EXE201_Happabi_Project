@@ -29,7 +29,7 @@ public class NotificationRequestedEventListener {
                         event.targetUserId());
                 return;
             }
-            notificationService.create(targetUser, event.type(), event.title(), event.message(),
+            notificationService.create(targetUser, event.recipientRole(), event.type(), event.title(), event.message(),
                     event.resourceType(), event.resourceId());
         } catch (RuntimeException e) {
             log.warn("[Notification] Failed to create async notification: userId={} resourceType={} resourceId={}",

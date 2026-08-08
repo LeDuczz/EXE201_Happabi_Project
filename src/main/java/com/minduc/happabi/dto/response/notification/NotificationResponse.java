@@ -2,6 +2,7 @@ package com.minduc.happabi.dto.response.notification;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.minduc.happabi.enums.NotificationType;
+import com.minduc.happabi.enums.UserRole;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,6 +14,7 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class NotificationResponse {
     private UUID id;
+    private UserRole recipientRole;
     private NotificationType type;
     private String title;
     private String message;
