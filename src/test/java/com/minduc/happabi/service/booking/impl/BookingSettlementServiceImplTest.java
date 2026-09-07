@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class BookingSettlementServiceImplTest {
@@ -85,7 +86,8 @@ class BookingSettlementServiceImplTest {
                 .balance(BigDecimal.ZERO)
                 .build();
 
-        when(bookingSettlementRepository.findByBookingIdForUpdate(bookingId)).thenReturn(Optional.empty());
+        lenient().when(bookingSettlementRepository.findByBookingIdForUpdate(bookingId))
+                .thenReturn(Optional.empty());
     }
 
     @Test
@@ -151,6 +153,15 @@ class BookingSettlementServiceImplTest {
         verify(nurseWalletRepository, never()).findByNurseIdForUpdate(nurseId);
         verify(walletTransactionRepository, never()).save(any());
         verify(adminWalletLedgerService, never()).recordNursePayout(any(), any());
+    }
+
+    @Test
+    void toReferenceIdUsesBothUuidHalves() {
+        UUID firstBookingId = UUID.fromString("cccccccc-cccc-4ccc-8ccc-cccccccccc01");
+        UUID secondBookingId = UUID.fromString("cccccccc-cccc-4ccc-8ccc-cccccccccc02");
+
+        assertThat(BookingSettlementServiceImpl.toReferenceId(firstBookingId))
+                .isNotEqualTo(BookingSettlementServiceImpl.toReferenceId(secondBookingId));
     }
 
     private WorkSession workSession(BookingPaymentOption paymentOption,
