@@ -5,12 +5,14 @@ import com.minduc.happabi.enums.NurseSkill;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
 public class UpdateNurseProfileRequest {
     @Size(max = 100)
     private String licenseNumber;

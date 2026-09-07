@@ -2,13 +2,13 @@ package com.minduc.happabi.dto.response.nurse;
 
 import com.minduc.happabi.enums.NurseWithdrawalStatus;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-@Data
+@Getter
 @Builder
 public class NurseWithdrawalResponse {
     private UUID id;

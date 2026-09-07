@@ -3,9 +3,9 @@ package com.minduc.happabi.dto.response.auth;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.minduc.happabi.dto.response.user.UserProfileResponse;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AuthResponse {

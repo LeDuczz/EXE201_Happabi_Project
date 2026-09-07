@@ -92,10 +92,12 @@ public class NurseProfileService {
         NurseContract latestContract = contractRepository.findTopByNurseOrderByCreatedAtDesc(profile).orElse(null);
         List<NurseCertification> certifications = certificationRepository.findByNurseOrderByIdDesc(profile);
 
-        NurseProfileResponse response = nurseProfileMapper.toResponse(profile, kyc, certifications, latestContract, avatarUrl);
-        response.setTotalCompletedJobs((int) workSessionRepository.countByStatusInAndNurseProfile_Id(
-                Set.of(WorkSessionStatus.COMPLETED, WorkSessionStatus.AUTO_CONFIRMED), profile.getId()));
-        return response;
+        int totalCompletedJobs = (int) workSessionRepository.countByStatusInAndNurseProfile_Id(
+                Set.of(WorkSessionStatus.COMPLETED, WorkSessionStatus.AUTO_CONFIRMED), profile.getId());
+        return nurseProfileMapper.toResponse(profile, kyc, certifications, latestContract, avatarUrl)
+                .toBuilder()
+                .totalCompletedJobs(totalCompletedJobs)
+                .build();
     }
 
     private String normalizeText(String value) {

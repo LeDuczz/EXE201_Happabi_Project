@@ -2,12 +2,12 @@ package com.minduc.happabi.dto.response.nurse;
 
 import com.minduc.happabi.enums.NurseBankAccountStatus;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-@Data
+@Getter
 @Builder
 public class NurseBankAccountResponse {
     private UUID id;

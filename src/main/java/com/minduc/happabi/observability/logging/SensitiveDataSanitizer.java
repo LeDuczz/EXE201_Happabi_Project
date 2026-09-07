@@ -20,7 +20,11 @@ public class SensitiveDataSanitizer {
             "address",
             "birth",
             "email",
-            "phone"
+            "phone",
+            "bankaccountnumber",
+            "bankaccountholder",
+            "banktransactioncode",
+            "transferevidence"
     );
 
     public Object sanitize(Object value) {

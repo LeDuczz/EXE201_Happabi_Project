@@ -2,9 +2,11 @@ package com.minduc.happabi.dto.request.ai;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class SendAiMessageRequest {
 
     @NotBlank(message = "Message is required.")
