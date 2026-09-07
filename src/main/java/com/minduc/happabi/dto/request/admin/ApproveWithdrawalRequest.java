@@ -1,9 +1,11 @@
 package com.minduc.happabi.dto.request.admin;
 
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class ApproveWithdrawalRequest {
 
     @Size(max = 120)

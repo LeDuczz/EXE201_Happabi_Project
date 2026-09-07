@@ -1,12 +1,12 @@
 package com.minduc.happabi.dto;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-@Data
+@Getter
 @Builder
 public class WalletDTO {
   private BigDecimal balance;

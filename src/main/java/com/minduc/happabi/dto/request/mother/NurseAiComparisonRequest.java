@@ -3,12 +3,14 @@ package com.minduc.happabi.dto.request.mother;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
 public class NurseAiComparisonRequest {
 
     @NotEmpty(message = "At least two nurse profiles are required.")

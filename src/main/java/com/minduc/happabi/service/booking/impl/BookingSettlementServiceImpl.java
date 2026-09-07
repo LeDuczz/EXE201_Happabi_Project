@@ -172,8 +172,9 @@ public class BookingSettlementServiceImpl implements IBookingSettlementService {
                 .build());
     }
 
-    private long toReferenceId(UUID bookingId) {
-        return bookingId.getMostSignificantBits() & Long.MAX_VALUE;
+    static long toReferenceId(UUID bookingId) {
+        return bookingId.getMostSignificantBits()
+                ^ Long.rotateLeft(bookingId.getLeastSignificantBits(), 32);
     }
 
     private record SettlementAmounts(

@@ -49,6 +49,25 @@ class SensitiveDataSanitizerTest {
     }
 
     @Test
+    void sanitizeMasksBankingSensitiveFields() {
+        assertThat(SensitiveDataSanitizer.sanitizeNamedValue(
+                "bankAccountNumber", "123456789"
+        )).isEqualTo("****");
+
+        assertThat(SensitiveDataSanitizer.sanitizeNamedValue(
+                "bankAccountHolder", "NGUYEN VAN A"
+        )).isEqualTo("****");
+
+        assertThat(SensitiveDataSanitizer.sanitizeNamedValue(
+                "bankTransactionCode", "TXN-123"
+        )).isEqualTo("****");
+
+        assertThat(SensitiveDataSanitizer.sanitizeNamedValue(
+                "transferEvidenceUrl", "https://s3.example/file"
+        )).isEqualTo("****");
+    }
+
+    @Test
     void sanitizeLimitsCollectionsToTwentyItems() {
         List<Integer> values = java.util.stream.IntStream.range(0, 25).boxed().toList();
 

@@ -8,7 +8,7 @@ import com.minduc.happabi.enums.NurseSpecialty;
 import com.minduc.happabi.enums.NurseStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
@@ -16,8 +16,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-@Data
-@Builder
+@Getter
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)

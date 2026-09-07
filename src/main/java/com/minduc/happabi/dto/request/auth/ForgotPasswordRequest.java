@@ -2,9 +2,11 @@ package com.minduc.happabi.dto.request.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class ForgotPasswordRequest {
 
     @NotBlank(message = "Phone number is required.")

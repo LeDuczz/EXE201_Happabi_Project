@@ -3,9 +3,11 @@ package com.minduc.happabi.dto.request.auth;
 import jakarta.validation.constraints.NotBlank;
 import com.minduc.happabi.enums.AuthProvider;
 import com.minduc.happabi.enums.SocialAuthIntent;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class SocialSyncRequest {
 
     @NotBlank(message = "code is required")
